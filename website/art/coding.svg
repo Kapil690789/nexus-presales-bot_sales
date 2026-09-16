@@ -1,0 +1,17 @@
+<svg viewBox="0 0 480 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Engineer building a software product">
+  <rect x="24" y="24" width="432" height="252" rx="18" fill="#F4F5F7"/>
+  <rect x="72" y="72" width="200" height="124" rx="12" fill="#1A2B4C"/>
+  <rect x="86" y="86" width="172" height="90" rx="6" fill="#F4F5F7"/>
+  <rect x="98" y="100" width="88" height="8" rx="4" fill="#1A2B4C"/>
+  <rect x="98" y="118" width="120" height="8" rx="4" fill="#C5CDD8"/>
+  <rect x="98" y="136" width="64" height="8" rx="4" fill="#1A2B4C"/>
+  <rect x="98" y="154" width="96" height="8" rx="4" fill="#C5CDD8"/>
+  <rect x="140" y="196" width="64" height="12" rx="3" fill="#E2E8F0"/>
+  <rect x="96" y="208" width="220" height="16" rx="6" fill="#E2E8F0"/>
+  <circle cx="352" cy="122" r="34" fill="#1A2B4C"/>
+  <circle cx="352" cy="110" r="14" fill="#F4F5F7"/>
+  <path d="M318 148c10-18 52-18 68 0v22h-68z" fill="#1A2B4C"/>
+  <rect x="48" y="188" width="48" height="56" rx="10" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <rect x="58" y="204" width="28" height="8" rx="4" fill="#1A2B4C"/>
+  <rect x="58" y="218" width="18" height="8" rx="4" fill="#C5CDD8"/>
+</svg>
