@@ -1,0 +1,20 @@
+notify:
+  email:
+    enabled: false
+    to: [hello@devconsult.example]
+    subject: "New qualified lead — {{company_or_email}}"
+  slack:
+    enabled: false
+    channel: "#inbound"
+  crm:
+    enabled: false
+    provider: stub
+  calendar:
+    enabled: false
+    provider: stub
+summary_sections: [snapshot, brief, qualification, estimate, architecture, mvp, portfolio, objections, next_steps]
+follow_up:
+  subject: Your DevConsult discovery notes
+  intro: >
+    Thank you for walking through the product with our pre-sales consultant.
+    Here is a concise pack you can share internally.

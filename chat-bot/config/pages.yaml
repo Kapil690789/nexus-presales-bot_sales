@@ -1,0 +1,48 @@
+default:
+  match: /
+  service: null
+  opening: >
+    Hello! I'm here to help you with your B2B software consulting needs.
+    I can help you define the product, sanity-check scope, and see if we're a fit
+    before you speak with anyone on our side.
+  extra_questions:
+    - What are you looking to build?
+pages:
+  - match: /mobile-app-development
+    service: mobile_app
+    opening: >
+      Planning a mobile product? I'll help you shape the MVP, recommend a stack,
+      and share a preliminary range before you talk to the team.
+    extra_questions:
+      - iOS, Android, or both?
+      - Who is the first user?
+  - match: /web-app-development
+    service: web_app
+    opening: >
+      Building a web product or SaaS? I'll gather the essentials, suggest an architecture,
+      and give you an indicative estimate you can take to stakeholders.
+    extra_questions:
+      - Is this customer-facing or internal?
+      - Do you already have users or a design?
+  - match: /ai-development
+    service: ai_product
+    opening: >
+      Exploring an AI product? I'll map the use case, data, and guardrails,
+      then outline an MVP and an honest first-pass range.
+    extra_questions:
+      - What should the assistant actually do for the user?
+      - Do you already have documents or systems it should read?
+  - match: /pricing
+    service: null
+    opening: >
+      Happy to walk through how we scope and price work. Tell me what you're building
+      and I'll give an indicative range — not a formal quote.
+    extra_questions:
+      - What kind of product is this?
+  - match: /demo
+    service: null
+    opening: >
+      Hello! I'm here to help you with your B2B software consulting needs.
+      How can I assist you today?
+    extra_questions:
+      - What are you looking to build?

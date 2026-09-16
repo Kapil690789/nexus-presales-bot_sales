@@ -1,0 +1,17 @@
+primary: "#1A2B4C"
+accent: "#1A2B4C"
+background: "#FFFFFF"
+surface: "#FFFFFF"
+text: "#1A2B4C"
+muted: "#5C6670"
+success: "#10B981"
+danger: "#9B3A2F"
+radius_px: 16
+logo_text: DevConsult
+launcher_text: Talk to an advisor
+launcher_subtitle: Scope, estimate, and next steps
+position: bottom-right
+widget_title: DevConsult Advisor
+widget_subtitle: Online
+placeholder: Type your message...
+empty_state: I'll help you define the product, sanity-check scope, and share an indicative range.

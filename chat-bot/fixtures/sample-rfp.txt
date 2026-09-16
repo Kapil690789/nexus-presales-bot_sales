@@ -1,0 +1,36 @@
+# Sample RFP — Northline demo fixture
+# Upload this in the widget after accepting the confidentiality notice.
+
+Project: Acme Ops Console (web application)
+
+Goal:
+Build a web-based operations console for mid-market distributors so account managers can track orders, inventory alerts, and customer notes in one place.
+
+Users:
+Internal account managers and a small ops leadership team (about 40 people at launch).
+
+Platforms:
+Web (desktop first). Mobile browser support is nice-to-have, not required for MVP.
+
+Must-have MVP features:
+- Email/password auth with role-based access (manager vs admin)
+- Order list + order detail
+- Inventory threshold alerts
+- Customer note timeline
+- Basic admin to invite users
+
+Integrations:
+- Salesforce (read contacts and accounts)
+- Stripe (view payment status only)
+
+Timeline:
+We want a first usable release in 1–3 months.
+
+Budget:
+Exploring a $40–80k band for the MVP.
+
+Decision role:
+I am the Head of Operations / product owner for this initiative.
+
+Constraints:
+No custom mobile apps in phase one. Keep the stack boring and maintainable (Next.js + PostgreSQL preferred).

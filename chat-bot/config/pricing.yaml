@@ -1,0 +1,57 @@
+currency: USD
+low_side_factor: 0.80
+range_factor: 1.25
+bases:
+  mobile_app: 28000
+  web_app: 24000
+  ai_product: 36000
+  ui_ux: 8000
+  staff_augmentation: 12000
+  unknown: 22000
+multipliers:
+  platforms:
+    ios: 1.00
+    android: 1.08
+    both: 1.32
+    web: 1.00
+    api: 0.90
+    embedded: 1.05
+    any: 1.00
+  integration_count:
+    "0": 1.00
+    "1": 1.08
+    "2": 1.14
+    "3": 1.20
+    "4": 1.28
+  flags:
+    auth: 1.08
+    admin: 1.12
+    realtime: 1.18
+    marketplace: 1.28
+    ai_features: 1.22
+timeline_weeks:
+  simple: 8
+  medium: 14
+  complex: 22
+complexity_thresholds:
+  medium: 1.25
+  complex: 1.55
+team_mix:
+  mobile_app: [Product Designer, Mobile Engineer, Backend Engineer, QA, Delivery Lead]
+  web_app: [Product Designer, Frontend Engineer, Backend Engineer, QA, Delivery Lead]
+  ai_product: [Solutions Architect, Backend / AI Engineer, Frontend Engineer, QA, Delivery Lead]
+  ui_ux: [Product Designer, UX Researcher]
+  staff_augmentation: [Embedded Engineer, Delivery Lead]
+  unknown: [Product Designer, Full-stack Engineer, Delivery Lead]
+inclusions:
+  - Product discovery workshop
+  - UX/UI for the agreed MVP
+  - Engineering for the scoped MVP
+  - QA on primary devices / browsers
+  - Weekly delivery cadence and a named lead
+exclusions:
+  - App Store / Play listing legal entities
+  - Third-party SaaS subscription fees
+  - Ongoing retainer after launch
+  - Unscoped integrations discovered later
+  - Formal security audit or penetration test

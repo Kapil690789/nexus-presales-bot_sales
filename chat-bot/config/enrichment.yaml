@@ -1,0 +1,19 @@
+domains:
+  acme.test:
+    company: Acme Ops
+    size: smb
+    industry: logistics
+    website: https://acme.test
+  northline.example:
+    company: Northline Digital
+    size: startup
+    industry: software
+    website: https://northline.example
+  ledgerly.example:
+    company: Ledgerly
+    size: mid_market
+    industry: fintech
+    website: https://ledgerly.example
+defaults:
+  size: unknown
+  industry: unknown

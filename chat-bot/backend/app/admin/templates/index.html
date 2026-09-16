@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Leads</h1>
+<table>
+    <thead><tr><th>When</th><th>Email</th><th>Company</th><th>CRM</th><th>Score</th><th>Band</th><th>Session</th></tr></thead>
+  <tbody>
+    {% for lead in leads %}
+    <tr>
+      <td>{{ lead.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>{{ lead.email or "—" }}</td>
+      <td>{{ lead.company or "—" }}</td>
+      <td>{{ lead.crm_id or "—" }}</td>
+      <td>{{ lead.score }}</td>
+      <td class="{{ lead.band }}">{{ lead.band or "—" }}</td>
+      <td><a href="/admin/sessions/{{ lead.session_id }}">Open</a></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7">No captured leads yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<h2>Recent conversations</h2>
+<table>
+  <thead><tr><th>Updated</th><th>Path</th><th>Stage</th><th></th></tr></thead>
+  <tbody>
+    {% for row in sessions %}
+    <tr>
+      <td>{{ row.updated_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>{{ row.path }}</td>
+      <td>{{ row.stage }}</td>
+      <td><a href="/admin/sessions/{{ row.id }}">Brief</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

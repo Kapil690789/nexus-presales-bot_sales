@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: presales
+      POSTGRES_PASSWORD: presales
+      POSTGRES_DB: presales
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U presales"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  api:
+    build: .
+    ports:
+      - "8000:8080"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgresql+pg8000://presales:presales@db:5432/presales
+      CORS_ORIGINS: http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000,http://127.0.0.1:3000
+      ADMIN_PASSWORD: northline-admin
+      LLM_PROVIDER: openai
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4.1-mini}
+      ENVIRONMENT: development
+      CONFIG_DIR: /app/config
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  uploads:

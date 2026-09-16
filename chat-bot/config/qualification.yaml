@@ -1,0 +1,44 @@
+budget_floor_usd: 8000
+book_threshold: 70
+warm_threshold: 50
+cold_threshold: 30
+weights:
+  budget: 30
+  timeline: 15
+  decision_role: 20
+  in_scope: 20
+  company_size: 10
+  completeness: 5
+budget_bands:
+  exploring: 5
+  under_15k: 8
+  "15_40k": 22
+  "40_80k": 28
+  "80k_plus": 30
+timeline_scores:
+  asap: 15
+  "1_3_months": 14
+  "3_6_months": 10
+  flexible: 6
+  unknown: 4
+decision_role_scores:
+  founder_or_exec: 20
+  product_or_ops_lead: 16
+  manager: 10
+  intern_or_student: 0
+  agency_or_reseller: 8
+  unknown: 6
+company_size_scores:
+  startup: 8
+  smb: 10
+  mid_market: 9
+  enterprise: 7
+  unknown: 5
+disqualify_if:
+  - intern_or_student
+  - out_of_scope
+  - below_budget_floor
+book_requires:
+  min_score: 70
+  has_email: true
+  not_disqualified: true

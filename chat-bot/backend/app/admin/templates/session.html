@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Brief {{ row.id[:8] }}{% endblock %}
+{% block body %}
+<h1>Discovery brief</h1>
+<p>{{ row.path }} · {{ row.page_title }} · {{ row.stage }}
+  {% if contact.email %} · {{ contact.email }}{% endif %}
+  {% if lead and lead.company %} · {{ lead.company }}{% endif %}
+  {% if lead and lead.crm_id %} · {{ lead.crm_id }}{% endif %}
+  {% if row.nda_accepted %} · NDA accepted{% endif %}
+</p>
+
+<article>
+  <h3>Qualification</h3>
+  <p>Score <strong>{{ qualification.score if qualification }}</strong> · {{ qualification.band if qualification }}</p>
+  <ul>{% for reason in qualification.reasons or [] %}<li>{{ reason }}</li>{% endfor %}</ul>
+</article>
+
+<article>
+  <h3>Estimate</h3>
+  {% if estimate %}
+  <p>{{ estimate.range_label }} · {{ estimate.timeline_weeks }} weeks</p>
+  <p>Team: {{ estimate.team | join(", ") }}</p>
+  {% else %}<p>No estimate yet.</p>{% endif %}
+</article>
+
+<article>
+  <h3>Architecture</h3>
+  {% if architecture %}
+  <p>Frontend: {{ architecture.frontend | join(", ") }}</p>
+  <p>Backend: {{ architecture.backend | join(", ") }}</p>
+  <ul>{% for note in architecture.notes or [] %}<li>{{ note }}</li>{% endfor %}</ul>
+  {% else %}<p>No architecture yet.</p>{% endif %}
+</article>
+
+<article>
+  <h3>MVP vs later</h3>
+  {% if mvp %}
+  <p><strong>MVP</strong></p>
+  <ul>{% for item in mvp.mvp or [] %}<li>{{ item }}</li>{% endfor %}</ul>
+  <p><strong>Later</strong></p>
+  <ul>{% for item in mvp.later or [] %}<li>{{ item }}</li>{% endfor %}</ul>
+  {% else %}<p>No MVP cut yet.</p>{% endif %}
+</article>
+
+<article>
+  <h3>Matched portfolio</h3>
+  {% if portfolio %}
+  <ul>{% for case in portfolio %}<li><a href="{{ case.url }}" target="_blank" rel="noreferrer">{{ case.title }}</a> — {{ case.outcome }}</li>{% endfor %}</ul>
+  {% else %}<p>No matches yet.</p>{% endif %}
+</article>
+
+<article>
+  <h3>Uploaded documents</h3>
+  {% if documents %}
+  <ul>{% for doc in documents %}<li><strong>{{ doc.filename }}</strong><pre>{{ doc.excerpt }}</pre></li>{% endfor %}</ul>
+  {% else %}<p>No uploads.</p>{% endif %}
+</article>
+
+<article>
+  <h3>Outbound (dummy)</h3>
+  {% if events %}
+  <table>
+    <thead><tr><th>When</th><th>Kind</th><th>Status</th><th>Preview</th></tr></thead>
+    <tbody>
+      {% for event in events %}
+      <tr>
+        <td>{{ event.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>{{ event.kind }}</td>
+        <td>{{ event.status }}</td>
+        <td><pre>{{ event.preview }}{% if event.body %}
+
+{{ event.body }}{% endif %}</pre></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p>No outbound events yet. Book a consultation to generate CRM / Slack / email / calendar / follow-up rows.</p>{% endif %}
+</article>
+
+<article><h3>Brief JSON</h3><pre>{{ brief | tojson(indent=2) }}</pre></article>
+{% if row.handoff_summary %}<article><h3>Handoff summary</h3><pre>{{ row.handoff_summary }}</pre></article>{% endif %}
+
+<article>
+  <h3>Transcript</h3>
+  {% for msg in messages %}<div class="msg {{ msg.role }}"><strong>{{ msg.role }}</strong><div>{{ msg.content }}</div></div>{% endfor %}
+</article>
+{% endblock %}

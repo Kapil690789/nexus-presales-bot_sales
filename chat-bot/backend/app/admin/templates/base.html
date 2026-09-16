@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}DevConsult leads{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #1A2B4C; background: #F4F5F7; }
+    body { margin: 0; }
+    header { background: #1A2B4C; color: #FFFFFF; padding: 18px 28px; display: flex; justify-content: space-between; }
+    header a { color: #FFFFFF; text-decoration: none; font-size: 14px; opacity: .85; }
+    main { padding: 28px; max-width: 1100px; margin: 0 auto; }
+    table { width: 100%; border-collapse: collapse; background: white; border: 1px solid #E2E8F0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(26, 43, 76, 0.06); }
+    th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 14px; }
+    a { color: #1A2B4C; }
+    .hot { color: #10B981; } .warm { color: #8a6a20; } .cold { color: #5c6670; } .disqualify { color: #9b3a2f; }
+    pre { font-family: ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+    article { background: white; padding: 20px; margin-bottom: 16px; border: 1px solid #E2E8F0; border-radius: 16px; box-shadow: 0 10px 25px rgba(26, 43, 76, 0.06); }
+    .msg { margin: 10px 0; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+    .user { background: #1A2B4C; color: white; } .assistant { background: #F4F5F7; }
+  </style>
+</head>
+<body>
+  <header><strong>DevConsult · Pre-sales</strong><a href="/admin">All leads</a></header>
+  <main>{% block body %}{% endblock %}</main>
+</body>
+</html>

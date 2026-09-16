@@ -1,0 +1,27 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: [build, -t, ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/presales:${SHORT_SHA}, -t, ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/presales:latest, .]
+  - name: gcr.io/cloud-builders/docker
+    args: [push, ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/presales:${SHORT_SHA}]
+  - name: gcr.io/cloud-builders/docker
+    args: [push, ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/presales:latest]
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/presales:${SHORT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --set-env-vars=ENVIRONMENT=production,CONFIG_DIR=/app/config
+      - --set-secrets=LLM_API_KEY=LLM_API_KEY:latest,DATABASE_URL=DATABASE_URL:latest,ADMIN_PASSWORD=ADMIN_PASSWORD:latest
+substitutions:
+  _REGION: us-central1
+  _REPO: presales
+  _SERVICE: presales-consultant
+images:
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/presales:${SHORT_SHA}
+  - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/presales:latest
