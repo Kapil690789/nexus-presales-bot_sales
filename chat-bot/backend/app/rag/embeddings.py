@@ -8,8 +8,12 @@ from typing import NamedTuple
 
 from backend.app.core.settings import get_settings
 
-FALLBACK_MODEL = "hash-256"
-FALLBACK_DIM = 256
+# Version the name: `upsert` re-embeds whenever the recorded model differs, so
+# changing how this embedder works has to change what it is called.
+FALLBACK_MODEL = "hash-v2-1024"
+# Wide enough that hash collisions stay rare. At 256 dimensions a single collision
+# between short documents produced enough phantom similarity to matter.
+FALLBACK_DIM = 1024
 
 # Anthropic has no embeddings endpoint, so that provider uses the local embedder.
 PROVIDER_MODELS: dict[str, str] = {
@@ -27,6 +31,19 @@ KNOWN_DIMS: dict[str, int] = {
 }
 
 _TOKEN = re.compile(r"[a-z0-9]+")
+
+# Dropped before hashing. Without this, a short question made mostly of function
+# words ("what is the weather in Berlin tomorrow") lands close to any wordy chunk,
+# because the stopwords are all this embedder has to go on.
+STOPWORDS = frozenset(
+    """
+    a about all also am an and any are as at be been being but by can cannot could did do does
+    doing done for from get got had has have having he her here hers him his how i if in into is
+    it its just me more most my no nor not of off on once only or other our out over own same she
+    should so some such than that the their them then there these they this those to too us very
+    was we were what when where which while who whom why will with would you your yours
+    """.split()
+)
 
 
 class EmbeddingBatch(NamedTuple):
@@ -119,11 +136,12 @@ def _gemini(model: str, texts: list[str]) -> list[list[float]]:
 def _hash_embed(text: str) -> list[float]:
     """Deterministic signed hashing embedder over unigrams and bigrams.
 
+    Stopwords are dropped so short questions are compared on their content words.
     Bigrams give a little word-order signal; sublinear term weighting keeps repeated
     words from dominating. Recall is weaker than a real model, which is why callers
     combine it with metadata boosts.
     """
-    tokens = _TOKEN.findall((text or "").lower())
+    tokens = [token for token in _TOKEN.findall((text or "").lower()) if token not in STOPWORDS]
     counts: dict[str, int] = {}
     for token in tokens:
         counts[token] = counts.get(token, 0) + 1

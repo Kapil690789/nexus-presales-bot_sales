@@ -11,6 +11,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app PORT=8080
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY config ./config
+COPY content ./content
+COPY fixtures ./fixtures
 COPY backend ./backend
 COPY public ./public
 COPY --from=widget /widget/dist ./widget/dist

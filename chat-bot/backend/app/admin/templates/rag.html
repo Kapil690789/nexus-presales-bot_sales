@@ -10,10 +10,13 @@
   · <span class="warm">mixed models stored: {{ stats.stored_models | join(", ") }} — re-index to consolidate</span>
   {% endif %}
 </p>
-<form method="post" action="/admin/rag/reindex"><button type="submit">Re-index from config</button></form>
+<form method="post" action="/admin/rag/reindex">
+  <button type="submit">Re-index from config and content</button>
+</form>
 
 <article>
   <h3>Corpus</h3>
+  <p>Indexed from <code>config/</code> (structured facts) and <code>content/</code> (the long-form library). Run <code>make ingest-dry</code> to validate the library before it is indexed.</p>
   <table>
     <thead><tr><th>Kind</th><th>Source</th><th>Chunks</th></tr></thead>
     <tbody>

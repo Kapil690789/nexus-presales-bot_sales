@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     port: int = 8000
     config_dir: Path = ROOT / "config"
+    content_dir: Path = ROOT / "content"
     database_url: str = "sqlite:///./backend/presales.db"
     admin_password: str = "northline-admin"
     cors_origins: str = "http://localhost:8000,http://127.0.0.1:8000"

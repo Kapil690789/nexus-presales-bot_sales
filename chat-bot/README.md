@@ -37,7 +37,32 @@ make docker
 
 ## Knowledge base and learning
 
-Everything in [`config/`](config/) is indexed into a vector store on boot and used two ways: retrieved snippets ground the model's replies, and semantic similarity backs up the keyword matching in the portfolio and objection engines. The config files stay the source of truth — the index is derived and rebuilt with `make ingest`.
+Two folders feed the vector store, and the split is deliberate:
+
+| Folder | Owner | Contents | Also used for |
+| --- | --- | --- | --- |
+| [`config/`](config/) | engineers | structured YAML: services, pricing, qualification, portfolio, objections, pages | pricing and scoring engines |
+| [`content/`](content/) | sales / marketing | long-form Markdown: case studies, capability one-pagers, process, trust, FAQ | retrieval only |
+
+`config/` stays the source of truth for anything a number depends on, so a content edit can never move a price. `content/` is prose the bot quotes from and nothing else, which is why non-engineers can edit it directly — see [`content/README.md`](content/README.md), written for that audience.
+
+Both are indexed on boot and used two ways: retrieved snippets ground the model's replies, and semantic similarity backs up the keyword matching in the portfolio and objection engines. The index is derived and rebuilt with `make ingest`.
+
+```bash
+make ingest-dry   # validate content/ and report problems, write nothing
+make ingest       # rebuild the index
+```
+
+`make ingest-dry` is the validator the sales team runs before committing. It reports per file the chunk count plus any missing `title`, a `service` that is not a key in `services.yaml`, unknown front matter keys (which catches typos), draft files being skipped, unsupported extensions, empty extractions, and colliding document ids. It exits non-zero when anything is error-level, so it can gate CI.
+
+Documents carry front matter that controls retrieval: `status: draft` keeps a work-in-progress file out of the index entirely, and `nda_only: true` withholds a document until the visitor has accepted the confidentiality notice — which is how a client-named case study stays private until then. `rag.max_chunks_per_doc` caps how much of one long document can fill a single answer.
+
+The underlying CLI takes more flags than the make targets:
+
+```bash
+python -m backend.app.rag.ingest --only content --verbose
+python -m backend.app.rag.ingest --content-dir /path/to/other/content --no-prune
+```
 
 Sessions that reach handoff, or score at or above `qualification.book_threshold`, are distilled into a short **lesson** (situation, what worked, what to avoid) that is retrieved in later conversations. Transcripts are redacted for emails, phone numbers, links, and names before anything is stored, and a lesson is rewritten if the session later converts. Every lesson is readable and deletable in `/admin/rag`; deleting one stops it influencing future chats.
 
@@ -45,11 +70,9 @@ Separately, each session records which case studies, objections, and entry pages
 
 Distillation runs inline on the turn that triggers it, so with a real API key that turn costs one extra model call. Set `LEARNING_ENABLED=false` to record outcomes without writing lessons, or `RAG_ENABLED=false` to switch the whole layer off and get the original keyword-only behaviour.
 
-```bash
-make ingest   # rebuild the index after editing config/
-```
-
 With no `LLM_API_KEY` the corpus is embedded by a built-in deterministic hashing embedder, so retrieval and learning are fully demoable offline. Set a key and the provider's embedding model is used instead (OpenAI `text-embedding-3-small`, Gemini `text-embedding-004`); the store re-embeds automatically because vectors from different models are never compared. On Postgres the search uses a native `pgvector` column, and on SQLite it falls back to in-process cosine search — `RAG_BACKEND` forces either (`auto`, `pgvector`, `fallback`).
+
+The fallback embedder is a bag-of-words approximation, so its recall on a document library is noticeably weaker than a trained model's — it finds the obviously relevant document and misses the loosely-worded question. Set `LLM_API_KEY` for any real deployment. Embedding this corpus with `text-embedding-3-small` costs a fraction of a cent.
 
 ## Embed on an existing site
 
@@ -63,19 +86,76 @@ Add the site origin to `CORS_ORIGINS`. Page path is sent automatically so servic
 
 The bundled website uses [`../website/bot-config.js`](../website/bot-config.js) + [`../website/embed.js`](../website/embed.js) for the same pattern.
 
-## Cloud Run
+## Cloud Run and Cloud SQL, start to finish
 
-Run these from **this folder** (`chat-bot/`), not the repo root.
+Run these from **this folder** (`chat-bot/`), not the repo root. Substitute your own project id, and keep the region consistent — it appears in the instance name, the connection string, and `cloudbuild.yaml`.
 
-1. Create Artifact Registry, Cloud SQL (Postgres), optional Cloud Storage bucket.
-2. Secrets: `LLM_API_KEY`, `DATABASE_URL`, `ADMIN_PASSWORD`.
-3. Database URL: `postgresql+pg8000://USER:PASS@/DBNAME?host=/cloudsql/PROJECT:REGION:INSTANCE`
-4. Set `CORS_ORIGINS` to the production website origin (and any preview URLs).
-5. `gcloud builds submit --config cloudbuild.yaml`
+**1. Enable the APIs.**
 
-Changing YAML requires a new Cloud Run revision. Startup re-indexes automatically, so a config change reaches the knowledge base with the revision.
+```bash
+gcloud services enable sqladmin.googleapis.com run.googleapis.com \
+  artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com
+```
 
-For native vector search, run `CREATE EXTENSION vector;` once on the Cloud SQL instance. Without it the service still works — it logs nothing and quietly uses in-process search, which is slower on a large corpus.
+**2. Create the Artifact Registry repository** that `cloudbuild.yaml` pushes to.
+
+```bash
+gcloud artifacts repositories create presales --repository-format=docker --location=us-central1
+```
+
+**3. Create the database.**
+
+```bash
+gcloud sql instances create presales-db --database-version=POSTGRES_16 \
+  --tier=db-f1-micro --region=us-central1
+gcloud sql databases create presales --instance=presales-db
+gcloud sql users create presales --instance=presales-db --password='STRONG_PASSWORD'
+```
+
+**4. Turn on pgvector.** Cloud SQL ships the extension on Postgres 15+, but it has to be created once per database:
+
+```bash
+gcloud sql connect presales-db --user=presales --database=presales
+# then at the psql prompt:
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+Skipping this is not fatal — the service falls back to in-process cosine search — but you lose the index, and `/admin/rag` will report the `fallback` backend instead of `pgvector`.
+
+**5. Store the secrets.** The `host=/cloudsql/...` form is required on Cloud Run, which connects over a unix socket rather than TCP:
+
+```bash
+printf 'postgresql+pg8000://presales:STRONG_PASSWORD@/presales?host=/cloudsql/PROJECT:us-central1:presales-db' \
+  | gcloud secrets create DATABASE_URL --data-file=-
+printf 'sk-your-key' | gcloud secrets create LLM_API_KEY --data-file=-
+printf 'a-strong-admin-password' | gcloud secrets create ADMIN_PASSWORD --data-file=-
+```
+
+**6. Grant the Cloud Run service account** `roles/cloudsql.client` and `roles/secretmanager.secretAccessor`. Without the first, the connection string in step 5 cannot resolve.
+
+**7. Deploy.**
+
+```bash
+gcloud builds submit --config cloudbuild.yaml \
+  --substitutions=_SQL_INSTANCE=PROJECT:us-central1:presales-db
+```
+
+Set `CORS_ORIGINS` to the production website origin (plus any preview URLs) on the resulting service, either in `cloudbuild.yaml` or with `gcloud run services update`.
+
+**8. Verify.** Open `/admin/rag` and check that the backend reads `pgvector` and the chunk count matches what `make ingest-dry` reported locally. A mismatch almost always means a content file did not make it into the image.
+
+Changing `config/` or `content/` requires a new revision. Startup re-indexes automatically, so an edit reaches the knowledge base with the revision that carries it.
+
+## White-labeling for another client
+
+One deployment per client, and rebranding is a two-folder job. Nothing in the ingest or retrieval code carries a client name.
+
+1. Replace [`config/*.yaml`](config/) — `agency.yaml` (name, tone, NDA text, never-say list), `services.yaml`, `pricing.yaml`, `portfolio.yaml`, `pages.yaml`, `qualification.yaml`, `objections.yaml`.
+2. Replace everything under [`content/`](content/) with the client's own material. Delete the samples rather than editing around them; a leftover case study from another company is worse than a thin library. Keep `README.md` and `_template.md` — the first is the guide you hand their marketing team.
+3. Validate: `make ingest-dry`. It exits non-zero on error-level findings, and a `service` that no longer exists in the new `services.yaml` is reported as a warning, which is the usual way a half-finished swap shows up.
+4. Point `CONFIG_DIR` and `CONTENT_DIR` at the new folders if they live outside the image, then deploy.
+
+Retrieval quality tracks the content library far more than anything in the code, so the highest-value work in a new deployment is writing five real case studies and an honest estimation document.
 
 Email, Slack, CRM, and calendar remain stubbed in `backend/app/stubs/notify.py` (rows go to `events` and show in admin).
 

@@ -25,11 +25,14 @@ def retrieve_knowledge(
     *,
     k: int | None = None,
     sources: list[str] | None = None,
+    nda_accepted: bool = False,
 ) -> list[Hit]:
     """Approved facts most relevant to the current message and brief."""
     limit = k or rag.top_k
     text = " ".join(part for part in [query or "", brief_query(brief) if brief else ""] if part).strip()
-    return _search(db, text, rag, kind="knowledge", k=limit, brief=brief, sources=sources)
+    return _search(
+        db, text, rag, kind="knowledge", k=limit, brief=brief, sources=sources, nda_accepted=nda_accepted
+    )
 
 
 def retrieve_lessons(
@@ -49,6 +52,10 @@ def retrieve_lessons(
 def semantic_case_scores(db: Session | None, brief: ProjectBrief, rag: RagConfig, *, k: int = 12) -> dict[str, float]:
     """Raw similarity between the brief and each indexed case study, keyed by case id.
 
+    Searches the narrative case studies in `content/` as well as the portfolio cards,
+    which is what the `case_id` front matter field is for: a long write-up and its card
+    score as one case. Best-matching chunk wins, so a case is not rewarded for length.
+
     Unboosted on purpose: the caller already scores metadata agreement itself, and
     counting it twice would drown out the semantic signal this is meant to add.
     """
@@ -58,14 +65,15 @@ def semantic_case_scores(db: Session | None, brief: ProjectBrief, rag: RagConfig
     if not query:
         return {}
     try:
-        hits = get_store().search(db, query, k=k, kind="knowledge", sources=["portfolio"])
+        hits = get_store().search(db, query, k=k, kind="knowledge", sources=["portfolio", "content"])
     except Exception:
         return {}
     scores: dict[str, float] = {}
     for hit in hits:
         case_id = (hit.metadata or {}).get("case_id") or hit.source_id
         if case_id:
-            scores[str(case_id)] = hit.score
+            key = str(case_id)
+            scores[key] = max(scores.get(key, 0.0), hit.score)
     return scores
 
 
@@ -100,13 +108,15 @@ def _search(
     k: int,
     brief: ProjectBrief | None,
     sources: list[str] | None = None,
+    nda_accepted: bool = False,
 ) -> list[Hit]:
     if db is None or not text or k <= 0 or not rag_enabled():
         return []
     try:
         # Over-fetch, then re-rank: metadata agreement often matters more than raw
-        # cosine, especially under the local hashing embedder.
-        candidates = get_store().search(db, text, k=max(k * 3, k + 4), kind=kind, sources=sources)
+        # cosine, especially under the local hashing embedder. The pool also has to
+        # absorb whatever the NDA and per-document filters discard.
+        candidates = get_store().search(db, text, k=max(k * 5, k + 8), kind=kind, sources=sources)
     except Exception:
         return []
     tags = brief_tags(brief) if brief else set()
@@ -116,9 +126,19 @@ def _search(
         reverse=True,
     )
     hits: list[Hit] = []
+    per_doc: dict[str, int] = {}
+    cap = max(1, rag.max_chunks_per_doc)
     for score, hit in ranked:
         if score < rag.min_score:
             continue
+        metadata = hit.metadata or {}
+        if metadata.get("nda_only") and not nda_accepted:
+            continue
+        # Several chunks of one long document would otherwise crowd out the corpus.
+        key = hit.source_id or hit.doc_id
+        if per_doc.get(key, 0) >= cap:
+            continue
+        per_doc[key] = per_doc.get(key, 0) + 1
         hit.score = round(score, 4)
         hits.append(hit)
         if len(hits) >= k:

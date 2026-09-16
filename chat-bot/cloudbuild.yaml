@@ -16,12 +16,15 @@ steps:
       - --platform=managed
       - --allow-unauthenticated
       - --port=8080
-      - --set-env-vars=ENVIRONMENT=production,CONFIG_DIR=/app/config
+      - --set-env-vars=ENVIRONMENT=production,CONFIG_DIR=/app/config,CONTENT_DIR=/app/content
       - --set-secrets=LLM_API_KEY=LLM_API_KEY:latest,DATABASE_URL=DATABASE_URL:latest,ADMIN_PASSWORD=ADMIN_PASSWORD:latest
+      # Required for the host=/cloudsql/... form in the DATABASE_URL secret to resolve.
+      - --add-cloudsql-instances=${_SQL_INSTANCE}
 substitutions:
   _REGION: us-central1
   _REPO: presales
   _SERVICE: presales-consultant
+  _SQL_INSTANCE: ${PROJECT_ID}:us-central1:presales-db
 images:
   - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/presales:${SHORT_SHA}
   - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/presales:latest

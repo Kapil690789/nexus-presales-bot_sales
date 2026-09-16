@@ -1,7 +1,9 @@
+from collections import Counter
+
 from sqlalchemy import select
 
 from backend.app.agents import orchestrator
-from backend.app.agents.brief import ProjectBrief
+from backend.app.agents.brief import ProjectBrief, brief_query
 from backend.app.config_loader.loader import load_config
 from backend.app.core.settings import get_settings
 from backend.app.engines.objections import match_objection
@@ -10,7 +12,13 @@ from backend.app.models.db import SessionLocal
 from backend.app.models.entities import RagOutcomeRow
 from backend.app.rag.ingest import ingest
 from backend.app.rag.learn import OUTCOME_PORTFOLIO
-from backend.app.rag.retrieve import render_snippets, retrieve_knowledge, retrieve_lessons
+from backend.app.rag.retrieve import (
+    render_snippets,
+    retrieve_knowledge,
+    retrieve_lessons,
+    semantic_case_scores,
+)
+from backend.app.rag.store import get_store
 
 AI_BRIEF = ProjectBrief(
     service="ai_product",
@@ -107,6 +115,83 @@ def test_snippets_are_truncated_for_the_prompt() -> None:
         db.close()
 
 
+HEALTH_BRIEF = ProjectBrief(
+    service="mobile_app",
+    goal="A patient companion app for a clinic network",
+    platforms=["ios", "android"],
+    industry="health",
+)
+HIPAA_QUESTION = "how did you handle HIPAA and compliance on a patient companion app"
+
+
+def test_one_document_cannot_fill_every_retrieval_slot() -> None:
+    config = load_config()
+    db = _ingested()
+    try:
+        brief = ProjectBrief(service="ai_product", goal="An assistant over our internal documents", platforms=["web"])
+        question = "how do you evaluate retrieval quality and guardrails"
+        loose = config.rag.model_copy(update={"max_chunks_per_doc": 99})
+        uncapped = retrieve_knowledge(db, question, brief, loose, k=6)
+        capped = retrieve_knowledge(db, question, brief, config.rag, k=6)
+        assert max(Counter(hit.source_id for hit in uncapped).values()) > config.rag.max_chunks_per_doc
+        assert max(Counter(hit.source_id for hit in capped).values()) == config.rag.max_chunks_per_doc
+        # The freed slots go to other documents rather than being dropped.
+        assert len({hit.source_id for hit in capped}) > len({hit.source_id for hit in uncapped})
+        assert len(capped) == len(uncapped) == 6
+    finally:
+        db.close()
+
+
+def test_nda_only_material_is_hidden_until_the_notice_is_accepted() -> None:
+    config = load_config()
+    db = _ingested()
+    try:
+        before = retrieve_knowledge(db, HIPAA_QUESTION, HEALTH_BRIEF, config.rag, k=6, nda_accepted=False)
+        after = retrieve_knowledge(db, HIPAA_QUESTION, HEALTH_BRIEF, config.rag, k=6, nda_accepted=True)
+        assert not any(hit.metadata.get("nda_only") for hit in before)
+        revealed = [hit for hit in after if hit.doc_id not in {hit.doc_id for hit in before}]
+        assert revealed, "the confidential case study should appear once the notice is accepted"
+        assert all(hit.metadata.get("nda_only") for hit in revealed)
+        assert {hit.source_id for hit in revealed} == {"case-studies/riverview-patient-companion"}
+        # The approved portfolio card for the same engagement was never gated.
+        assert "portfolio:clinic-mobile" in {hit.doc_id for hit in before}
+    finally:
+        db.close()
+
+
+def test_the_nda_gate_reaches_the_model_prompt(monkeypatch) -> None:
+    """The orchestrator must pass the session's NDA state into retrieval, not default it."""
+    config = load_config()
+    captured: list[str] = []
+
+    def fake_complete_json(system: str, user: str) -> dict:
+        captured.append(user)
+        return {"message": "Understood.", "chips": [], "stage": "discovery"}
+
+    monkeypatch.setattr(orchestrator, "llm_available", lambda: True)
+    monkeypatch.setattr(orchestrator, "complete_json", fake_complete_json)
+    db = _ingested()
+    try:
+        for accepted in (False, True):
+            orchestrator.run_turn(
+                config=config,
+                brief=HEALTH_BRIEF.model_copy(deep=True),
+                contact={},
+                nda_accepted=accepted,
+                booking=None,
+                user_text=HIPAA_QUESTION,
+                chip=None,
+                page_opening="Planning a mobile product?",
+                extra_questions=[],
+                db=db,
+            )
+    finally:
+        db.close()
+    confidential = "scoped tightly around the appointment"
+    assert confidential not in captured[0]
+    assert confidential in captured[1]
+
+
 def test_track_record_can_reorder_portfolio_matches() -> None:
     config = load_config()
     db = _ingested()
@@ -133,6 +218,28 @@ def test_track_record_can_reorder_portfolio_matches() -> None:
         assert promoted[0]["keyword_score"] == next(case["keyword_score"] for case in baseline if case["id"] == underdog)
     finally:
         db.rollback()
+        db.close()
+
+
+def test_a_case_study_write_up_scores_for_its_portfolio_card() -> None:
+    """`case_id` should make the narrative and the card rank as one case."""
+    config = load_config()
+    db = _ingested()
+    try:
+        # "Growers" and "restaurant buyers" appear in the Harvest write-up under
+        # content/, never in the portfolio.yaml card.
+        brief = ProjectBrief(
+            service="mobile_app",
+            goal="Growers listing produce for restaurant buyers to order",
+            platforms=["ios", "android"],
+        )
+        card_only = get_store().search(db, brief_query(brief), k=12, kind="knowledge", sources=["portfolio"])
+        card_score = next(hit.score for hit in card_only if hit.source_id == "harvest-mobile")
+        combined = semantic_case_scores(db, brief, config.rag)
+        assert combined["harvest-mobile"] > card_score
+        # The write-up lifted its own case, not every case.
+        assert combined["harvest-mobile"] == max(combined.values())
+    finally:
         db.close()
 
 

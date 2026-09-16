@@ -28,10 +28,19 @@ class Document:
     source: str = ""
     source_id: str = ""
     metadata: dict = field(default_factory=dict)
+    # Optional text to embed instead of the title and content. Lets a document be
+    # matched on one thing and shown as another, which matters where the stored text
+    # is an answer but the query will always be the question.
+    embed_text: str = ""
 
     def content_hash(self) -> str:
         payload = json.dumps(
-            {"title": self.title, "content": self.content, "metadata": self.metadata},
+            {
+                "title": self.title,
+                "content": self.content,
+                "metadata": self.metadata,
+                "embed_text": self.embed_text,
+            },
             sort_keys=True,
             default=str,
         )
@@ -267,6 +276,8 @@ _cache: dict[str, object] = {}
 
 
 def _embed_text(document: Document) -> str:
+    if document.embed_text.strip():
+        return document.embed_text.strip()
     return f"{document.title}\n{document.content}".strip() if document.title else document.content
 
 

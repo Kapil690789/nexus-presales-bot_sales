@@ -259,7 +259,7 @@ def run_turn(
                     f"{config.prompts.persona.strip()}\nStage: {stage}. {config.prompts.stage_goals.get(stage, '')}\n"
                     f"Rules:\n{rules}\n{config.prompts.json_contract}"
                 )
-                knowledge = retrieve_knowledge(db, user_text, brief, config.rag)
+                knowledge = retrieve_knowledge(db, user_text, brief, config.rag, nda_accepted=nda_accepted)
                 lessons = retrieve_lessons(db, brief, stage, config.rag)
                 user = (
                     f"Visitor message:\n{user_text or '(chip)'}\n\n"

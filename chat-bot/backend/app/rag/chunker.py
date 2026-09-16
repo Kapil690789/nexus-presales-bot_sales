@@ -108,6 +108,10 @@ def _objections(config: AppConfig) -> list[Document]:
                 source="objections",
                 source_id=key,
                 metadata={"objection_id": key, "triggers": item.triggers, "reply": item.reply.strip()},
+                # Matched on the concern, not the answer. The replies all share the same
+                # consulting vocabulary, so including them made the four objections
+                # confusable with each other.
+                embed_text=f"{key.replace('_', ' ')}. Visitor says: {', '.join(item.triggers)}",
             )
         )
     return documents

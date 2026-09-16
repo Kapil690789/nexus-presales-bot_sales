@@ -9,7 +9,7 @@ from backend.app.core.security import require_admin
 from backend.app.core.settings import ROOT
 from backend.app.models.db import get_db
 from backend.app.models.entities import EventRow, LeadRow, RagChunkRow, RagOutcomeRow, SessionRow
-from backend.app.rag.ingest import ingest
+from backend.app.rag.ingest import ingest, scan_summary
 from backend.app.rag.store import corpus_stats, get_store
 from backend.app.services.sessions import loads
 
@@ -141,7 +141,9 @@ def admin_rag_json(db: Session = Depends(get_db), _: str = Depends(require_admin
 
 @router.post("/api/v1/admin/rag/reindex")
 def admin_rag_reindex_json(db: Session = Depends(get_db), _: str = Depends(require_admin)) -> dict:
-    return ingest(db)
+    result = ingest(db)
+    scan = result.pop("scan", None)
+    return {**result, "content": scan_summary(scan)}
 
 
 @router.delete("/api/v1/admin/rag/lessons/{session_id}")

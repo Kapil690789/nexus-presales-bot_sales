@@ -4,14 +4,23 @@ top_k: 4
 lesson_k: 2
 min_score: 0.20
 max_snippet_chars: 480
+# Chunks one document may contribute to a single answer. Long case studies would
+# otherwise fill every slot and crowd out the rest of the corpus.
+max_chunks_per_doc: 2
 # Similarity a visitor message needs before it counts as a known objection.
 objection_min_score: 0.55
 # The local hashing embedder produces much smaller cosine values than a trained
-# model (a clear match lands near 0.20, unrelated text under 0.10), so it needs
+# model (a clear match lands near 0.15, unrelated text under 0.10), so it needs
 # its own floor. Used automatically whenever no embedding API key is configured.
-objection_min_score_local: 0.16
+# Calibrated against the objection triggers in objections.yaml — widen the triggers
+# rather than dropping this floor, since below about 0.11 ordinary questions start
+# being read as objections.
+objection_min_score_local: 0.12
 sources:
+  # Structured facts in this folder; also drives pricing and scoring.
   config: true
+  # Long-form library in ../content, owned by the sales team.
+  content: true
   fixtures: true
   website: false
   website_dir: ../website

@@ -28,6 +28,7 @@ services:
       LLM_MODEL: ${LLM_MODEL:-gpt-4.1-mini}
       ENVIRONMENT: development
       CONFIG_DIR: /app/config
+      CONTENT_DIR: /app/content
       UPLOAD_DIR: /app/uploads
     volumes:
       - uploads:/app/uploads

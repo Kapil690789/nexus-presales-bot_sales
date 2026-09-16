@@ -1,4 +1,4 @@
-.PHONY: install widget run docker test smoke ingest
+.PHONY: install widget run docker test smoke ingest ingest-dry
 
 install:
 	python3 -m venv .venv
@@ -13,6 +13,9 @@ run:
 
 ingest:
 	PYTHONPATH=. .venv/bin/python -m backend.app.rag.ingest
+
+ingest-dry:
+	PYTHONPATH=. .venv/bin/python -m backend.app.rag.ingest --dry-run --verbose
 
 docker:
 	docker compose up --build

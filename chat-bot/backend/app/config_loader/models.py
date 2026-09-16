@@ -153,6 +153,7 @@ class PromptsConfig(BaseModel):
 
 class RagSources(BaseModel):
     config: bool = True
+    content: bool = True
     fixtures: bool = True
     website: bool = False
     website_dir: str = "../website"
@@ -177,6 +178,7 @@ class RagConfig(BaseModel):
     lesson_k: int = 2
     min_score: float = 0.20
     max_snippet_chars: int = 480
+    max_chunks_per_doc: int = 2
     objection_min_score: float = 0.55
     objection_min_score_local: float = 0.16
     sources: RagSources = Field(default_factory=RagSources)

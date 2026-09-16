@@ -26,6 +26,11 @@ Pricing and qualification read these numbers directly, so they stay here. Edit t
 YAML, then re-run `make ingest` (or hit **Re-index** in `/admin/rag`) to refresh the
 index — unchanged documents are not re-embedded, and removed entries are pruned.
 
+Long-form prose lives in [`../content/`](../content/) instead, and is indexed the same
+way but read by nothing else. That folder is owned by the sales team; this one is owned
+by engineers. The dividing line is that a number the product depends on only ever lives
+here, so a content edit cannot move a price.
+
 Two things are deliberately never indexed: the pricing `bases` and `multipliers`, and
 the `never_say` list. Retrieved chunks are injected into the model prompt, and feeding
 banned phrases back in is the fastest way to make the model say them.
