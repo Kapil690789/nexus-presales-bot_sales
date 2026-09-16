@@ -8,6 +8,7 @@ from backend.app.api import admin, documents, health, public_config, sessions
 from backend.app.config_loader.loader import get_config
 from backend.app.core.settings import ROOT, get_settings
 from backend.app.models.db import init_db
+from backend.app.rag.ingest import ingest_on_startup
 
 settings = get_settings()
 
@@ -15,6 +16,7 @@ settings = get_settings()
 def create_app() -> FastAPI:
     get_config()
     init_db()
+    ingest_on_startup()
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
     application = FastAPI(title="DevConsult Pre-Sales Consultant", version="1.0.0")
     origins = settings.cors_origin_list

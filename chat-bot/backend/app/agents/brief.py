@@ -62,3 +62,30 @@ class ProjectBrief(BaseModel):
 def brief_ready(brief: ProjectBrief) -> bool:
     required = ("service", "goal", "platforms", "timeline", "budget_band", "decision_role")
     return all(getattr(brief, name) not in (None, "", []) for name in required)
+
+
+GOAL_TAG_WORDS = ("marketplace", "saas", "health", "fintech", "onboarding")
+
+
+def brief_tags(brief: ProjectBrief) -> set[str]:
+    """Themes implied by the brief, used to match case studies and retrieved chunks."""
+    tags: set[str] = set()
+    if brief.industry:
+        tags.add(brief.industry.lower())
+    if brief.marketplace:
+        tags.add("marketplace")
+    if brief.ai_features or brief.service == "ai_product":
+        tags.add("ai")
+    goal = (brief.goal or "").lower()
+    for word in GOAL_TAG_WORDS:
+        if word in goal:
+            tags.add(word)
+    return tags
+
+
+def brief_query(brief: ProjectBrief) -> str:
+    """Flatten the brief into text worth embedding as a retrieval query."""
+    parts = [brief.goal or "", brief.service or "", brief.industry or "", brief.users or ""]
+    parts += brief.platforms + brief.integrations + brief.ai_features + brief.constraints
+    parts += sorted(brief_tags(brief))
+    return " ".join(part for part in parts if part).strip()

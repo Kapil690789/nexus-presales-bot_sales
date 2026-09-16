@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Knowledge base{% endblock %}
+{% block body %}
+<h1>Knowledge base</h1>
+<p>
+  Backend <strong>{{ stats.backend }}</strong> ·
+  embeddings <strong>{{ stats.embedding_model }}</strong> ({{ stats.embedding_dim }} dims) ·
+  <strong>{{ stats.total }}</strong> chunks
+  {% if stats.stored_models | length > 1 %}
+  · <span class="warm">mixed models stored: {{ stats.stored_models | join(", ") }} — re-index to consolidate</span>
+  {% endif %}
+</p>
+<form method="post" action="/admin/rag/reindex"><button type="submit">Re-index from config</button></form>
+
+<article>
+  <h3>Corpus</h3>
+  <table>
+    <thead><tr><th>Kind</th><th>Source</th><th>Chunks</th></tr></thead>
+    <tbody>
+      {% for row in stats.by_source %}
+      <tr><td>{{ row.kind }}</td><td>{{ row.source }}</td><td>{{ row.count }}</td></tr>
+      {% else %}
+      <tr><td colspan="3">Empty. Run <code>make ingest</code> or re-index above.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</article>
+
+<article>
+  <h3>What the agent has learned</h3>
+  <p>Lessons come from sessions that reached handoff or scored {{ rag.learning.min_score or "the book threshold" }} and above. Delete one to stop it influencing future conversations.</p>
+  {% if lessons %}
+  <table>
+    <thead><tr><th>When</th><th>Outcome</th><th>Service</th><th>Mode</th><th>Lesson</th><th></th></tr></thead>
+    <tbody>
+      {% for lesson in lessons %}
+      <tr>
+        <td>{{ lesson.updated_at.strftime("%Y-%m-%d %H:%M") }}</td>
+        <td>{{ lesson.metadata.outcome or "—" }} ({{ lesson.metadata.score }})</td>
+        <td>{{ lesson.metadata.service or "—" }}</td>
+        <td>{{ lesson.metadata.mode }}</td>
+        <td><pre>{{ lesson.content }}</pre></td>
+        <td>
+          <a href="/admin/sessions/{{ lesson.session_id }}">Session</a><br />
+          <form method="post" action="/admin/rag/lessons/{{ lesson.session_id }}/delete"><button type="submit">Forget</button></form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p>Nothing learned yet. Complete a conversation through to handoff.</p>{% endif %}
+</article>
+
+<article>
+  <h3>Track record</h3>
+  <p>Win rate is smoothed by {{ rag.learning.outcome_prior }} pseudo-sessions and re-ranks matches by up to {{ rag.learning.outcome_boost }} points.</p>
+  {% if outcomes %}
+  <table>
+    <thead><tr><th>Kind</th><th>Subject</th><th>Shown</th><th>Converted</th><th>Win rate</th><th>Avg score</th></tr></thead>
+    <tbody>
+      {% for row in outcomes %}
+      <tr>
+        <td>{{ row.subject_kind }}</td>
+        <td>{{ row.subject_id }}</td>
+        <td>{{ row.sessions }}</td>
+        <td>{{ row.handoffs }}</td>
+        <td>{{ row.win_rate }}</td>
+        <td>{{ row.avg_score or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p>No exposures recorded yet.</p>{% endif %}
+</article>
+{% endblock %}

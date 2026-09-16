@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.models.db import Base
@@ -83,3 +83,41 @@ class EventRow(Base):
     kind: Mapped[str] = mapped_column(String(40))
     payload_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class RagChunkRow(Base):
+    """One retrievable document: either approved knowledge or a learned lesson.
+
+    ``embedding_json`` is the portable representation. On Postgres a native
+    ``vector`` column is added alongside it by ``init_db`` and used for search.
+    """
+
+    __tablename__ = "rag_chunks"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    kind: Mapped[str] = mapped_column(String(20), index=True, default="knowledge")
+    source: Mapped[str] = mapped_column(String(40), index=True, default="")
+    source_id: Mapped[str] = mapped_column(String(120), index=True, default="")
+    doc_id: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(300), default="")
+    content: Mapped[str] = mapped_column(Text, default="")
+    metadata_json: Mapped[str] = mapped_column(Text, default="{}")
+    content_hash: Mapped[str] = mapped_column(String(64), default="")
+    embedding_model: Mapped[str] = mapped_column(String(80), default="")
+    embedding_dim: Mapped[int] = mapped_column(Integer, default=0)
+    embedding_json: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class RagOutcomeRow(Base):
+    """How often a retrievable subject appeared in a conversation that converted."""
+
+    __tablename__ = "rag_outcomes"
+    __table_args__ = (UniqueConstraint("subject_kind", "subject_id", name="uq_rag_outcome_subject"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    subject_kind: Mapped[str] = mapped_column(String(40), index=True)
+    subject_id: Mapped[str] = mapped_column(String(200), index=True)
+    sessions: Mapped[int] = mapped_column(Integer, default=0)
+    handoffs: Mapped[int] = mapped_column(Integer, default=0)
+    score_sum: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

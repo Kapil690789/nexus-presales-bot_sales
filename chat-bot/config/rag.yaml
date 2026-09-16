@@ -1,0 +1,31 @@
+# Retrieval and learning behaviour. The vector store is a derived index over the
+# other files in this folder — edit those, then re-run ingest (`make ingest`).
+top_k: 4
+lesson_k: 2
+min_score: 0.20
+max_snippet_chars: 480
+# Similarity a visitor message needs before it counts as a known objection.
+objection_min_score: 0.55
+# The local hashing embedder produces much smaller cosine values than a trained
+# model (a clear match lands near 0.20, unrelated text under 0.10), so it needs
+# its own floor. Used automatically whenever no embedding API key is configured.
+objection_min_score_local: 0.16
+sources:
+  config: true
+  fixtures: true
+  website: false
+  website_dir: ../website
+redaction:
+  emails: true
+  phones: true
+  urls: true
+  proper_nouns: true
+learning:
+  enabled: true
+  # Sessions score at least this much to be learned from. Null uses
+  # qualification.book_threshold so there is one place to tune the gate.
+  min_score: null
+  # How much a proven case study can outrank a better keyword match.
+  outcome_boost: 2.0
+  # Wins are smoothed by this many pseudo-sessions so one lucky chat cannot dominate.
+  outcome_prior: 3

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Grounding an AI product — DevConsult</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<script src="/_nav.js"></script>
+<div class="wrap">
+  <section class="page-hero">
+    <p class="kicker">AI</p>
+    <h1>Grounding an AI product in your documents</h1>
+    <p class="lede">An assistant that cannot point at a source will invent one. We start with what it should do for the user, then what it is allowed to read.</p>
+  </section>
+  <div class="prose">
+    <p>Atlas cut first-draft RFP time from three days to four hours because the corpus was approved, chunked, and cited — not because we asked a model to “be a consultant.”</p>
+    <h2>Ask two questions first</h2>
+    <ul>
+      <li>What should the assistant actually do for the user?</li>
+      <li>Do you already have documents or systems it should read?</li>
+    </ul>
+    <p>If the answer to the second is “not yet,” the MVP is often retrieval and a review UI, not an agent that emails customers.</p>
+    <h2>Approved stacks</h2>
+    <p>Python + FastAPI, Next.js, and a vector store on PostgreSQL. Guardrails belong in the first release. See <a href="/ai-development.html">AI product development</a> or the <a href="/work/atlas.html">Atlas case</a>.</p>
+  </div>
+</div>
+<script src="/_footer.js"></script>
+<script src="/bot-config.js"></script>
+<script src="/embed.js" async></script>
+</body>
+</html>

@@ -13,6 +13,7 @@ from backend.app.config_loader.models import (
     PricingConfig,
     PromptsConfig,
     QualificationConfig,
+    RagConfig,
     ServicesConfig,
     EnrichmentConfig,
 )
@@ -33,6 +34,7 @@ class AppConfig:
         handoff: HandoffConfig,
         prompts: PromptsConfig,
         enrichment: EnrichmentConfig,
+        rag: RagConfig,
     ) -> None:
         self.agency = agency
         self.brand = brand
@@ -45,6 +47,7 @@ class AppConfig:
         self.handoff = handoff
         self.prompts = prompts
         self.enrichment = enrichment
+        self.rag = rag
 
     def page_for(self, path: str) -> tuple[str | None, str, list[str]]:
         normalized = (path or "/").split("?")[0].rstrip("/") or "/"
@@ -84,6 +87,7 @@ def load_config(config_dir: Path | None = None) -> AppConfig:
         handoff=HandoffConfig.model_validate(_read_yaml(directory / "handoff.yaml")),
         prompts=PromptsConfig.model_validate(_read_yaml(directory / "prompts.yaml")),
         enrichment=EnrichmentConfig.model_validate(_read_yaml(directory / "enrichment.yaml")),
+        rag=RagConfig.model_validate(_read_yaml(directory / "rag.yaml")),
     )
 
 

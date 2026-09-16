@@ -16,6 +16,7 @@ from backend.app.engines.enrichment import crm_id_for, enrich_email
 from backend.app.engines.followup import render_followup
 from backend.app.models.db import get_db
 from backend.app.models.entities import MessageRow
+from backend.app.rag.learn import learn_from_session
 from backend.app.services.sessions import add_message, brief_of, create_session, get_session, loads, persist_turn
 from backend.app.stubs.notify import notify_booking, notify_follow_up, notify_handoff
 
@@ -121,10 +122,12 @@ def _run(db: Session, row, user_text: str, chip, nda: bool, rfp_text: str | None
         existing_mvp=loads(row.mvp_json, None),
         existing_portfolio=loads(row.portfolio_json, None),
         session_id=row.id,
+        db=db,
     )
     persist_turn(db, row, turn)
     add_message(db, row.id, "assistant", turn.message, _payload(turn))
     _emit_integrations(db, row, turn)
+    learn_from_session(db, row, turn, config)
     return turn
 
 
@@ -148,6 +151,7 @@ def create(body: SessionIn, request: Request, db: Session = Depends(get_db)) -> 
         extra_questions=extras,
         is_opening=True,
         session_id=row.id,
+        db=db,
     )
     persist_turn(db, row, turn)
     add_message(db, row.id, "assistant", turn.message, _payload(turn))

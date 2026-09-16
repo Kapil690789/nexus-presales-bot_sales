@@ -32,6 +32,12 @@ def test_session_is_page_aware(client) -> None:
     site_pricing = client.post("/api/v1/sessions", json={"path": "/pricing.html", "page_title": "Pricing"}).json()
     assert "web" in site_web["message"].lower()
     assert site_web["message"] != site_pricing["message"]
+    ux = client.post("/api/v1/sessions", json={"path": "/ui-ux-design.html", "page_title": "UI/UX"}).json()
+    harvest = client.post("/api/v1/sessions", json={"path": "/work/harvest.html", "page_title": "Harvest"}).json()
+    work = client.post("/api/v1/sessions", json={"path": "/work.html", "page_title": "Work"}).json()
+    assert "design" in ux["message"].lower()
+    assert "harvest" in harvest["message"].lower()
+    assert harvest["message"] != work["message"]
 
 
 def _chip(label: str, field: str, value) -> dict:

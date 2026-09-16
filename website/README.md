@@ -12,7 +12,7 @@ Start the bot first (`cd ../chat-bot && make run` on port 8000), then:
 python3 -m http.server 3000
 ```
 
-Open [http://localhost:3000/](http://localhost:3000/). Home, service, and pricing pages should show the chat launcher and talk to `http://localhost:8000`.
+Open [http://localhost:3000/](http://localhost:3000/). Header, footer, service pages, work, and contact should show the chat launcher and talk to `http://localhost:8000`. Service and case-study paths change the advisor’s opening line.
 
 ## Point at a deployed bot
 

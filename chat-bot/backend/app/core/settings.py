@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = "gemini-3.6-flash"
     llm_base_url: str = ""
+    rag_enabled: bool = True
+    rag_backend: str = "auto"  # auto | pgvector | fallback
+    embedding_model: str = ""
+    learning_enabled: bool = True
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -28,6 +28,23 @@ def test_page_context_is_path_aware() -> None:
     assert "price" in opening.lower() or "range" in opening.lower()
     service, _, _ = config.page_for("/")
     assert service is None
+    service, opening, _ = config.page_for("/ui-ux-design.html")
+    assert service == "ui_ux"
+    assert "design" in opening.lower()
+    service, _, _ = config.page_for("/staff-augmentation")
+    assert service == "staff_augmentation"
+    service, opening, _ = config.page_for("/work/harvest.html")
+    assert service == "mobile_app"
+    assert "harvest" in opening.lower()
+    service, opening, _ = config.page_for("/work/atlas")
+    assert service == "ai_product"
+    assert "atlas" in opening.lower()
+    service, opening, _ = config.page_for("/work.html")
+    assert service is None
+    assert "work" in opening.lower()
+    service, opening, _ = config.page_for("/contact.html")
+    assert service is None
+    assert "build" in opening.lower() or "range" in opening.lower()
 
 
 def test_enrichment_directory_loads() -> None:

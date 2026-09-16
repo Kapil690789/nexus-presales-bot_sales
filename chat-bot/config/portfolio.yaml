@@ -7,7 +7,7 @@ cases:
     stacks: [Flutter, Firebase]
     tags: [marketplace, mobile, payments]
     outcome: Launched a two-sided MVP in 16 weeks; first 1,200 listings in 90 days.
-    url: https://northline.example/work/harvest
+    url: /work/harvest.html
   - id: ledger-web
     title: Ledgerly — multi-entity finance ops
     industry: fintech
@@ -16,7 +16,7 @@ cases:
     stacks: [Next.js, PostgreSQL]
     tags: [saas, admin, auth]
     outcome: Replaced three spreadsheets with a role-based ops console for 40 accountants.
-    url: https://northline.example/work/ledgerly
+    url: /work/ledgerly.html
   - id: atlas-ai
     title: Atlas — RFP assistant for a consultancy
     industry: professional_services
@@ -25,7 +25,7 @@ cases:
     stacks: [Python, RAG]
     tags: [ai, documents, rag]
     outcome: Cut first-draft response time from 3 days to 4 hours on a 12,000-page corpus.
-    url: https://northline.example/work/atlas
+    url: /work/atlas.html
   - id: clinic-mobile
     title: Riverview Clinic — patient companion
     industry: health
@@ -34,7 +34,7 @@ cases:
     stacks: [React Native, Node.js]
     tags: [health, auth, mobile]
     outcome: HIPAA-aware companion app; no-show rate down 18% in the pilot cohort.
-    url: https://northline.example/work/riverview
+    url: /work/riverview.html
   - id: northstar-ux
     title: Northstar — B2B onboarding redesign
     industry: b2b
@@ -43,4 +43,4 @@ cases:
     stacks: [Figma]
     tags: [saas, onboarding]
     outcome: Redesigned activation; trial-to-paid conversion +22%.
-    url: https://northline.example/work/northstar
+    url: /work/northstar.html

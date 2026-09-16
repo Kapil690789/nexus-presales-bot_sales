@@ -32,6 +32,69 @@ pages:
     extra_questions:
       - What should the assistant actually do for the user?
       - Do you already have documents or systems it should read?
+  - match: /ui-ux-design
+    service: ui_ux
+    opening: >
+      Looking at product design? I'll help you frame the surface, the first journey,
+      and whether a prototype should land before engineering ramps.
+    extra_questions:
+      - Is this a new product, a redesign, or a prototype to test?
+      - Mobile, web, or both?
+  - match: /staff-augmentation
+    service: staff_augmentation
+    opening: >
+      Need embedded engineers or designers? I'll map the roles, the stack they will join,
+      and an indicative retainer range — not a hiring promise.
+    extra_questions:
+      - Which roles do you need first?
+      - What stack will they join?
+  - match: /work/harvest
+    service: mobile_app
+    opening: >
+      Harvest was a two-sided mobile marketplace MVP. If you are scoping something similar,
+      I'll help you cut the first corridor, pick a stack, and share a preliminary range.
+    extra_questions:
+      - iOS, Android, or both?
+      - Who is the first user — grower, buyer, or both in v1?
+  - match: /work/riverview
+    service: mobile_app
+    opening: >
+      Riverview was a HIPAA-aware patient companion. If you are planning a health or companion app,
+      I'll help you name the first user, the first journey, and an honest first-release cut.
+    extra_questions:
+      - iOS, Android, or both?
+      - Who is the first user?
+  - match: /work/ledgerly
+    service: web_app
+    opening: >
+      Ledgerly replaced spreadsheet ops with a role-based web console. If you are scoping
+      an internal or SaaS product, I'll gather the essentials and share an indicative range.
+    extra_questions:
+      - Is this customer-facing or internal?
+      - Do you already have users or a design?
+  - match: /work/atlas
+    service: ai_product
+    opening: >
+      Atlas grounded RFP drafts in a 12,000-page corpus. If you are exploring a similar assistant,
+      I'll map the job, the documents it can read, and an honest first-pass range.
+    extra_questions:
+      - What should the assistant actually do for the user?
+      - Do you already have documents or systems it should read?
+  - match: /work/northstar
+    service: ui_ux
+    opening: >
+      Northstar was a B2B onboarding redesign. If you need product design before engineering,
+      I'll help you frame the surface and whether a prototype should come first.
+    extra_questions:
+      - Is this a new product, a redesign, or a prototype to test?
+      - What does activation look like today?
+  - match: /work
+    service: null
+    opening: >
+      I can walk you through work that is close to what you are building — mobile, web, AI,
+      or design — then help you shape an MVP and an indicative range.
+    extra_questions:
+      - What are you looking to build?
   - match: /pricing
     service: null
     opening: >
@@ -39,6 +102,13 @@ pages:
       and I'll give an indicative range — not a formal quote.
     extra_questions:
       - What kind of product is this?
+  - match: /contact
+    service: null
+    opening: >
+      Happy to start here. Tell me what you want to build and I'll help you shape an MVP,
+      sanity-check scope, and share an indicative range before you speak with a strategist.
+    extra_questions:
+      - What are you looking to build?
   - match: /demo
     service: null
     opening: >

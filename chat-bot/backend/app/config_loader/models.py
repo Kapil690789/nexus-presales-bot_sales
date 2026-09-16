@@ -148,3 +148,37 @@ class PromptsConfig(BaseModel):
     rules: list[str]
     stage_goals: dict[str, str]
     json_contract: str
+    lesson_contract: str = ""
+
+
+class RagSources(BaseModel):
+    config: bool = True
+    fixtures: bool = True
+    website: bool = False
+    website_dir: str = "../website"
+
+
+class RagRedaction(BaseModel):
+    emails: bool = True
+    phones: bool = True
+    urls: bool = True
+    proper_nouns: bool = True
+
+
+class RagLearning(BaseModel):
+    enabled: bool = True
+    min_score: int | None = None
+    outcome_boost: float = 2.0
+    outcome_prior: int = 3
+
+
+class RagConfig(BaseModel):
+    top_k: int = 4
+    lesson_k: int = 2
+    min_score: float = 0.20
+    max_snippet_chars: int = 480
+    objection_min_score: float = 0.55
+    objection_min_score_local: float = 0.16
+    sources: RagSources = Field(default_factory=RagSources)
+    redaction: RagRedaction = Field(default_factory=RagRedaction)
+    learning: RagLearning = Field(default_factory=RagLearning)

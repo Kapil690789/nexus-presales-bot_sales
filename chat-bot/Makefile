@@ -1,4 +1,4 @@
-.PHONY: install widget run docker test smoke
+.PHONY: install widget run docker test smoke ingest
 
 install:
 	python3 -m venv .venv
@@ -10,6 +10,9 @@ widget:
 
 run:
 	PYTHONPATH=. .venv/bin/uvicorn backend.app.main:app --reload --port 8000
+
+ingest:
+	PYTHONPATH=. .venv/bin/python -m backend.app.rag.ingest
 
 docker:
 	docker compose up --build

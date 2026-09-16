@@ -18,6 +18,7 @@ from backend.app.engines.followup import render_followup
 from backend.app.engines.portfolio import match_portfolio
 from backend.app.engines.pricing import estimate_project
 from backend.app.engines.qualification import qualify
+from backend.app.rag.retrieve import render_snippets, retrieve_knowledge, retrieve_lessons
 
 
 class TurnResult:
@@ -172,6 +173,7 @@ def run_turn(
     existing_mvp: dict | None = None,
     existing_portfolio: list[dict] | None = None,
     session_id: str = "",
+    db: Any = None,
 ) -> TurnResult:
     chip = chip or {}
     chip_field = chip.get("field")
@@ -197,7 +199,7 @@ def run_turn(
     if rfp_text:
         brief = extract_rfp(brief, rfp_text[:4000])
 
-    objection = match_objection(user_text, config.objections) if user_text else None
+    objection = match_objection(user_text, config.objections, db=db, rag=config.rag) if user_text else None
     qualification = existing_qualification
     estimate = existing_estimate
     architecture = existing_architecture
@@ -211,7 +213,7 @@ def run_turn(
             estimate = estimate_project(brief, config.pricing)
             architecture = recommend_architecture(brief, config.services)
             mvp = recommend_mvp(brief)
-            portfolio = match_portfolio(brief, config.portfolio)
+            portfolio = match_portfolio(brief, config.portfolio, db=db, rag=config.rag)
 
     if is_opening:
         stage = "greeting"
@@ -236,7 +238,7 @@ def run_turn(
             mvp = mvp or recommend_mvp(brief)
         if chip_field == "show_portfolio":
             stage = "portfolio"
-            portfolio = portfolio or match_portfolio(brief, config.portfolio)
+            portfolio = portfolio or match_portfolio(brief, config.portfolio, db=db, rag=config.rag)
         if chip_field == "booking_window" and not _is_booked(booking):
             stage = "booking"
 
@@ -257,8 +259,14 @@ def run_turn(
                     f"{config.prompts.persona.strip()}\nStage: {stage}. {config.prompts.stage_goals.get(stage, '')}\n"
                     f"Rules:\n{rules}\n{config.prompts.json_contract}"
                 )
+                knowledge = retrieve_knowledge(db, user_text, brief, config.rag)
+                lessons = retrieve_lessons(db, brief, stage, config.rag)
                 user = (
-                    f"Visitor message:\n{user_text or '(chip)'}\n\nEngine JSON:\n"
+                    f"Visitor message:\n{user_text or '(chip)'}\n\n"
+                    f"Reference knowledge (approved facts, internal source material):\n"
+                    f"{render_snippets(knowledge, config.rag.max_snippet_chars)}\n\n"
+                    f"Lessons from past conversations (guidance, not quotes):\n"
+                    f"{render_snippets(lessons, config.rag.max_snippet_chars)}\n\nEngine JSON:\n"
                     f"{json.dumps({'brief': brief.model_dump(), 'qualification': qualification, 'estimate': estimate, 'architecture': architecture, 'mvp': mvp, 'portfolio': portfolio, 'objection': objection, 'stage': stage, 'booking': booking}, default=str)}"
                 )
                 data = complete_json(system, user)

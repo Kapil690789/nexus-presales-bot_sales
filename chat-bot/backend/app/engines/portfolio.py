@@ -1,23 +1,33 @@
-from backend.app.agents.brief import ProjectBrief
-from backend.app.config_loader.models import PortfolioConfig
+from backend.app.agents.brief import ProjectBrief, brief_tags
+from backend.app.config_loader.models import PortfolioConfig, RagConfig
+from backend.app.rag.learn import OUTCOME_PORTFOLIO, win_rates
+from backend.app.rag.retrieve import rag_enabled, semantic_case_scores
+
+# Keyword agreement is scored in whole points, so this weight is sized to break ties
+# rather than override a service match.
+SEMANTIC_WEIGHT = 4.0
 
 
-def match_portfolio(brief: ProjectBrief, portfolio: PortfolioConfig, limit: int = 3) -> list[dict]:
-    scored: list[tuple[int, dict]] = []
+def match_portfolio(
+    brief: ProjectBrief,
+    portfolio: PortfolioConfig,
+    limit: int = 3,
+    *,
+    db=None,
+    rag: RagConfig | None = None,
+) -> list[dict]:
+    """Rank case studies by metadata agreement, semantic similarity, and track record.
+
+    Without a session (``db is None``) this stays pure keyword matching.
+    """
+    scored: list[tuple[float, dict]] = []
     platforms = {item.lower() for item in brief.platforms}
-    tags = set()
-    if brief.industry:
-        tags.add(brief.industry.lower())
-    if brief.marketplace:
-        tags.add("marketplace")
-    if brief.ai_features or brief.service == "ai_product":
-        tags.add("ai")
-    goal = (brief.goal or "").lower()
-    for word in ("marketplace", "saas", "health", "fintech", "onboarding"):
-        if word in goal:
-            tags.add(word)
+    tags = brief_tags(brief)
+    semantic = _semantic(brief, db, rag)
+    wins = _win_rates(db, rag)
+    boost_weight = rag.learning.outcome_boost if rag else 0.0
     for case in portfolio.cases:
-        score = 0
+        score = 0.0
         if brief.service and case.service == brief.service:
             score += 5
         if platforms and platforms.intersection({p.lower() for p in case.platforms}):
@@ -25,9 +35,12 @@ def match_portfolio(brief: ProjectBrief, portfolio: PortfolioConfig, limit: int 
         score += 2 * len(tags.intersection({t.lower() for t in case.tags + [case.industry]}))
         if brief.industry and brief.industry.lower() == case.industry.lower():
             score += 3
+        keyword_score = score
+        score += SEMANTIC_WEIGHT * semantic.get(case.id, 0.0)
+        score += boost_weight * wins.get(case.id, 0.0)
         scored.append(
             (
-                score,
+                round(score, 3),
                 {
                     "id": case.id,
                     "title": case.title,
@@ -35,10 +48,27 @@ def match_portfolio(brief: ProjectBrief, portfolio: PortfolioConfig, limit: int 
                     "outcome": case.outcome,
                     "url": case.url,
                     "stacks": case.stacks,
-                    "score": score,
+                    "score": round(score, 3),
+                    "keyword_score": keyword_score,
+                    "win_rate": round(wins.get(case.id, 0.0), 3),
                 },
             )
         )
     scored.sort(key=lambda item: item[0], reverse=True)
     top = [item[1] for item in scored if item[0] > 0][:limit]
     return top or [item[1] for item in scored[:limit]]
+
+
+def _semantic(brief: ProjectBrief, db, rag: RagConfig | None) -> dict[str, float]:
+    if db is None or rag is None:
+        return {}
+    return semantic_case_scores(db, brief, rag)
+
+
+def _win_rates(db, rag: RagConfig | None) -> dict[str, float]:
+    if db is None or rag is None or not rag.learning.enabled or not rag_enabled():
+        return {}
+    try:
+        return win_rates(db, OUTCOME_PORTFOLIO, rag.learning.outcome_prior)
+    except Exception:
+        return {}
