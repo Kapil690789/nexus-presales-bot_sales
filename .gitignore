@@ -12,6 +12,7 @@ node_modules
 **/widget/dist
 **/backend/uploads
 *.db
+*.db-journal
 .DS_Store
 .idea
 .vscode
