@@ -6,6 +6,7 @@ import yaml
 from backend.app.config_loader.models import (
     AgencyConfig,
     BrandConfig,
+    CalendarConfig,
     HandoffConfig,
     ObjectionsConfig,
     PagesConfig,
@@ -35,6 +36,7 @@ class AppConfig:
         prompts: PromptsConfig,
         enrichment: EnrichmentConfig,
         rag: RagConfig,
+        calendar: CalendarConfig,
     ) -> None:
         self.agency = agency
         self.brand = brand
@@ -48,6 +50,7 @@ class AppConfig:
         self.prompts = prompts
         self.enrichment = enrichment
         self.rag = rag
+        self.calendar = calendar
 
     def page_for(self, path: str) -> tuple[str | None, str, list[str]]:
         normalized = (path or "/").split("?")[0].rstrip("/") or "/"
@@ -88,6 +91,7 @@ def load_config(config_dir: Path | None = None) -> AppConfig:
         prompts=PromptsConfig.model_validate(_read_yaml(directory / "prompts.yaml")),
         enrichment=EnrichmentConfig.model_validate(_read_yaml(directory / "enrichment.yaml")),
         rag=RagConfig.model_validate(_read_yaml(directory / "rag.yaml")),
+        calendar=CalendarConfig.model_validate(_read_yaml(directory / "calendar.yaml")),
     )
 
 

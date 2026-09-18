@@ -12,7 +12,7 @@ Start the bot first (`cd ../chat-bot && make run` on port 8000), then:
 python3 -m http.server 3000
 ```
 
-Open [http://localhost:3000/](http://localhost:3000/). Header, footer, service pages, work, and contact should show the chat launcher and talk to `http://localhost:8000`. Service and case-study paths change the advisor’s opening line.
+Open [http://localhost:3000/](http://localhost:3000/). The header switches dummy screens — **Website**, **Mobile apps**, **AI solutions**, **UI/UX**, and **Staff aug** — plus Home, Work, and Contact. Each service tab has its own mock UI, and opening the advisor starts a conversation for that page. Refreshing the same tab restores the thread; switching tabs starts a new one. Use **New conversation** in the widget header to clear the chat and begin again. The contact page also has a **Book a live consultation** button that opens the advisor.
 
 ## Point at a deployed bot
 

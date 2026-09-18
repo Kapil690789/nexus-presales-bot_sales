@@ -1,6 +1,6 @@
 # Chat-bot
 
-Config-driven AI pre-sales agent: discovery, qualification, a **low-side indicative estimate**, architecture/MVP, portfolio matching, RFP upload, NDA gating, stub CRM/calendar/follow-up events, and a human handoff brief. A retrieval layer grounds replies in the agency's own material and learns from conversations that convert.
+Config-driven AI pre-sales agent: discovery, qualification, a **low-side indicative estimate**, architecture/MVP, portfolio matching, RFP upload, NDA gating, **Google Calendar booking**, stub CRM/email/follow-up events, and a human handoff brief. A retrieval layer grounds replies in the agency's own material and learns from conversations that convert.
 
 This folder is a complete deployable unit. It does **not** depend on [`../website`](../website). Opening the service root serves a standalone chat page.
 
@@ -14,9 +14,19 @@ make run
 ```
 
 Open [http://localhost:8000/](http://localhost:8000/).  
-Admin: [http://localhost:8000/admin](http://localhost:8000/admin) (`admin` / `northline-admin`).
+Admin: [http://localhost:8000/admin](http://localhost:8000/admin) — HTTP Basic. Set `ADMIN_PASSWORD` or `ADMIN_PASSWORD_HASH` first; there is no default password.
 
 Leave `LLM_API_KEY` empty to use the built-in fallback consultant (fully demoable offline).
+
+### Admin access
+
+`/admin*` uses HTTP Basic. Username defaults to `admin` (`ADMIN_USERNAME`). Prefer a bcrypt hash:
+
+```bash
+python -c "import bcrypt; print(bcrypt.hashpw(b'YOUR_PASSWORD', bcrypt.gensalt()).decode())"
+```
+
+Put that value in `ADMIN_PASSWORD_HASH`. If only `ADMIN_PASSWORD` is set, it is compared in constant time. Five failed logins from one IP in 15 minutes return 429. Production (`ENVIRONMENT=production`) refuses known defaults such as `admin` or `password`.
 
 ### Docker
 
@@ -31,9 +41,10 @@ make docker
 3. Answer chips through discovery → see estimate + architecture cards, then chips for **MVP / portfolio / contact**.
 4. Type something like “that feels expensive” → canned objection reply.
 5. Accept the confidentiality checkbox → upload [`fixtures/sample-rfp.txt`](fixtures/sample-rfp.txt).
-6. Share a work email → pick a booking window → handoff message.
-7. Open `/admin` → open the session → score, MVP, portfolio, documents, stub CRM/calendar/follow-up events, handoff summary.
+6. Share a work email → pick a live calendar slot → handoff message with a Meet link.
+7. Open `/admin` → open the session → score, MVP, portfolio, documents, stub CRM/email/follow-up events, live calendar event, handoff summary.
 8. Open [`/admin/rag`](http://localhost:8000/admin/rag) → the indexed corpus, the lesson just learned from that conversation, and which case studies are converting.
+9. Open [`/admin/calendar`](http://localhost:8000/admin/calendar) → connect the agency Google Calendar (one-time OAuth).
 
 ## Knowledge base and learning
 
@@ -157,7 +168,32 @@ One deployment per client, and rebranding is a two-folder job. Nothing in the in
 
 Retrieval quality tracks the content library far more than anything in the code, so the highest-value work in a new deployment is writing five real case studies and an honest estimation document.
 
-Email, Slack, CRM, and calendar remain stubbed in `backend/app/stubs/notify.py` (rows go to `events` and show in admin).
+Email and CRM remain stubbed in `backend/app/stubs/notify.py` (rows go to `events` and show in admin). Calendar booking uses Google Calendar when you connect an account at `/admin/calendar`. Slack posts for booked calls when `SLACK_WEBHOOK_URL` is set.
+
+## Slack booking alerts
+
+When a visitor books a call, the bot posts to one Slack channel via Incoming Webhook. Qualified-lead Slack from handoff stays stubbed.
+
+1. Create an Incoming Webhook for the channel (Slack Apps → Incoming Webhooks, or [api.slack.com/apps](https://api.slack.com/apps)).
+2. Put the URL in `.env` as `SLACK_WEBHOOK_URL`. The service reads both `chat-bot/.env` and the repo-root `.env`.
+3. Optional: set `PUBLIC_BASE_URL` to the public origin of this app (no trailing slash) so the Slack message links to `/admin/sessions/<id>`.
+4. The channel name used in the admin preview lives in [`config/handoff.yaml`](config/handoff.yaml) under `notify.slack.channel`. Set `notify.slack.enabled` to `false` to keep bookings local even if a webhook is present.
+
+If `SLACK_WEBHOOK_URL` is blank, the booking is still recorded in admin as a stub Slack event. A Slack outage does not fail the visitor booking.
+
+## Google Calendar
+
+Visitors book against **your** calendar. They do not sign in with Google.
+
+1. Enable the **Google Calendar API** in the Google Cloud project that owns the OAuth client.
+2. Add this exact redirect URI to the OAuth client:
+   - local: `http://localhost:8000/admin/google/callback`
+   - production: `https://YOUR_CLOUD_RUN_URL/admin/google/callback`
+3. Put `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (or `Google_Client_ID` / `Google_Client_Secret`) in `.env`. The service reads both `chat-bot/.env` and the repo-root `.env`.
+4. If the consent screen is in Testing, add your Google account as a test user.
+5. Sign in to `/admin/calendar` and click **Connect Google Calendar**. Grant calendar access. A refresh token is stored so bookings keep working after restart.
+
+Working hours, timezone, and meeting length live in [`config/calendar.yaml`](config/calendar.yaml). Until a calendar is connected, the bot offers demo slots so the suite can run offline.
 
 ```bash
 make test

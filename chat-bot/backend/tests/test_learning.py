@@ -5,7 +5,7 @@ from backend.app.models.db import SessionLocal
 from backend.app.models.entities import EventRow, RagChunkRow, RagOutcomeRow
 from backend.app.rag.learn import OUTCOME_PAGE, OUTCOME_PORTFOLIO, learning_threshold, win_rates
 from backend.app.rag.redact import redact
-from backend.tests.test_api import _chip, _discover
+from backend.tests.test_api import _book_first_slot, _chip, _discover, accept_nda
 
 
 def _lessons(db, session_id: str) -> list[RagChunkRow]:
@@ -18,8 +18,8 @@ def _reach_handoff(client) -> str:
     session_id = client.post("/api/v1/sessions", json={"path": "/demo/web-app-development.html"}).json()["session_id"]
     _discover(client, session_id)
     assert client.post(f"/api/v1/sessions/{session_id}/messages", json={"content": "founder@acme.test"}).status_code == 200
-    assert client.post(f"/api/v1/sessions/{session_id}/nda").status_code == 200
-    assert client.post(f"/api/v1/sessions/{session_id}/booking", json={"window": "this_week"}).status_code == 200
+    assert accept_nda(client, session_id).status_code == 200
+    assert _book_first_slot(client, session_id).status_code == 200
     return session_id
 
 
@@ -88,8 +88,8 @@ def test_lesson_is_upgraded_when_the_session_converts(client) -> None:
         assert "Outcome: qualified" in early[0].content
 
     assert client.post(f"/api/v1/sessions/{session_id}/messages", json={"content": "founder@acme.test"}).status_code == 200
-    assert client.post(f"/api/v1/sessions/{session_id}/nda").status_code == 200
-    assert client.post(f"/api/v1/sessions/{session_id}/booking", json={"window": "this_week"}).status_code == 200
+    assert accept_nda(client, session_id).status_code == 200
+    assert _book_first_slot(client, session_id).status_code == 200
 
     with SessionLocal() as db:
         final = _lessons(db, session_id)

@@ -1,7 +1,7 @@
 from io import BytesIO
 from pathlib import Path
 
-INJECTION_MARKERS = ("ignore previous", "ignore all instructions", "system prompt", "you are now", "disregard your rules")
+from backend.app.core.guard import looks_like_jailbreak, normalize_text
 
 UPLOAD_CHAR_LIMIT = 20000
 UPLOAD_PAGE_LIMIT = 25
@@ -42,5 +42,10 @@ def extract_text(
 
 
 def sanitize_untrusted(text: str, limit: int = UPLOAD_CHAR_LIMIT) -> str:
-    cleaned = [line for line in (text or "").splitlines() if not any(m in line.lower() for m in INJECTION_MARKERS)]
-    return "\n".join(cleaned).strip()[:limit]
+    kept: list[str] = []
+    for line in (text or "").splitlines():
+        normalized = normalize_text(line)
+        if looks_like_jailbreak(normalized):
+            continue
+        kept.append(normalized)
+    return "\n".join(line for line in kept if line).strip()[:limit]

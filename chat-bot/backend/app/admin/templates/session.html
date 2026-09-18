@@ -9,6 +9,17 @@
   {% if row.nda_accepted %} · NDA accepted{% endif %}
 </p>
 
+{% if row.nda_accepted %}
+<article>
+  <h3>Confidentiality notice</h3>
+  <p>Version <strong>{{ row.nda_version or "—" }}</strong>
+    {% if row.nda_accepted_at %} · {{ row.nda_accepted_at.strftime("%Y-%m-%d %H:%M") }} UTC{% endif %}
+  </p>
+  <p>IP {{ row.nda_ip or "—" }}</p>
+  <p>{{ row.nda_user_agent or "—" }}</p>
+</article>
+{% endif %}
+
 <article>
   <h3>Qualification</h3>
   <p>Score <strong>{{ qualification.score if qualification }}</strong> · {{ qualification.band if qualification }}</p>
@@ -69,7 +80,10 @@
         <td>{{ event.status }}</td>
         <td><pre>{{ event.preview }}{% if event.body %}
 
-{{ event.body }}{% endif %}</pre></td>
+{{ event.body }}{% endif %}</pre>
+          {% if event.meet_url %}<p><a href="{{ event.meet_url }}" target="_blank" rel="noreferrer">Join Meet</a>{% if event.event_id %} · {{ event.event_id }}{% endif %}</p>{% endif %}
+          {% if event.html_link %}<p><a href="{{ event.html_link }}" target="_blank" rel="noreferrer">Open in Google Calendar</a></p>{% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

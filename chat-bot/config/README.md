@@ -12,7 +12,8 @@ Every file is validated on boot. Edit YAML and restart (or rebuild on Cloud Run)
 | `pricing.yaml` | Bases, multipliers, `low_side_factor`, team mix |
 | `portfolio.yaml` | Case studies used for matching |
 | `objections.yaml` | Trigger phrases and approved replies |
-| `handoff.yaml` | Summary sections and stub notify targets |
+| `handoff.yaml` | Summary sections, Slack channel, and stub notify targets. The webhook URL is `SLACK_WEBHOOK_URL`, not this file. |
+| `calendar.yaml` | Working hours, timezone, and consultation length |
 | `enrichment.yaml` | Dummy CRM company directory by email domain |
 | `prompts.yaml` | LLM persona, stage goals, lesson contract |
 | `rag.yaml` | Retrieval depth, similarity floors, redaction, learning gate |

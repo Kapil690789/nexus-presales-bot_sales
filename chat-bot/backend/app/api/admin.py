@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -7,6 +9,14 @@ from sqlalchemy.orm import Session, selectinload
 from backend.app.config_loader.loader import get_config
 from backend.app.core.security import require_admin
 from backend.app.core.settings import ROOT
+from backend.app.engines.google_client import (
+    CalendarError,
+    authorization_url,
+    complete_oauth,
+    connection_status,
+    disconnect_google,
+    google_configured,
+)
 from backend.app.models.db import get_db
 from backend.app.models.entities import EventRow, LeadRow, RagChunkRow, RagOutcomeRow, SessionRow
 from backend.app.rag.ingest import ingest, scan_summary
@@ -15,6 +25,49 @@ from backend.app.services.sessions import loads
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(ROOT / "backend" / "app" / "admin" / "templates"))
+
+
+@router.get("/admin/calendar", response_class=HTMLResponse)
+def admin_calendar(request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    return templates.TemplateResponse(
+        request,
+        "calendar.html",
+        {"status": connection_status(db), "error": request.query_params.get("error") or ""},
+    )
+
+
+@router.get("/admin/google/connect")
+def admin_google_connect(db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    if not google_configured():
+        return RedirectResponse(url="/admin/calendar?error=Missing+Google+client+id+or+secret", status_code=303)
+    try:
+        return RedirectResponse(url=authorization_url(db), status_code=303)
+    except CalendarError as exc:
+        return RedirectResponse(url=f"/admin/calendar?error={quote(str(exc))}", status_code=303)
+
+
+@router.get("/admin/google/callback")
+def admin_google_callback(
+    request: Request,
+    code: str = "",
+    state: str = "",
+    error: str = "",
+    db: Session = Depends(get_db),
+):
+    if error:
+        return RedirectResponse(url="/admin/calendar?error=denied", status_code=303)
+    try:
+        complete_oauth(db, code, state)
+    except CalendarError as exc:
+        reason = "state" if "expired" in str(exc).lower() else str(exc)
+        return RedirectResponse(url=f"/admin/calendar?error={quote(reason)}", status_code=303)
+    return RedirectResponse(url="/admin/calendar?connected=1", status_code=303)
+
+
+@router.post("/admin/google/disconnect")
+def admin_google_disconnect(db: Session = Depends(get_db), _: str = Depends(require_admin)) -> RedirectResponse:
+    disconnect_google(db)
+    return RedirectResponse(url="/admin/calendar", status_code=303)
 
 
 @router.get("/admin", response_class=HTMLResponse)
@@ -44,6 +97,9 @@ def admin_session(session_id: str, request: Request, db: Session = Depends(get_d
                 "status": payload.get("status") or "queued_stub",
                 "preview": payload.get("preview") or payload.get("text") or payload.get("subject") or event.kind,
                 "body": payload.get("body") or payload.get("text") or "",
+                "meet_url": payload.get("meet_url") or "",
+                "html_link": payload.get("html_link") or "",
+                "event_id": payload.get("event_id") or "",
             }
         )
     return templates.TemplateResponse(

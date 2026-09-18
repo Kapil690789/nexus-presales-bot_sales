@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 class AgencyNda(BaseModel):
     required_before_rfp: bool = True
     required_before_handoff: bool = True
+    version: str
+    title: str = "Mutual confidentiality notice"
     checkbox_label: str
     body: str
 
@@ -25,6 +27,7 @@ class AgencyConfig(BaseModel):
     nda: AgencyNda
     never_say: list[str] = Field(default_factory=list)
     out_of_scope_close: str
+    out_of_scope_thanks: str = ""
 
 
 class BrandConfig(BaseModel):
@@ -143,12 +146,25 @@ class HandoffConfig(BaseModel):
     follow_up: dict[str, str] = Field(default_factory=dict)
 
 
+class CalendarConfig(BaseModel):
+    timezone: str = "Asia/Kolkata"
+    calendar_id: str = "primary"
+    duration_minutes: int = 45
+    weekdays: list[int] = Field(default_factory=lambda: [0, 1, 2, 3, 4])
+    open_hour: int = 10
+    open_minute: int = 0
+    close_hour: int = 17
+    close_minute: int = 0
+    title: str = "DevConsult consultation"
+
+
 class PromptsConfig(BaseModel):
     persona: str
     rules: list[str]
     stage_goals: dict[str, str]
     json_contract: str
     lesson_contract: str = ""
+    solution_contract: str = ""
 
 
 class RagSources(BaseModel):

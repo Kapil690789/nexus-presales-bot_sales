@@ -14,20 +14,35 @@
 <div class="wrap">
   <section class="page-hero">
     <p class="kicker">Contact</p>
-    <h1>Talk to an advisor</h1>
-    <p class="lede">Open the chat in the corner to scope a product, get an indicative range, and request a handoff. A form can wait — the advisor is the start of the conversation.</p>
+    <h1>Book a live consultation</h1>
+    <p class="lede">Open the advisor to scope a product, get an indicative range, and pick a real time on the team calendar. A strategist joins a 45-minute Google Meet.</p>
+    <button class="btn" type="button" id="book-call">Book a live consultation</button>
   </section>
   <section class="page-layout">
     <div class="grid">
+      <div class="card"><strong>Hours</strong><p>Monday–Friday, 10:00–17:00 IST. Times in the chat are converted to your local timezone.</p></div>
+      <div class="card"><strong>What happens</strong><p>Share a work email, accept the confidentiality notice, and choose a slot. You get a calendar invite and a Meet link immediately.</p></div>
       <div class="card"><strong>Email</strong><p>hello@devconsult.example — dummy address for this site. Prefer the advisor if you already know what you want to build.</p></div>
-      <div class="card"><strong>Markets</strong><p>US, UK, EU, and IN. We reply in English; ranges display in USD.</p></div>
-      <div class="card"><strong>How to start</strong><p>Use “Talk to an advisor” in the corner. Share the product, the first user, and any constraint on budget or date.</p></div>
     </div>
-    <figure class="art"><img src="/art/desk.svg" alt="Advisor ready to take a product brief" /></figure>
+    <figure class="art"><img src="/art/meeting.svg" alt="Advisor ready to take a product brief" /></figure>
   </section>
 </div>
 <script src="/_footer.js"></script>
 <script src="/bot-config.js"></script>
 <script src="/embed.js" async></script>
+<script>
+  document.getElementById("book-call").addEventListener("click", function () {
+    function openChat() {
+      var launcher = document.querySelector(".nl-launcher");
+      if (launcher) { launcher.click(); return true; }
+      return false;
+    }
+    if (openChat()) return;
+    var tries = 0;
+    var timer = setInterval(function () {
+      if (openChat() || ++tries > 20) clearInterval(timer);
+    }, 150);
+  });
+</script>
 </body>
 </html>

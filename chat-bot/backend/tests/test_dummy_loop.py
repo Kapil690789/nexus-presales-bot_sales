@@ -1,9 +1,12 @@
 import json
 
+import pytest
+
 from backend.app.agents.brief import ProjectBrief
 from backend.app.config_loader.loader import load_config
 from backend.app.documents.rfp import extract_rfp
 from backend.app.engines.calendar import confirm_slot, ics_for, slots_for
+from backend.app.engines.google_client import CalendarError
 from backend.app.engines.enrichment import crm_id_for, enrich_email
 from backend.app.engines.followup import render_followup
 from backend.tests.test_api import _chip, _discover
@@ -25,7 +28,9 @@ def test_enrichment_directory_vs_inferred() -> None:
 def test_dummy_calendar_slots_and_ics() -> None:
     slots = slots_for("this_week")
     assert len(slots) == 3
-    booked = confirm_slot("session-1", "this_week")
+    with pytest.raises(CalendarError):
+        confirm_slot("session-1", "this_week")
+    booked = confirm_slot("session-1", "this_week", slots[0]["slot_iso"])
     assert booked["slot_iso"] == slots[0]["slot_iso"]
     assert booked["meet_url"].startswith("https://meet.devconsult.example/")
     calendar = ics_for(booked)
@@ -97,6 +102,7 @@ def test_session_resume_returns_thread(client) -> None:
     assert resumed.status_code == 200
     body = resumed.json()
     assert body["session_id"] == created["session_id"]
+    assert body["path"] == "/demo/web-app-development.html"
     assert body["messages"]
     assert body["messages"][0]["role"] == "assistant"
 

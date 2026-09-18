@@ -19,11 +19,21 @@ disclaimer: >
 nda:
   required_before_rfp: true
   required_before_handoff: true
-  checkbox_label: I agree to keep this conversation and any shared documents confidential.
-  body: >
-    By continuing, you agree that information exchanged in this chat — including
-    requirements, documents, and any preliminary recommendations — is confidential
-    and will be used only to evaluate a potential engagement with DevConsult.
+  version: "2026-09-1"
+  title: Mutual confidentiality notice
+  checkbox_label: I agree to these confidentiality terms for this evaluation.
+  body: |
+    This is a mutual confidentiality notice between you and DevConsult Advisory
+    for evaluating a potential engagement. It is product copy for this chat,
+    not legal advice, and it is not a substitute for a signed paper NDA.
+
+    Each of us agrees to keep information exchanged in this chat — including
+    requirements, documents, estimates, and recommendations — confidential and
+    to use it only to evaluate working together.
+
+    Do not share the other party's information with third parties except
+    advisors who are bound to keep it confidential. Either party may end this
+    evaluation at any time. A formal NDA can be signed before any engagement.
 never_say:
   - We guarantee delivery in
   - We are cheaper than
@@ -36,3 +46,8 @@ never_say:
 out_of_scope_close: >
   This sounds outside the work we take on. I can point you in a better direction,
   or we can revisit if the scope shifts toward a custom product engagement.
+
+  I may not have understood this fully. You can book a call with us to take the
+  conversation forward, or say thank you and I'll close here.
+out_of_scope_thanks: >
+  Thanks for the time. If this turns into a custom product engagement, we're happy to pick it up.

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from backend.app.agents.brief import ProjectBrief
 from backend.app.config_loader.loader import get_config
+from backend.app.core.security import client_ip, client_user_agent
 from backend.app.engines.enrichment import crm_id_for, enrich_email
 from backend.app.models.entities import LeadRow, MessageRow, SessionRow
 
@@ -41,6 +42,17 @@ def brief_of(row: SessionRow) -> ProjectBrief:
 def add_message(db: Session, session_id: str, role: str, content: str, payload: Any = None) -> MessageRow:
     row = MessageRow(session_id=session_id, role=role, content=content, payload_json=dumps(payload) if payload is not None else "")
     db.add(row)
+    return row
+
+
+def grant_nda(row: SessionRow, version: str, request: Any = None) -> SessionRow:
+    row.nda_accepted = True
+    if not row.nda_accepted_at:
+        row.nda_accepted_at = datetime.utcnow()
+    row.nda_version = version
+    if request is not None:
+        row.nda_ip = client_ip(request)
+        row.nda_user_agent = client_user_agent(request)
     return row
 
 

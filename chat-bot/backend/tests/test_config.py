@@ -4,6 +4,12 @@ from backend.app.config_loader.loader import get_config, load_config
 def test_config_loads_and_validates() -> None:
     config = load_config()
     assert config.agency.name == "DevConsult"
+    assert config.agency.nda.version
+    assert config.agency.nda.title
+    assert "book a call" in config.agency.out_of_scope_close.lower()
+    assert config.agency.out_of_scope_thanks.strip()
+    assert config.calendar.timezone == "Asia/Kolkata"
+    assert config.calendar.duration_minutes == 45
     assert config.pricing.low_side_factor == 0.80
     assert "mobile_app" in config.services.in_scope
 
@@ -51,3 +57,5 @@ def test_enrichment_directory_loads() -> None:
     config = load_config()
     assert "acme.test" in config.enrichment.domains
     assert config.enrichment.domains["acme.test"]["company"] == "Acme Ops"
+    assert config.handoff.notify.slack.get("enabled") is True
+    assert config.handoff.notify.slack.get("channel") == "#inbound"

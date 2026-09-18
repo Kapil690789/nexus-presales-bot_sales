@@ -3,8 +3,21 @@ from pathlib import Path
 from backend.app.config_loader.loader import load_config
 
 
+def nda_version() -> str:
+    return load_config().agency.nda.version
+
+
+def accept_nda(client, session_id: str, version: str | None = None):
+    return client.post(
+        f"/api/v1/sessions/{session_id}/nda",
+        json={"version": version if version is not None else nda_version()},
+    )
+
+
 def test_health(client) -> None:
-    assert client.get("/health").json()["ok"] is True
+    body = client.get("/health").json()
+    assert body["ok"] is True
+    assert body["llm"] is False
 
 
 def test_root_serves_standalone_chat(client) -> None:
@@ -19,6 +32,10 @@ def test_public_config_hides_pricing(client) -> None:
     assert body["brand"]["logo_text"]
     assert body["nda"]["label"]
     assert body["nda"]["body"]
+    assert body["nda"]["version"]
+    assert body["nda"]["title"]
+    assert body["booking"]["timezone"]
+    assert body["booking"]["duration_minutes"] == 45
     assert "low_side_factor" not in str(body)
 
 
@@ -42,6 +59,14 @@ def test_session_is_page_aware(client) -> None:
 
 def _chip(label: str, field: str, value) -> dict:
     return {"label": label, "field": field, "value": value}
+
+
+def _book_first_slot(client, session_id: str, window: str = "this_week"):
+    avail = client.get(f"/api/v1/sessions/{session_id}/availability", params={"window": window})
+    assert avail.status_code == 200, avail.text
+    slots = avail.json()["slots"]
+    assert slots
+    return client.post(f"/api/v1/sessions/{session_id}/booking", json={"window": window, "slot": slots[0]["slot_iso"]})
 
 
 def _discover(client, session_id: str) -> None:
@@ -106,10 +131,10 @@ def test_nda_then_booking_and_events(client) -> None:
     session_id = client.post("/api/v1/sessions", json={"path": "/demo/web-app-development.html"}).json()["session_id"]
     _discover(client, session_id)
     assert client.post(f"/api/v1/sessions/{session_id}/messages", json={"content": "founder@acme.test"}).status_code == 200
-    nda = client.post(f"/api/v1/sessions/{session_id}/nda")
+    nda = accept_nda(client, session_id)
     assert nda.status_code == 200
     assert nda.json()["nda_accepted"] is True
-    booked = client.post(f"/api/v1/sessions/{session_id}/booking", json={"window": "this_week"})
+    booked = _book_first_slot(client, session_id)
     assert booked.status_code == 200
     body = booked.json()
     assert body["nda_accepted"] is True
@@ -144,7 +169,7 @@ def test_nda_then_document_upload(client) -> None:
         files={"file": ("sample-rfp.txt", sample.read_bytes(), "text/plain")},
     )
     assert denied.status_code == 400
-    assert client.post(f"/api/v1/sessions/{session_id}/nda").status_code == 200
+    assert accept_nda(client, session_id).status_code == 200
     uploaded = client.post(
         f"/api/v1/sessions/{session_id}/documents",
         files={"file": ("sample-rfp.txt", sample.read_bytes(), "text/plain")},
@@ -156,7 +181,12 @@ def test_nda_then_document_upload(client) -> None:
 
 def test_admin_requires_password(client) -> None:
     assert client.get("/api/v1/admin/leads").status_code == 401
+    assert client.get("/api/v1/admin/leads", auth=("admin", "wrong-password")).status_code == 401
+    assert client.get("/api/v1/admin/leads", auth=("northline", "test-admin")).status_code == 401
     assert client.get("/api/v1/admin/leads", auth=("admin", "test-admin")).status_code == 200
+    calendar = client.get("/admin/calendar", auth=("admin", "test-admin"))
+    assert calendar.status_code == 200
+    assert "Google Calendar" in calendar.text
 
 
 def test_disclaimer_comes_from_config() -> None:

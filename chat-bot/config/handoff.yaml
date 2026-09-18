@@ -4,14 +4,14 @@ notify:
     to: [hello@devconsult.example]
     subject: "New qualified lead — {{company_or_email}}"
   slack:
-    enabled: false
+    enabled: true
     channel: "#inbound"
   crm:
     enabled: false
     provider: stub
   calendar:
-    enabled: false
-    provider: stub
+    enabled: true
+    provider: google
 summary_sections: [snapshot, brief, qualification, estimate, architecture, mvp, portfolio, objections, next_steps]
 follow_up:
   subject: Your DevConsult discovery notes

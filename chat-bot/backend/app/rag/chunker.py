@@ -171,6 +171,8 @@ def _agency(config: AppConfig) -> list[Document]:
             doc_id="agency:nda",
             title="Confidentiality",
             content=(
+                f"Confidentiality version: {agency.nda.version}\n"
+                f"Confidentiality title: {agency.nda.title}\n"
                 f"Confidentiality checkbox: {agency.nda.checkbox_label}\n"
                 f"Confidentiality terms: {agency.nda.body.strip()}\n"
                 f"Required before document upload: {agency.nda.required_before_rfp}\n"

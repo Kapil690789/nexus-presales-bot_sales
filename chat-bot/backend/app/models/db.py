@@ -23,22 +23,43 @@ engine = create_engine(settings.database_url, **_engine_kwargs(settings.database
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
-def _ensure_sqlite_lead_columns() -> None:
-    if not str(engine.url).startswith("sqlite"):
-        return
+def _ensure_columns(table: str, additions: dict[str, str]) -> None:
     inspector = inspect(engine)
-    if "leads" not in inspector.get_table_names():
+    if table not in inspector.get_table_names():
         return
-    existing = {column["name"] for column in inspector.get_columns("leads")}
-    additions = {
-        "crm_id": "VARCHAR(80) DEFAULT ''",
-        "company": "VARCHAR(200) DEFAULT ''",
-        "enrichment_json": "TEXT DEFAULT ''",
-    }
+    existing = {column["name"] for column in inspector.get_columns(table)}
+    dialect = engine.dialect.name
     with engine.begin() as conn:
         for name, ddl in additions.items():
-            if name not in existing:
-                conn.execute(text(f"ALTER TABLE leads ADD COLUMN {name} {ddl}"))
+            if name in existing:
+                continue
+            if dialect == "postgresql":
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {name} {ddl}"))
+            else:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+
+
+def _ensure_optional_columns() -> None:
+    _ensure_columns(
+        "leads",
+        {
+            "crm_id": "VARCHAR(80) DEFAULT ''",
+            "company": "VARCHAR(200) DEFAULT ''",
+            "enrichment_json": "TEXT DEFAULT ''",
+        },
+    )
+    _ensure_columns(
+        "sessions",
+        {
+            "nda_version": "VARCHAR(40) DEFAULT ''",
+            "nda_ip": "VARCHAR(80) DEFAULT ''",
+            "nda_user_agent": "VARCHAR(300) DEFAULT ''",
+        },
+    )
+    _ensure_columns(
+        "calendar_credentials",
+        {"oauth_code_verifier": "TEXT DEFAULT ''"},
+    )
 
 
 @lru_cache
@@ -105,7 +126,7 @@ def init_db() -> None:
     from backend.app.models import entities  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
-    _ensure_sqlite_lead_columns()
+    _ensure_optional_columns()
     _ensure_pgvector_column()
 
 

@@ -1,7 +1,8 @@
 from backend.app.agents.brief import ProjectBrief, brief_ready
-from backend.app.agents.chips import DISCOVERY_PROMPTS, chips_for
+from backend.app.agents.chips import DISCOVERY_PROMPTS, DISQUALIFIED_CHIPS, chips_for
 from backend.app.config_loader.loader import AppConfig
 from backend.app.engines.calendar import slot_chips
+from backend.app.engines.google_client import is_live
 
 
 def _post_estimate_chips() -> list[dict]:
@@ -27,6 +28,10 @@ def fallback_reply(
     config: AppConfig,
     user_text: str = "",
     booking: dict | None = None,
+    contact: dict | None = None,
+    nda_accepted: bool = False,
+    nda_required: bool = False,
+    wants_booking: bool = False,
 ) -> dict:
     if stage == "greeting":
         extras = extra_questions or []
@@ -35,7 +40,11 @@ def fallback_reply(
             message = f"{message.strip()}\n\n{extras[0]}"
         return {"message": message.strip(), "chips": chips_for(brief, "discovery"), "stage": "discovery"}
     if stage == "disqualified":
-        return {"message": config.agency.out_of_scope_close.strip(), "chips": [], "stage": "disqualified"}
+        return {
+            "message": config.agency.out_of_scope_close.strip(),
+            "chips": list(DISQUALIFIED_CHIPS),
+            "stage": "disqualified",
+        }
     if stage == "objections" and objection:
         return {"message": objection["reply"], "chips": chips_for(brief, "discovery"), "stage": "objections"}
     if stage == "rfp_review":
@@ -94,13 +103,34 @@ def fallback_reply(
             "stage": "capture",
         }
     if stage == "capture":
-        return {"message": "What work email should I attach this discovery pack to?", "chips": [], "stage": "capture"}
+        contact = contact or {}
+        if not contact.get("email"):
+            if wants_booking:
+                message = "Happy to book a time — I just need a work email first."
+            else:
+                message = "What work email should I attach this discovery pack to?"
+            return {"message": message, "chips": [], "stage": "capture"}
+        if nda_required and not nda_accepted:
+            return {
+                "message": "Before I book a time, please accept the confidentiality notice (checkbox below).",
+                "chips": [],
+                "stage": "capture",
+            }
+        return {
+            "message": "I have your email. Say book a call when you want to pick a time with a strategist.",
+            "chips": [{"label": "Book a call", "field": "booking_window", "value": "this_week"}],
+            "stage": "capture",
+        }
     if stage == "booking":
         score = (qualification or {}).get("score")
         extra = f" (fit score {score})" if score is not None else ""
         window = (booking or {}).get("window") or "this_week"
+        live = is_live()
+        times = "Pick a time that works — times are shown in your local timezone."
+        if not live:
+            times = "Pick a time — these are demo slots until Google Calendar is connected in admin."
         return {
-            "message": f"You're in a good place for a consultation{extra}. Pick a time — these are dummy slots, not a live calendar.",
+            "message": f"You're in a good place for a consultation{extra}. {times}",
             "chips": chips_for(brief, "booking") if window == "this_week" else slot_chips(window),
             "stage": "booking",
         }

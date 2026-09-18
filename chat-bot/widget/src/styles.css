@@ -29,6 +29,7 @@
   box-shadow: 0 10px 25px rgba(26, 43, 76, 0.22);
   display: grid;
   place-items: center;
+  animation: nl-launcher-in 320ms ease-out;
 }
 
 .nl-launcher.bottom-right { right: 40px; bottom: 40px; }
@@ -67,6 +68,21 @@
 @keyframes nl-enter {
   from { opacity: 0; transform: translateY(18px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nl-launcher-in {
+  from { opacity: 0; transform: scale(0.86); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes nl-msg-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes nl-chip-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
 }
 
 .nl-header {
@@ -117,6 +133,29 @@
   100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
+.nl-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.nl-reset {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  opacity: 0.9;
+}
+
+.nl-reset svg { width: 18px; height: 18px; display: block; }
+.nl-reset:hover { opacity: 1; }
+.nl-reset:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .nl-close {
   background: transparent;
   color: inherit;
@@ -148,6 +187,7 @@
   font-size: 14px;
   line-height: 1.45;
   white-space: pre-wrap;
+  animation: nl-msg-in 220ms ease-out;
 }
 
 .nl-msg.assistant {
@@ -164,25 +204,28 @@
   border-radius: 14px 4px 14px 14px;
 }
 
-.nl-msg.nl-typing { min-width: 88px; padding: 14px 14px; }
+.nl-msg.nl-typing { min-width: 180px; padding: 14px; animation: none; }
 
 .nl-shimmer {
   display: flex;
-  gap: 6px;
-  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  width: 168px;
 }
 
-.nl-shimmer span {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: linear-gradient(90deg, #d5dbe6 0%, #f4f5f7 45%, #d5dbe6 100%);
+.nl-shimmer span,
+.nl-shimmer-line {
+  display: block;
+  height: 10px;
+  width: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #d5dbe6 0%, #f8fafc 45%, #d5dbe6 100%);
   background-size: 200% 100%;
   animation: nl-shimmer 1.15s ease-in-out infinite;
 }
 
-.nl-shimmer span:nth-child(2) { animation-delay: 0.12s; }
-.nl-shimmer span:nth-child(3) { animation-delay: 0.24s; }
+.nl-shimmer-line-mid { width: 78%; animation-delay: 0.12s; }
+.nl-shimmer-line-short { width: 52%; animation-delay: 0.24s; }
 
 @keyframes nl-shimmer {
   0% { background-position: 100% 0; }
@@ -196,6 +239,7 @@
   padding: 12px 14px;
   font-size: 13px;
   box-shadow: 0 8px 18px rgba(26, 43, 76, 0.06);
+  animation: nl-msg-in 240ms ease-out;
 }
 
 .nl-card h4 { margin: 0 0 8px; font-size: 14px; }
@@ -222,7 +266,17 @@
   font-weight: 500;
   font-family: inherit;
   transition: background 150ms ease-in-out, color 150ms ease-in-out;
+  animation: nl-chip-in 200ms ease-out both;
 }
+
+.nl-chip:nth-child(1) { animation-delay: 0ms; }
+.nl-chip:nth-child(2) { animation-delay: 40ms; }
+.nl-chip:nth-child(3) { animation-delay: 80ms; }
+.nl-chip:nth-child(4) { animation-delay: 120ms; }
+.nl-chip:nth-child(5) { animation-delay: 160ms; }
+.nl-chip:nth-child(6) { animation-delay: 200ms; }
+.nl-chip:nth-child(7) { animation-delay: 240ms; }
+.nl-chip:nth-child(8) { animation-delay: 280ms; }
 
 .nl-chip:hover {
   background: var(--nl-primary);
@@ -236,20 +290,37 @@
   position: relative;
 }
 
+.nl-compose.is-locked form,
+.nl-compose.is-locked .nl-tools {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .nl-tools {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 8px 2px 6px;
   font-size: 11px;
   color: var(--nl-muted);
 }
 
+.nl-tools[hidden] { display: none !important; }
+
 .nl-nda {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  max-width: 100%;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+.nl-nda[hidden] { display: none !important; }
+
+.nl-nda-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nl-text);
 }
 
 .nl-nda label {
@@ -260,7 +331,19 @@
   line-height: 1.3;
 }
 
-.nl-nda-body { display: none; }
+.nl-nda-body {
+  display: block;
+  max-height: 84px;
+  overflow-y: auto;
+  font-size: 10px;
+  line-height: 1.45;
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--nl-silver);
+  border-radius: 8px;
+  color: var(--nl-muted);
+  white-space: pre-wrap;
+}
 
 .nl-book-windows { display: flex; flex-wrap: wrap; gap: 6px; }
 .nl-book-windows[hidden],
@@ -269,7 +352,9 @@
 .nl-compose form {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  min-width: 0;
+  position: relative;
 }
 
 .nl-compose input[type="text"] {
@@ -286,6 +371,19 @@
 
 .nl-compose input[type="text"]::placeholder { color: #94a3b8; }
 
+.nl-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0;
+}
+
 .nl-icon-btn {
   width: 34px;
   height: 34px;
@@ -296,7 +394,9 @@
   place-items: center;
   cursor: pointer;
   border-radius: 8px;
-  flex-shrink: 0;
+  flex: 0 0 34px;
+  overflow: hidden;
+  position: relative;
 }
 
 .nl-icon-btn:hover { background: var(--nl-silver); }
@@ -312,7 +412,7 @@
   display: grid;
   place-items: center;
   cursor: pointer;
-  flex-shrink: 0;
+  flex: 0 0 36px;
 }
 
 .nl-send svg { width: 16px; height: 16px; display: block; }
@@ -346,7 +446,38 @@
 
 .nl-emoji button:hover { background: var(--nl-silver); }
 
-.nl-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.nl-booking { display: flex; flex-direction: column; gap: 8px; }
+.nl-booking-error { color: #9b3a2f; margin: 0; }
+.nl-days, .nl-times { display: flex; flex-wrap: wrap; gap: 6px; }
+.nl-day, .nl-time {
+  border: 1px solid var(--nl-border);
+  background: #fff;
+  color: var(--nl-text);
+  border-radius: 10px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+}
+.nl-day.is-selected, .nl-time.is-selected {
+  background: var(--nl-primary);
+  color: #fff;
+  border-color: var(--nl-primary);
+}
+.nl-confirm {
+  border: 0;
+  background: var(--nl-primary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+.nl-confirm:disabled { opacity: 0.45; cursor: not-allowed; }
+.nl-booking-link { color: var(--nl-primary); font-weight: 600; font-size: 13px; }
 
 @media (max-width: 520px) {
   .nl-panel,
@@ -361,4 +492,17 @@
   }
   .nl-launcher.bottom-right,
   .nl-launcher.bottom-left { right: 16px; bottom: 16px; left: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nl-launcher,
+  .nl-panel.is-open,
+  .nl-msg,
+  .nl-card,
+  .nl-chip,
+  .nl-online-dot,
+  .nl-shimmer span,
+  .nl-shimmer-line {
+    animation: none !important;
+  }
 }

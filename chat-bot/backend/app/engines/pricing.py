@@ -76,4 +76,35 @@ def estimate_project(brief: ProjectBrief, pricing: PricingConfig) -> dict:
         "inclusions": list(pricing.inclusions),
         "exclusions": list(pricing.exclusions),
         "low_side_factor": pricing.low_side_factor,
+        "assumptions": _assumptions(brief),
     }
+
+
+def _assumptions(brief: ProjectBrief) -> list[str]:
+    items: list[str] = []
+    platforms = [item.lower() for item in brief.platforms]
+    if "both" in platforms or ({"ios", "android"} <= set(platforms)):
+        items.append("Range assumes iOS and Android in the first release.")
+    elif platforms:
+        items.append(f"Range assumes {', '.join(platforms)} only.")
+    count = len([item for item in brief.integrations if item.lower() not in {"none", "no", "n/a"}])
+    if count:
+        items.append(f"Includes {count} named integration(s) on day one.")
+    else:
+        items.append("No third-party integrations in the first-pass number.")
+    if brief.auth:
+        items.append("Includes authentication and roles.")
+    if brief.admin:
+        items.append("Includes an operator/admin surface.")
+    if brief.realtime:
+        items.append("Includes realtime behaviour.")
+    if brief.marketplace or "marketplace" in (brief.industry or "") or "marketplace" in (brief.goal or "").lower():
+        items.append("Includes two-sided / marketplace mechanics.")
+    if brief.ai_features or brief.service == "ai_product":
+        items.append("Includes an AI/retrieval feature in the MVP.")
+    if brief.timeline == "asap":
+        items.append("Timeline is compressed because you asked for ASAP.")
+    elif brief.timeline == "flexible":
+        items.append("Timeline is a little longer because the date is flexible.")
+    items.append("Low-side indicative range, not a fixed quote.")
+    return items

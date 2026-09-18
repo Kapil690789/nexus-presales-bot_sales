@@ -45,13 +45,24 @@ def recommend_mvp(brief: ProjectBrief) -> dict:
     if brief.goal:
         mvp.insert(0, f"Prove this outcome: {brief.goal}")
     if brief.integrations:
-        mvp.append(f"Integrate {', '.join(brief.integrations[:3])} only — everything else waits")
-        later.append("Further third-party integrations")
+        named = [item for item in brief.integrations if item.lower() not in {"none", "no", "n/a"}]
+        if named:
+            mvp.append(f"Integrate {', '.join(named[:3])} only — everything else waits")
+            later.append("Further third-party integrations")
     if brief.marketplace:
         mvp.append("Two-sided happy path: one buyer action and one seller action")
         later.append("Trust & safety, disputes, and promotions")
+    if brief.constraints:
+        mvp.append(f"Respect: {brief.constraints[0][:160]}")
+    tight = brief.budget_band in {"under_15k", "exploring"}
+    if tight and len(mvp) > 3:
+        later = mvp[3:] + later
+        mvp = mvp[:3]
+        rationale = "Budget is tight — protect a thinner first release and sequence the rest."
+    else:
+        rationale = "Ship the smallest product that can win the first users, then sequence the rest."
     return {
         "mvp": mvp[:6],
         "later": later[:6],
-        "rationale": "Ship the smallest product that can win the first users, then sequence the rest.",
+        "rationale": rationale,
     }

@@ -1,0 +1,9 @@
+timezone: Asia/Kolkata
+calendar_id: primary
+duration_minutes: 45
+weekdays: [0, 1, 2, 3, 4]
+open_hour: 10
+open_minute: 0
+close_hour: 17
+close_minute: 0
+title: DevConsult consultation

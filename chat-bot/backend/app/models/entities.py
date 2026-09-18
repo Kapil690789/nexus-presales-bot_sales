@@ -28,6 +28,9 @@ class SessionRow(Base):
     portfolio_json: Mapped[str] = mapped_column(Text, default="")
     nda_accepted: Mapped[bool] = mapped_column(Boolean, default=False)
     nda_accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    nda_version: Mapped[str] = mapped_column(String(40), default="")
+    nda_ip: Mapped[str] = mapped_column(String(80), default="")
+    nda_user_agent: Mapped[str] = mapped_column(String(300), default="")
     booking_json: Mapped[str] = mapped_column(Text, default="")
     handoff_summary: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -107,6 +110,22 @@ class RagChunkRow(Base):
     embedding_json: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class CalendarCredentialRow(Base):
+    """Singleton OAuth tokens for the agency Google Calendar."""
+
+    __tablename__ = "calendar_credentials"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default="default")
+    refresh_token: Mapped[str] = mapped_column(Text, default="")
+    access_token: Mapped[str] = mapped_column(Text, default="")
+    token_uri: Mapped[str] = mapped_column(String(200), default="https://oauth2.googleapis.com/token")
+    scopes: Mapped[str] = mapped_column(Text, default="")
+    email: Mapped[str] = mapped_column(String(200), default="")
+    expiry: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    oauth_state: Mapped[str] = mapped_column(String(120), default="")
+    oauth_code_verifier: Mapped[str] = mapped_column(Text, default="")
+    connected_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class RagOutcomeRow(Base):

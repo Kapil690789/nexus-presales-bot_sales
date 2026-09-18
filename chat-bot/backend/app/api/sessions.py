@@ -2,25 +2,27 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.agents.brief import ProjectBrief
 from backend.app.agents.orchestrator import run_turn
+from backend.app.agents.transcript import render_transcript
 from backend.app.config_loader.loader import get_config
 from backend.app.core.security import origin_allowed, rate_limit
 from backend.app.core.sse import encode, stream_text
-from backend.app.engines.calendar import ics_for
+from backend.app.engines.calendar import availability_payload, ics_for
 from backend.app.engines.enrichment import crm_id_for, enrich_email
 from backend.app.engines.followup import render_followup
 from backend.app.models.db import get_db
 from backend.app.models.entities import MessageRow
 from backend.app.rag.learn import learn_from_session
-from backend.app.services.sessions import add_message, brief_of, create_session, get_session, loads, persist_turn
+from backend.app.services.sessions import add_message, brief_of, create_session, get_session, grant_nda, loads, persist_turn
 from backend.app.stubs.notify import notify_booking, notify_follow_up, notify_handoff
 
 router = APIRouter()
+MAX_MESSAGE_CHARS = 4000
 
 
 class SessionIn(BaseModel):
@@ -40,6 +42,11 @@ class MessageIn(BaseModel):
     content: str = ""
     chip: ChipIn | None = None
     nda_accepted: bool = False
+    nda_version: str = ""
+
+
+class NdaIn(BaseModel):
+    version: str = Field(min_length=1)
 
 
 class BookingIn(BaseModel):
@@ -99,7 +106,44 @@ def _emit_integrations(db: Session, row, turn) -> None:
         pack["email"] = email
         notify_follow_up(db, row.id, pack)
     if turn.booking and turn.booking.get("slot_iso"):
-        notify_booking(db, row.id, {**turn.booking, "email": email})
+        notify_booking(
+            db,
+            row.id,
+            {
+                **turn.booking,
+                "email": email,
+                "company": profile.get("company") if profile else "",
+            },
+        )
+
+
+def _transcript(db: Session, session_id: str) -> str:
+    messages = db.scalars(select(MessageRow).where(MessageRow.session_id == session_id).order_by(MessageRow.created_at.asc())).all()
+    return render_transcript(messages)
+
+
+def _nda_version() -> str:
+    return get_config().agency.nda.version
+
+
+def _try_grant_nda(row, request: Request, version: str | None, flagged: bool) -> bool:
+    if row.nda_accepted:
+        return True
+    if not flagged:
+        return False
+    current = _nda_version()
+    if (version or "").strip() != current:
+        return False
+    grant_nda(row, current, request)
+    return True
+
+
+def _last_assistant(db: Session, session_id: str) -> str:
+    messages = db.scalars(select(MessageRow).where(MessageRow.session_id == session_id).order_by(MessageRow.created_at.asc())).all()
+    for item in reversed(messages):
+        if item.role == "assistant" and (item.content or "").strip():
+            return item.content.strip()
+    return ""
 
 
 def _run(db: Session, row, user_text: str, chip, nda: bool, rfp_text: str | None = None, booking=None):
@@ -123,6 +167,9 @@ def _run(db: Session, row, user_text: str, chip, nda: bool, rfp_text: str | None
         existing_portfolio=loads(row.portfolio_json, None),
         session_id=row.id,
         db=db,
+        transcript=_transcript(db, row.id),
+        page_path=row.path,
+        last_assistant=_last_assistant(db, row.id),
     )
     persist_turn(db, row, turn)
     add_message(db, row.id, "assistant", turn.message, _payload(turn))
@@ -152,6 +199,7 @@ def create(body: SessionIn, request: Request, db: Session = Depends(get_db)) -> 
         is_opening=True,
         session_id=row.id,
         db=db,
+        page_path=body.path,
     )
     persist_turn(db, row, turn)
     add_message(db, row.id, "assistant", turn.message, _payload(turn))
@@ -168,8 +216,10 @@ def read_session(session_id: str, request: Request, db: Session = Depends(get_db
     last_payload = loads(messages[-1].payload_json, {}) if messages else {}
     return {
         "session_id": row.id,
+        "path": row.path,
         "stage": row.stage,
         "nda_accepted": row.nda_accepted,
+        "nda_version": row.nda_version,
         "booking": loads(row.booking_json, None),
         "can_book": bool((loads(row.qualification_json, {}) or {}).get("can_book")),
         "messages": [{"role": item.role, "content": item.content} for item in messages],
@@ -185,11 +235,15 @@ def message(session_id: str, body: MessageIn, request: Request, db: Session = De
     row = get_session(db, session_id)
     if not row:
         raise HTTPException(status_code=404, detail="Unknown session")
+    if len(body.content or "") > MAX_MESSAGE_CHARS:
+        raise HTTPException(status_code=400, detail="Message is too long")
     chip = body.chip.model_dump() if body.chip else None
-    if body.nda_accepted and not chip:
-        chip = {"field": "nda", "value": True}
+    flagged = body.nda_accepted or bool(chip and chip.get("field") == "nda")
+    granted = _try_grant_nda(row, request, body.nda_version, flagged)
+    if chip and chip.get("field") == "nda" and not granted:
+        chip = None
     add_message(db, row.id, "user", body.content or (chip or {}).get("label") or "", chip)
-    turn = _run(db, row, body.content, chip, row.nda_accepted or body.nda_accepted)
+    turn = _run(db, row, body.content, chip, row.nda_accepted)
     payload = _payload(turn)
 
     def events():
@@ -203,12 +257,16 @@ def message(session_id: str, body: MessageIn, request: Request, db: Session = De
 
 
 @router.post("/api/v1/sessions/{session_id}/nda")
-def accept_nda(session_id: str, request: Request, db: Session = Depends(get_db)) -> dict:
+def accept_nda(session_id: str, body: NdaIn, request: Request, db: Session = Depends(get_db)) -> dict:
     rate_limit(request)
     origin_allowed(request)
     row = get_session(db, session_id)
     if not row:
         raise HTTPException(status_code=404, detail="Unknown session")
+    current = _nda_version()
+    if body.version.strip() != current:
+        raise HTTPException(status_code=409, detail="Confidentiality notice version does not match.")
+    grant_nda(row, current, request)
     turn = _run(db, row, "I accept the confidentiality notice.", {"field": "nda", "value": True}, True)
     return _payload(turn)
 
@@ -223,6 +281,8 @@ def book(session_id: str, body: BookingIn, request: Request, db: Session = Depen
     config = get_config()
     if config.agency.nda.required_before_handoff and not row.nda_accepted:
         raise HTTPException(status_code=400, detail="Accept the confidentiality notice before booking.")
+    if not body.slot:
+        raise HTTPException(status_code=400, detail="Pick a time to book.")
     turn = _run(
         db,
         row,
@@ -230,7 +290,22 @@ def book(session_id: str, body: BookingIn, request: Request, db: Session = Depen
         {"field": "booking_slot", "value": body.slot, "also": {"window": body.window}},
         row.nda_accepted,
     )
+    if turn.booking and turn.booking.get("error") and not turn.booking.get("slot_iso"):
+        raise HTTPException(status_code=409, detail=turn.booking["error"])
     return _payload(turn)
+
+
+@router.get("/api/v1/sessions/{session_id}/availability")
+def availability(session_id: str, request: Request, window: str = "this_week", db: Session = Depends(get_db)) -> dict:
+    rate_limit(request)
+    origin_allowed(request)
+    row = get_session(db, session_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Unknown session")
+    try:
+        return availability_payload(window or "this_week", db=db)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="Could not load calendar availability.") from exc
 
 
 @router.get("/api/v1/sessions/{session_id}/calendar.ics")

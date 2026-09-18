@@ -35,6 +35,25 @@ def retrieve_knowledge(
     )
 
 
+def retrieve_solution(
+    db: Session | None,
+    brief: ProjectBrief | None,
+    rag: RagConfig,
+    *,
+    query: str = "",
+    k: int | None = None,
+    nda_accepted: bool = False,
+) -> list[Hit]:
+    """Capability, process, and estimation material for a tailored recommendation."""
+    limit = k or max(6, rag.top_k)
+    text = " ".join(
+        part
+        for part in [brief_query(brief) if brief else "", "architecture MVP estimation stack", query or ""]
+        if part
+    ).strip()
+    return _search(db, text, rag, kind="knowledge", k=limit, brief=brief, nda_accepted=nda_accepted)
+
+
 def retrieve_lessons(
     db: Session | None,
     brief: ProjectBrief | None,

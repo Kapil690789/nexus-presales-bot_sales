@@ -12,6 +12,15 @@ DISCOVERY_FIELDS = (
     "budget_band",
     "decision_role",
 )
+# Engines will not estimate until these are present. Discovery may collect more.
+ENGINE_FIELDS = (
+    "service",
+    "goal",
+    "platforms",
+    "timeline",
+    "budget_band",
+    "decision_role",
+)
 
 
 class ProjectBrief(BaseModel):
@@ -34,7 +43,7 @@ class ProjectBrief(BaseModel):
     out_of_scope: str | None = None
 
     def apply_chip(self, field: str, value: Any) -> None:
-        if not field or field in {"show_portfolio", "show_mvp", "continue_contact", "booking_window", "booking_slot", "nda", "download_ics"}:
+        if not field or field in {"show_portfolio", "show_mvp", "continue_contact", "booking_window", "booking_slot", "nda", "download_ics", "close_out"}:
             return
         if field in {"platforms", "integrations", "ai_features", "constraints"}:
             items = value if isinstance(value, list) else [value]
@@ -59,9 +68,12 @@ class ProjectBrief(BaseModel):
         return (len(DISCOVERY_FIELDS) - len(self.missing_discovery())) / len(DISCOVERY_FIELDS)
 
 
+def engine_gaps(brief: ProjectBrief) -> list[str]:
+    return [name for name in ENGINE_FIELDS if getattr(brief, name) in (None, "", [])]
+
+
 def brief_ready(brief: ProjectBrief) -> bool:
-    required = ("service", "goal", "platforms", "timeline", "budget_band", "decision_role")
-    return all(getattr(brief, name) not in (None, "", []) for name in required)
+    return not engine_gaps(brief)
 
 
 GOAL_TAG_WORDS = ("marketplace", "saas", "health", "fintech", "onboarding")

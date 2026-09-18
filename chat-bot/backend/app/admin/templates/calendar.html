@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Google Calendar{% endblock %}
+{% block body %}
+<h1>Google Calendar</h1>
+<p>Visitors book a 45-minute consultation on this Google account. They do not sign in with Google.</p>
+
+{% if error == "denied" %}
+<p class="disqualify">Google access was denied. Try connecting again.</p>
+{% elif error == "state" %}
+<p class="disqualify">The sign-in session expired. Click Connect and try again.</p>
+{% elif error %}
+<p class="disqualify">{{ error }}</p>
+{% endif %}
+{% if request.query_params.get("connected") %}
+<p class="hot">Calendar connected. New bookings will use live availability.</p>
+{% endif %}
+
+<article>
+  <h3>Status</h3>
+  <p>OAuth client: <strong>{{ "configured" if status.configured else "missing client id/secret" }}</strong></p>
+  <p>Calendar: <strong>{{ "connected" if status.connected else "not connected" }}</strong>
+    {% if status.email %} as {{ status.email }}{% endif %}
+    {% if status.via_env %} (refresh token from env){% endif %}
+  </p>
+  <p>Calendar id: <code>{{ status.calendar_id }}</code></p>
+  <p>Redirect URI (add this exact value in Google Cloud → OAuth client):<br><code>{{ status.redirect_uri }}</code></p>
+</article>
+
+<article>
+  <h3>Connect</h3>
+  <ol>
+    <li>Enable the Google Calendar API in the same Cloud project as the OAuth client.</li>
+    <li>Add the redirect URI above to the OAuth client.</li>
+    <li>If the consent screen is in Testing, add this Google account as a test user.</li>
+    <li>Click Connect and grant calendar access.</li>
+  </ol>
+  {% if status.configured and not status.via_env %}
+  <p><a href="/admin/google/connect">Connect Google Calendar</a></p>
+  {% elif not status.configured %}
+  <p>Add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> (or <code>Google_Client_ID</code> / <code>Google_Client_Secret</code>) to <code>.env</code> and restart.</p>
+  {% endif %}
+  {% if status.connected and not status.via_env %}
+  <form method="post" action="/admin/google/disconnect">
+    <button type="submit">Disconnect</button>
+  </form>
+  {% endif %}
+</article>
+{% endblock %}
