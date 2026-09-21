@@ -81,5 +81,5 @@ def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
     import google.generativeai as genai
 
     genai.configure(api_key=api_key)
-    llm = genai.GenerativeModel(model or "gemini-3.6-flash", system_instruction=system)
+    llm = genai.GenerativeModel(model or "gemini-3.8-flash", system_instruction=system)
     return _parse_json(llm.generate_content(user).text or "{}")

@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import os
 
 from pydantic import model_validator
@@ -22,6 +23,26 @@ def _dotenv_value(path: Path, key: str) -> str:
     return ""
 
 
+def normalize_database_url(url: str) -> str:
+    """Rewrite Neon/libpq URLs so SQLAlchemy uses pg8000 with SSL."""
+    url = (url or "").strip()
+    if url.startswith("postgresql://"):
+        url = "postgresql+pg8000://" + url[len("postgresql://") :]
+    elif url.startswith("postgres://"):
+        url = "postgresql+pg8000://" + url[len("postgres://") :]
+    if not url.startswith("postgresql+pg8000://"):
+        return url
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query.pop("channel_binding", None)
+    sslmode = (query.pop("sslmode", None) or "").lower()
+    if sslmode in {"require", "verify-ca", "verify-full", "prefer"}:
+        query.setdefault("ssl", "true")
+    elif sslmode in {"disable", "allow"}:
+        query.setdefault("ssl", "false")
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=(str(REPO_ROOT / ".env"), str(ROOT / ".env")),
@@ -39,12 +60,13 @@ class Settings(BaseSettings):
     admin_password: str = ""
     admin_password_hash: str = ""
     cors_origins: str = "http://localhost:8000,http://127.0.0.1:8000"
+    cors_origin_regex: str = ""
     upload_dir: Path = ROOT / "backend" / "uploads"
     gcs_bucket: str = ""
     gcs_prefix: str = "rfp/"
     llm_provider: str = "openai"
     llm_api_key: str = ""
-    llm_model: str = "gemini-3.6-flash"
+    llm_model: str = "gemini-3.8-flash"
     llm_base_url: str = ""
     rag_enabled: bool = True
     rag_backend: str = "auto"  # auto | pgvector | fallback
@@ -57,6 +79,17 @@ class Settings(BaseSettings):
     google_calendar_id: str = "primary"
     slack_webhook_url: str = ""
     public_base_url: str = ""
+
+    @model_validator(mode="after")
+    def normalize_runtime_urls(self):
+        object.__setattr__(self, "database_url", normalize_database_url(self.database_url))
+        redirect = self.google_redirect_uri.strip()
+        public = self.public_base_url.strip().rstrip("/")
+        if not redirect and public:
+            object.__setattr__(self, "google_redirect_uri", f"{public}/admin/google/callback")
+        else:
+            object.__setattr__(self, "google_redirect_uri", redirect)
+        return self
 
     @model_validator(mode="after")
     def blank_llm_key_does_not_mask(self):

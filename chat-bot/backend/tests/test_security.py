@@ -63,6 +63,7 @@ def test_nda_requires_current_version(client) -> None:
 
 def test_unknown_origin_is_forbidden(monkeypatch) -> None:
     monkeypatch.setenv("CORS_ORIGINS", "http://localhost:8000")
+    monkeypatch.setenv("CORS_ORIGIN_REGEX", "")
     get_settings.cache_clear()
     try:
         from backend.app.main import app
@@ -71,6 +72,26 @@ def test_unknown_origin_is_forbidden(monkeypatch) -> None:
         blocked = local.post("/api/v1/sessions", json={"path": "/"}, headers={"Origin": "https://evil.example"})
         assert blocked.status_code == 403
         allowed = local.post("/api/v1/sessions", json={"path": "/"}, headers={"Origin": "http://localhost:8000"})
+        assert allowed.status_code == 200
+    finally:
+        get_settings.cache_clear()
+
+
+def test_cors_origin_regex_allows_vercel(monkeypatch) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", "")
+    monkeypatch.setenv("CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app")
+    get_settings.cache_clear()
+    try:
+        from backend.app.main import app
+
+        local = TestClient(app)
+        blocked = local.post("/api/v1/sessions", json={"path": "/"}, headers={"Origin": "https://evil.example"})
+        assert blocked.status_code == 403
+        allowed = local.post(
+            "/api/v1/sessions",
+            json={"path": "/"},
+            headers={"Origin": "https://devconsult-site.vercel.app"},
+        )
         assert allowed.status_code == 200
     finally:
         get_settings.cache_clear()

@@ -1,9 +1,11 @@
+import os
 import re
 from collections.abc import Generator
 from functools import lru_cache
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from backend.app.core.settings import get_settings
 
@@ -15,7 +17,10 @@ class Base(DeclarativeBase):
 def _engine_kwargs(url: str) -> dict:
     if url.startswith("sqlite"):
         return {"connect_args": {"check_same_thread": False}}
-    return {"pool_pre_ping": True}
+    kwargs: dict = {"pool_pre_ping": True}
+    if os.environ.get("VERCEL"):
+        kwargs["poolclass"] = NullPool
+    return kwargs
 
 
 settings = get_settings()

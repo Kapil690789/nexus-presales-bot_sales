@@ -97,6 +97,14 @@ Add the site origin to `CORS_ORIGINS`. Page path is sent automatically so servic
 
 The bundled website uses [`../website/bot-config.js`](../website/bot-config.js) + [`../website/embed.js`](../website/embed.js) for the same pattern.
 
+## Vercel
+
+This folder is one Vercel project (Root Directory `chat-bot`). Import [`.env.example`](.env.example), then fill `CORS_ORIGINS`, `PUBLIC_BASE_URL`, and `GOOGLE_REDIRECT_URI` after you have the production URLs. The website is a second Vercel project; see the [repo README](../README.md).
+
+The widget is built during the Vercel build (`npm --prefix widget ci && npm --prefix widget run build`). Python 3.12. `maxDuration` is 60s in [`vercel.json`](vercel.json).
+
+On Vercel, RFP files go to `/tmp` unless `GCS_BUCKET` is set. Neon + the pooler URL needs `postgresql+pg8000://...&ssl=true`; a console `postgresql://` paste is rewritten at startup.
+
 ## Cloud Run and Cloud SQL, start to finish
 
 Run these from **this folder** (`chat-bot/`), not the repo root. Substitute your own project id, and keep the region consistent — it appears in the instance name, the connection string, and `cloudbuild.yaml`.

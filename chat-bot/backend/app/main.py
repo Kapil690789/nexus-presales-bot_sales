@@ -1,5 +1,7 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,23 +19,31 @@ settings = get_settings()
 log = logging.getLogger(__name__)
 
 
-def create_app() -> FastAPI:
-    assert_admin_configured(settings)
-    get_config()
+@asynccontextmanager
+async def lifespan(_application: FastAPI):
     init_db()
     ingest_on_startup()
     Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+    yield
+
+
+def create_app() -> FastAPI:
+    assert_admin_configured(settings)
+    get_config()
     if not llm_available():
         log.warning("LLM_API_KEY is not set; using the offline fallback consultant.")
-    application = FastAPI(title="DevConsult Pre-Sales Consultant", version="1.0.0")
+    application = FastAPI(title="DevConsult Pre-Sales Consultant", version="1.0.0", lifespan=lifespan)
     origins = settings.cors_origin_list
-    application.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins if origins != ["*"] else ["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    cors_kwargs: dict = {
+        "allow_origins": origins if origins != ["*"] else ["*"],
+        "allow_credentials": True,
+        "allow_methods": ["*"],
+        "allow_headers": ["*"],
+    }
+    regex = settings.cors_origin_regex.strip()
+    if regex:
+        cors_kwargs["allow_origin_regex"] = regex
+    application.add_middleware(CORSMiddleware, **cors_kwargs)
     application.include_router(health.router)
     application.include_router(public_config.router)
     application.include_router(sessions.router)
@@ -44,7 +54,7 @@ def create_app() -> FastAPI:
     public_dir = ROOT / "public"
     if widget_dir.exists():
         application.mount("/widget", StaticFiles(directory=widget_dir), name="widget")
-    if public_dir.exists():
+    if public_dir.exists() and not os.environ.get("VERCEL"):
         application.mount("/", StaticFiles(directory=public_dir, html=True), name="public")
     return application
 

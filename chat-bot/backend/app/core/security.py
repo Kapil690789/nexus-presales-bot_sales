@@ -1,3 +1,4 @@
+import re
 import secrets
 from collections import defaultdict
 from time import time
@@ -99,5 +100,11 @@ def origin_allowed(request: Request) -> None:
     if "*" in origins:
         return
     origin = request.headers.get("origin") or ""
-    if origin and origin not in origins:
-        raise HTTPException(status_code=403, detail="Origin is not allowed")
+    if not origin:
+        return
+    if origin in origins:
+        return
+    pattern = settings.cors_origin_regex.strip()
+    if pattern and re.fullmatch(pattern, origin):
+        return
+    raise HTTPException(status_code=403, detail="Origin is not allowed")
