@@ -21,3 +21,4 @@ google-auth-oauthlib>=1.2.2
 google-auth-httplib2>=0.2.0
 bcrypt>=4.3.0
 pytest>=8.3.5
+# pytest is a local/dev extra; Vercel installs [project.dependencies] from pyproject.toml.
