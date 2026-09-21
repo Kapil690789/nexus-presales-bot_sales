@@ -8,7 +8,7 @@ def test_normalize_neon_libpq_url() -> None:
     )
     assert (
         normalize_database_url(raw)
-        == "postgresql+pg8000://neondb_owner:secret@ep-host.neon.tech/neondb?ssl=true"
+        == "postgresql+pg8000://neondb_owner:secret@ep-host.neon.tech/neondb"
     )
 
 
@@ -21,7 +21,7 @@ def test_normalize_postgres_scheme() -> None:
 
 def test_normalize_already_pg8000_strips_channel_binding() -> None:
     raw = "postgresql+pg8000://u:p@host/db?ssl=true&channel_binding=require"
-    assert normalize_database_url(raw) == "postgresql+pg8000://u:p@host/db?ssl=true"
+    assert normalize_database_url(raw) == "postgresql+pg8000://u:p@host/db"
 
 
 def test_normalize_sqlite_unchanged() -> None:
@@ -33,7 +33,7 @@ def test_settings_rewrites_database_url() -> None:
     settings = Settings(
         database_url="postgresql://u:p@host/db?sslmode=require&channel_binding=require"
     )
-    assert settings.database_url == "postgresql+pg8000://u:p@host/db?ssl=true"
+    assert settings.database_url == "postgresql+pg8000://u:p@host/db"
 
 
 def test_google_redirect_falls_back_to_public_base_url() -> None:
@@ -64,6 +64,15 @@ def test_absolute_upload_dir_is_kept() -> None:
     settings = Settings(upload_dir="/tmp/uploads")
     assert settings.upload_dir.is_absolute()
     assert settings.upload_dir.as_posix().endswith("/tmp/uploads")
+
+
+def test_pg8000_connect_args_use_ssl_context() -> None:
+    from backend.app.models.db import _engine_kwargs
+
+    kwargs = _engine_kwargs("postgresql+pg8000://u:p@host/db")
+    assert "ssl_context" in kwargs["connect_args"]
+    sqlite = _engine_kwargs("sqlite:///./backend/presales.db")
+    assert sqlite["connect_args"] == {"check_same_thread": False}
 
 
 def test_empty_cors_falls_back_to_localhost_and_vercel() -> None:

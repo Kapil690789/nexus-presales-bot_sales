@@ -103,7 +103,7 @@ This folder is one Vercel project (Root Directory `chat-bot`). Import [`.env.exa
 
 The widget is built during the Vercel build and copied to `public/widget/consultant.js` so the CDN can serve it. Runtime Python packages must be listed in [`pyproject.toml`](pyproject.toml) (`[project.dependencies]`); Vercel ignores `requirements.txt` when that file is present. Python 3.12. `maxDuration` is 60s in [`vercel.json`](vercel.json); that file also packages `config/`, `content/`, widget dist, and admin templates into the function.
 
-On Vercel, RFP files go to `/tmp` unless `GCS_BUCKET` is set. Neon + the pooler URL needs `postgresql+pg8000://...&ssl=true`; a console `postgresql://` paste is rewritten at startup.
+On Vercel, RFP files go to `/tmp` unless `GCS_BUCKET` is set. Neon + the pooler URL can be pasted as `postgresql://...` or `postgresql+pg8000://...`; `sslmode` / `ssl=true` query params are stripped because pg8000 1.31+ needs `ssl_context` (applied automatically).
 
 ## Cloud Run and Cloud SQL, start to finish
 

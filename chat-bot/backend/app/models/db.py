@@ -1,5 +1,6 @@
 import os
 import re
+import ssl
 from collections.abc import Generator
 from functools import lru_cache
 
@@ -20,6 +21,9 @@ def _engine_kwargs(url: str) -> dict:
     kwargs: dict = {"pool_pre_ping": True}
     if os.environ.get("VERCEL"):
         kwargs["poolclass"] = NullPool
+    if "+pg8000://" in url:
+        # pg8000>=1.31 rejects connect(ssl=True); TLS is ssl_context only.
+        kwargs["connect_args"] = {"ssl_context": ssl.create_default_context()}
     return kwargs
 
 

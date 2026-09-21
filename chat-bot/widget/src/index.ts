@@ -94,7 +94,32 @@ function friendlyError(err: unknown, fallback: string): string {
   if (!msg || /failed to fetch|networkerror|load failed/i.test(msg)) {
     return "Cannot reach the advisor on port 8000. Start the bot with `make run`.";
   }
+  if (/internal server error|^internal s/i.test(msg)) {
+    return "The advisor API hit an internal error. Retry in a moment.";
+  }
   return msg || fallback;
+}
+
+async function readJson(response: Response): Promise<any> {
+  const text = await response.text();
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+  if (!response.ok) {
+    const detail = data?.detail;
+    const message =
+      typeof detail === "string" && detail
+        ? detail
+        : text && !text.trimStart().startsWith("{")
+          ? text.slice(0, 180).trim()
+          : `Request failed (${response.status})`;
+    throw new Error(message);
+  }
+  if (!data) throw new Error("Advisor returned an empty response.");
+  return data;
 }
 
 function normalizePath(path: string): string {
@@ -540,7 +565,7 @@ async function boot() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ page_url: location.href, page_title: document.title, path: pagePath }),
-    }).then((r) => r.json());
+    }).then(readJson);
     sessionId = created.session_id;
     localStorage.setItem(SESSION_KEY, sessionId);
     if (created.message) {

@@ -37,7 +37,12 @@ def _dotenv_value(path: Path, key: str) -> str:
 
 
 def normalize_database_url(url: str) -> str:
-    """Rewrite Neon/libpq URLs so SQLAlchemy uses pg8000 with SSL."""
+    """Rewrite Neon/libpq URLs so SQLAlchemy uses pg8000.
+
+    Strip ``ssl`` / ``sslmode`` query params. pg8000 1.31+ takes
+    ``ssl_context``, and ``ssl=true`` on the URL becomes ``connect(ssl=True)``,
+    which raises TypeError and 500s every session.
+    """
     url = (url or "").strip()
     if url.startswith("postgresql://"):
         url = "postgresql+pg8000://" + url[len("postgresql://") :]
@@ -48,11 +53,8 @@ def normalize_database_url(url: str) -> str:
     parts = urlsplit(url)
     query = dict(parse_qsl(parts.query, keep_blank_values=True))
     query.pop("channel_binding", None)
-    sslmode = (query.pop("sslmode", None) or "").lower()
-    if sslmode in {"require", "verify-ca", "verify-full", "prefer"}:
-        query.setdefault("ssl", "true")
-    elif sslmode in {"disable", "allow"}:
-        query.setdefault("ssl", "false")
+    query.pop("sslmode", None)
+    query.pop("ssl", None)
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
 
