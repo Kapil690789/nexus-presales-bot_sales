@@ -97,6 +97,39 @@ def test_cors_origin_regex_allows_vercel(monkeypatch) -> None:
         get_settings.cache_clear()
 
 
+def test_production_localhost_cors_still_allows_vercel_chat(monkeypatch) -> None:
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("ADMIN_PASSWORD", "a-strong-unique-password")
+    monkeypatch.setenv("ADMIN_PASSWORD_HASH", "")
+    monkeypatch.setenv("CORS_ORIGINS", "http://localhost:8000")
+    monkeypatch.setenv("CORS_ORIGIN_REGEX", "")
+    get_settings.cache_clear()
+    try:
+        from backend.app.main import create_app
+
+        local = TestClient(create_app())
+        blocked = local.post("/api/v1/sessions", json={"path": "/"}, headers={"Origin": "https://evil.example"})
+        assert blocked.status_code == 403
+        site = local.post(
+            "/api/v1/sessions",
+            json={"path": "/"},
+            headers={"Origin": "https://dummy-web-portal-ten.vercel.app"},
+        )
+        assert site.status_code == 200
+        bot = local.post(
+            "/api/v1/sessions",
+            json={"path": "/"},
+            headers={
+                "Origin": "https://dummy-chat-bot-6w6p.vercel.app",
+                "Host": "dummy-chat-bot-6w6p.vercel.app",
+                "X-Forwarded-Proto": "https",
+            },
+        )
+        assert bot.status_code == 200
+    finally:
+        get_settings.cache_clear()
+
+
 def test_empty_cors_allows_localhost_and_vercel(monkeypatch) -> None:
     monkeypatch.setenv("CORS_ORIGINS", "")
     monkeypatch.setenv("CORS_ORIGIN_REGEX", "")

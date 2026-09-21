@@ -129,15 +129,20 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         parts = self.explicit_cors_origins
-        if parts or self.cors_origin_regex.strip():
-            return parts
-        return [part.strip() for part in DEFAULT_CORS_ORIGINS.split(",") if part.strip()]
+        if not parts and not self.cors_origin_regex.strip():
+            parts = [part.strip() for part in DEFAULT_CORS_ORIGINS.split(",") if part.strip()]
+        public = self.public_base_url.strip().rstrip("/")
+        if public and public not in parts:
+            parts = [*parts, public]
+        return parts
 
     @property
     def effective_cors_origin_regex(self) -> str:
         pattern = self.cors_origin_regex.strip()
         if pattern:
             return pattern
+        if self.environment.strip().lower() == "production":
+            return VERCEL_ORIGIN_REGEX
         if self.explicit_cors_origins:
             return ""
         return VERCEL_ORIGIN_REGEX

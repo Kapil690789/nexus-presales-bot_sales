@@ -71,3 +71,16 @@ def test_empty_cors_falls_back_to_localhost_and_vercel() -> None:
     assert "http://localhost:3000" in settings.cors_origin_list
     assert "http://localhost:8000" in settings.cors_origin_list
     assert settings.effective_cors_origin_regex == VERCEL_ORIGIN_REGEX
+
+
+def test_production_applies_vercel_regex_even_with_localhost_origins() -> None:
+    settings = Settings(
+        environment="production",
+        cors_origins="http://localhost:8000",
+        cors_origin_regex="",
+        public_base_url="https://dummy-chat-bot-6w6p.vercel.app",
+        admin_password="a-strong-unique-password",
+    )
+    assert "http://localhost:8000" in settings.cors_origin_list
+    assert "https://dummy-chat-bot-6w6p.vercel.app" in settings.cors_origin_list
+    assert settings.effective_cors_origin_regex == VERCEL_ORIGIN_REGEX

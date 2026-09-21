@@ -94,15 +94,32 @@ def rate_limit(request: Request, limit: int = 40, window: int = 60) -> None:
     _hits[ip] = bucket
 
 
+def _request_origin(request: Request) -> str:
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip()
+    if not host:
+        return ""
+    proto = (request.headers.get("x-forwarded-proto") or request.url.scheme or "https").split(",")[0].strip()
+    return f"{proto}://{host}".rstrip("/")
+
+
 def origin_allowed(request: Request) -> None:
     settings = get_settings()
     origins = settings.cors_origin_list
     if "*" in origins:
         return
-    origin = request.headers.get("origin") or ""
+    origin = (request.headers.get("origin") or "").rstrip("/")
     if not origin:
         return
-    if origin in origins:
+    allowed = {item.rstrip("/") for item in origins if item}
+    public = settings.public_base_url.strip().rstrip("/")
+    if public:
+        allowed.add(public)
+    if origin in allowed:
+        return
+    same_origin = _request_origin(request)
+    if same_origin and origin == same_origin:
+        return
+    if same_origin.startswith("http://") and origin == "https://" + same_origin[len("http://") :]:
         return
     pattern = settings.effective_cors_origin_regex
     if pattern and re.fullmatch(pattern, origin):
