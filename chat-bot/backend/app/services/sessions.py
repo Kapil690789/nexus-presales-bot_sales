@@ -70,6 +70,8 @@ def persist_turn(db: Session, row: SessionRow, turn) -> SessionRow:
         row.nda_accepted_at = datetime.utcnow()
     row.booking_json = dumps(turn.booking)
     row.handoff_summary = turn.handoff_summary or row.handoff_summary
+    if getattr(turn, "style", None) is not None:
+        row.style_json = dumps(turn.style)
     row.updated_at = datetime.utcnow()
     email = (turn.contact or {}).get("email") or ""
     if email or turn.handoff_summary:

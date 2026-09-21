@@ -63,6 +63,8 @@ def _ensure_optional_columns() -> None:
             "nda_version": "VARCHAR(40) DEFAULT ''",
             "nda_ip": "VARCHAR(80) DEFAULT ''",
             "nda_user_agent": "VARCHAR(300) DEFAULT ''",
+            "learning_json": "TEXT DEFAULT ''",
+            "style_json": "TEXT DEFAULT ''",
         },
     )
     _ensure_columns(

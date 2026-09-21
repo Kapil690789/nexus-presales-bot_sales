@@ -91,6 +91,36 @@
   {% else %}<p>No outbound events yet. Book a consultation to generate CRM / Slack / email / calendar / follow-up rows.</p>{% endif %}
 </article>
 
+{% if style %}
+<article>
+  <h3>How they are chatting</h3>
+  <p>
+    Pace <strong>{{ style.pace or "—" }}</strong>
+    · clarity {{ style.clarity or "—" }}
+    · {{ style.register or "—" }}
+    · {{ style.mood or "—" }}
+    {% if style.returning %} · returning visitor{% endif %}
+  </p>
+  {% if style.notes %}<p>{{ style.notes }}</p>{% endif %}
+</article>
+{% endif %}
+
+{% if learning %}
+<article>
+  <h3>Learned from this conversation</h3>
+  <p>Outcome <strong>{{ learning.outcome or "—" }}</strong>
+    {% if learning.score is defined %} · score {{ learning.score }}{% endif %}
+    {% if learning.mode %} · {{ learning.mode }}{% endif %}
+  </p>
+  <p><strong>Tone that worked</strong> — {{ learning.tone_that_worked or "—" }}</p>
+  <p><strong>Tone to avoid</strong> — {{ learning.tone_to_avoid or "—" }}</p>
+  <p><strong>Client understanding</strong> — {{ learning.client_understanding or "—" }}</p>
+  <p><strong>What they liked</strong> — {{ learning.what_they_liked or "—" }}</p>
+  <p><strong>What worked</strong> — {{ learning.what_worked or "—" }}</p>
+  <p><strong>What to avoid</strong> — {{ learning.what_to_avoid or "—" }}</p>
+</article>
+{% endif %}
+
 <article><h3>Brief JSON</h3><pre>{{ brief | tojson(indent=2) }}</pre></article>
 {% if row.handoff_summary %}<article><h3>Handoff summary</h3><pre>{{ row.handoff_summary }}</pre></article>{% endif %}
 

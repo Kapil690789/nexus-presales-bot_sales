@@ -68,6 +68,7 @@ def _payload(turn) -> dict:
         "band": (turn.qualification or {}).get("band"),
         "handoff_summary": turn.handoff_summary,
         "booking": turn.booking,
+        "objection": turn.objection,
     }
 
 
@@ -170,6 +171,7 @@ def _run(db: Session, row, user_text: str, chip, nda: bool, rfp_text: str | None
         transcript=_transcript(db, row.id),
         page_path=row.path,
         last_assistant=_last_assistant(db, row.id),
+        existing_style=loads(row.style_json, None) or {},
     )
     persist_turn(db, row, turn)
     add_message(db, row.id, "assistant", turn.message, _payload(turn))

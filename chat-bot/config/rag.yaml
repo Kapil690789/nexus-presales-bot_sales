@@ -1,7 +1,7 @@
 # Retrieval and learning behaviour. The vector store is a derived index over the
 # other files in this folder — edit those, then re-run ingest (`make ingest`).
 top_k: 4
-lesson_k: 2
+lesson_k: 3
 min_score: 0.20
 max_snippet_chars: 480
 # Chunks one document may contribute to a single answer. Long case studies would
@@ -31,9 +31,15 @@ redaction:
   proper_nouns: true
 learning:
   enabled: true
-  # Sessions score at least this much to be learned from. Null uses
-  # qualification.book_threshold so there is one place to tune the gate.
+  # Sessions score at least this much to be learned from as a success.
+  # Null uses qualification.book_threshold so there is one place to tune the gate.
   min_score: null
+  # Distil disqualified, objected, and abandoned chats as well as conversions.
+  include_failed: true
+  # Abandoned backfill ignores sessions with fewer visitor messages than this.
+  min_visitor_messages: 3
+  # Minutes of inactivity before a non-converting session counts as abandoned.
+  abandon_after_minutes: 30
   # How much a proven case study can outrank a better keyword match.
   outcome_boost: 2.0
   # Wins are smoothed by this many pseudo-sessions so one lucky chat cannot dominate.

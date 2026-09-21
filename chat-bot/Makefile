@@ -1,4 +1,4 @@
-.PHONY: install widget copy-widget run docker test smoke ingest ingest-dry
+.PHONY: install widget copy-widget run docker test smoke ingest ingest-dry learn-backfill
 
 install:
 	python3 -m venv .venv
@@ -22,6 +22,9 @@ ingest:
 
 ingest-dry:
 	PYTHONPATH=. .venv/bin/python -m backend.app.rag.ingest --dry-run --verbose
+
+learn-backfill:
+	PYTHONPATH=. .venv/bin/python -m backend.app.rag.learn --backfill
 
 docker:
 	docker compose up --build

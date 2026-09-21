@@ -185,13 +185,16 @@ class RagRedaction(BaseModel):
 class RagLearning(BaseModel):
     enabled: bool = True
     min_score: int | None = None
+    include_failed: bool = True
+    min_visitor_messages: int = 3
+    abandon_after_minutes: int = 30
     outcome_boost: float = 2.0
     outcome_prior: int = 3
 
 
 class RagConfig(BaseModel):
     top_k: int = 4
-    lesson_k: int = 2
+    lesson_k: int = 3
     min_score: float = 0.20
     max_snippet_chars: int = 480
     max_chunks_per_doc: int = 2

@@ -6,6 +6,7 @@ from backend.app.agents.brief import ProjectBrief, brief_query, brief_tags
 from backend.app.config_loader.models import RagConfig
 from backend.app.core.settings import get_settings
 from backend.app.rag.embeddings import FALLBACK_MODEL, active_model
+from backend.app.rag.learn import AVOID_OUTCOMES, SUCCESS_OUTCOMES
 from backend.app.rag.store import Hit, get_store
 
 SERVICE_BOOST = 0.15
@@ -62,10 +63,37 @@ def retrieve_lessons(
     *,
     k: int | None = None,
 ) -> list[Hit]:
-    """Distilled guidance from past conversations that converted."""
+    """Distilled guidance from past conversations, mixing a success with an avoid when both exist."""
     limit = k or rag.lesson_k
     text = " ".join(part for part in [brief_query(brief) if brief else "", stage or ""] if part).strip()
-    return _search(db, text, rag, kind="lesson", k=limit, brief=brief)
+    pool = _search(db, text, rag, kind="lesson", k=max(limit * 3, 8), brief=brief)
+    return _mix_lessons(pool, limit)
+
+
+def _mix_lessons(hits: list[Hit], k: int) -> list[Hit]:
+    """Keep rank, but reserve one slot for a cautionary lesson when one is available."""
+    if k < 2 or len(hits) <= k:
+        return hits[:k]
+    success = [hit for hit in hits if (hit.metadata or {}).get("outcome") in SUCCESS_OUTCOMES]
+    avoid = [hit for hit in hits if (hit.metadata or {}).get("outcome") in AVOID_OUTCOMES]
+    if not success or not avoid:
+        return hits[:k]
+    picked: list[Hit] = []
+    seen: set[str] = set()
+
+    def add(hit: Hit) -> None:
+        if hit.doc_id in seen:
+            return
+        seen.add(hit.doc_id)
+        picked.append(hit)
+
+    add(success[0])
+    add(avoid[0])
+    for hit in hits:
+        if len(picked) >= k:
+            break
+        add(hit)
+    return picked
 
 
 def semantic_case_scores(db: Session | None, brief: ProjectBrief, rag: RagConfig, *, k: int = 12) -> dict[str, float]:

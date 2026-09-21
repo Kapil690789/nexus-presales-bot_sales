@@ -75,7 +75,15 @@ python -m backend.app.rag.ingest --only content --verbose
 python -m backend.app.rag.ingest --content-dir /path/to/other/content --no-prune
 ```
 
-Sessions that reach handoff, or score at or above `qualification.book_threshold`, are distilled into a short **lesson** (situation, what worked, what to avoid) that is retrieved in later conversations. Transcripts are redacted for emails, phone numbers, links, and names before anything is stored, and a lesson is rewritten if the session later converts. Every lesson is readable and deletable in `/admin/rag`; deleting one stops it influencing future chats.
+Sessions that reach handoff, or score at or above `qualification.book_threshold`, are distilled into a short **lesson** (situation, tone, what the visitor understood, what worked, what to avoid). Failed chats — disqualified, objected, or abandoned after `rag.learning.abandon_after_minutes` — become cautionary lessons so later replies can adapt. Transcripts are redacted for emails, phone numbers, links, and names before anything is stored, and a lesson is rewritten if the session later converts. Every lesson is readable and deletable in `/admin/rag`; deleting one stops it influencing future chats.
+
+To index conversations that already sit in the database:
+
+```bash
+make learn-backfill
+```
+
+That is the same action as **Learn from past sessions** on `/admin/rag`.
 
 Separately, each session records which case studies, objections, and entry pages it showed, and whether it converted. Those smoothed win rates re-rank future matches, which is the one part of the learning loop that also improves the offline fallback consultant.
 

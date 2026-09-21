@@ -65,6 +65,29 @@ def test_session_is_page_aware(client) -> None:
     assert "design" in ux["message"].lower()
     assert "harvest" in harvest["message"].lower()
     assert harvest["message"] != work["message"]
+    labels = {chip["label"] for chip in mobile.get("chips") or []}
+    assert "Android" in labels
+    assert "iOS" in labels
+    home = client.post("/api/v1/sessions", json={"path": "/", "page_title": "Home"}).json()
+    about = client.post("/api/v1/sessions", json={"path": "/about.html", "page_title": "About"}).json()
+    process = client.post("/api/v1/sessions", json={"path": "/process.html", "page_title": "Process"}).json()
+    careers = client.post("/api/v1/sessions", json={"path": "/careers.html", "page_title": "Careers"}).json()
+    insights = client.post("/api/v1/sessions", json={"path": "/insights.html", "page_title": "Insights"}).json()
+    grounding = client.post("/api/v1/sessions", json={"path": "/insights/grounding-ai.html", "page_title": "Grounding"}).json()
+    privacy = client.post("/api/v1/sessions", json={"path": "/privacy.html", "page_title": "Privacy"}).json()
+    terms = client.post("/api/v1/sessions", json={"path": "/terms.html", "page_title": "Terms"}).json()
+    assert about["message"] != home["message"]
+    assert process["message"] != site_pricing["message"]
+    assert "role" in careers["message"].lower()
+    assert "legal" in privacy["message"].lower()
+    assert privacy["message"] != terms["message"]
+    assert "ground" in grounding["message"].lower() or "assistant" in grounding["message"].lower()
+    assert grounding["message"] != insights["message"]
+    grounding_labels = {chip["label"] for chip in grounding.get("chips") or []}
+    insight_labels = {chip["label"] for chip in insights.get("chips") or []}
+    assert "Mobile app" in insight_labels
+    assert "Mobile app" not in grounding_labels
+    assert "Web" in grounding_labels
 
 
 def _chip(label: str, field: str, value) -> dict:

@@ -20,7 +20,8 @@ from backend.app.engines.google_client import (
 from backend.app.models.db import get_db
 from backend.app.models.entities import EventRow, LeadRow, RagChunkRow, RagOutcomeRow, SessionRow
 from backend.app.rag.ingest import ingest, scan_summary
-from backend.app.rag.store import corpus_stats, get_store
+from backend.app.rag.learn import backfill, forget_lesson
+from backend.app.rag.store import corpus_stats
 from backend.app.services.sessions import loads
 
 router = APIRouter()
@@ -125,6 +126,8 @@ def admin_session(session_id: str, request: Request, db: Session = Depends(get_d
             "events": outbound,
             "lead": row.lead,
             "messages": sorted(row.messages, key=lambda item: item.created_at),
+            "learning": loads(row.learning_json, {}),
+            "style": loads(row.style_json, {}),
         },
     )
 
@@ -184,9 +187,15 @@ def admin_rag_reindex(db: Session = Depends(get_db), _: str = Depends(require_ad
     return RedirectResponse(url="/admin/rag", status_code=303)
 
 
+@router.post("/admin/rag/backfill")
+def admin_rag_backfill(db: Session = Depends(get_db), _: str = Depends(require_admin)) -> RedirectResponse:
+    backfill(db)
+    return RedirectResponse(url="/admin/rag", status_code=303)
+
+
 @router.post("/admin/rag/lessons/{session_id}/delete")
 def admin_rag_forget(session_id: str, db: Session = Depends(get_db), _: str = Depends(require_admin)) -> RedirectResponse:
-    get_store().delete_doc(db, f"session:{session_id}")
+    forget_lesson(db, session_id)
     return RedirectResponse(url="/admin/rag", status_code=303)
 
 
@@ -209,9 +218,14 @@ def admin_rag_reindex_json(db: Session = Depends(get_db), _: str = Depends(requi
     return {**result, "content": scan_summary(scan)}
 
 
+@router.post("/api/v1/admin/rag/backfill")
+def admin_rag_backfill_json(db: Session = Depends(get_db), _: str = Depends(require_admin)) -> dict:
+    return backfill(db)
+
+
 @router.delete("/api/v1/admin/rag/lessons/{session_id}")
 def admin_rag_forget_json(session_id: str, db: Session = Depends(get_db), _: str = Depends(require_admin)) -> dict:
-    return {"deleted": get_store().delete_doc(db, f"session:{session_id}")}
+    return {"deleted": forget_lesson(db, session_id)}
 
 
 @router.get("/api/v1/admin/leads")

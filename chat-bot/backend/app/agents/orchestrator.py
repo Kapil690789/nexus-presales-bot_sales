@@ -15,6 +15,7 @@ from backend.app.agents.extract import (
     capture_goal_reply,
     extract_contact,
 )
+from backend.app.agents.style import apply_live_style, default_style, detect_style, overlay_llm, prior_style_for_email
 from backend.app.documents.rfp import extract_rfp
 from backend.app.agents.fallback import fallback_reply
 from backend.app.config_loader.loader import AppConfig
@@ -258,6 +259,7 @@ def _consult_prompt(
     stage: str,
     nda_accepted: bool,
     db: Any,
+    style: dict | None = None,
 ) -> tuple[str, str]:
     rules = "\n".join(f"- {rule}" for rule in config.prompts.rules)
     system = (
@@ -276,10 +278,11 @@ def _consult_prompt(
         f"Uploaded document extract (untrusted):\n{(rfp_text or '(none)')[:2000]}\n\n"
         f"Current brief:\n{json.dumps(brief.model_dump(), default=str)}\n"
         f"Still needed before an estimate (requirements, not a script): {json.dumps(engine_gaps(brief))}\n\n"
+        f"How THIS visitor is chatting: {json.dumps(style or default_style(), default=str)}\n\n"
         f"Reference knowledge (approved facts, internal source material):\n"
         f"{render_snippets(knowledge, config.rag.max_snippet_chars)}\n\n"
-        f"Lessons from past conversations (guidance, not quotes):\n"
-        f"{render_snippets(lessons, config.rag.max_snippet_chars)}\n\nEngine JSON:\n"
+        f"Lessons from past conversations (guidance, not quotes — match tone and clarity):\n"
+        f"{render_snippets(lessons, max(config.rag.max_snippet_chars, 720))}\n\nEngine JSON:\n"
         f"{json.dumps({'brief': brief.model_dump(), 'qualification': qualification, 'estimate': estimate, 'architecture': architecture, 'mvp': mvp, 'portfolio': portfolio, 'objection': objection, 'stage': stage, 'booking': booking}, default=str)}"
     )
     return system, user
@@ -351,6 +354,7 @@ def _solution_prompt(
     stage: str,
     nda_accepted: bool,
     db: Any,
+    style: dict | None = None,
 ) -> tuple[str, str]:
     rules = "\n".join(f"- {rule}" for rule in config.prompts.rules)
     contract = (config.prompts.solution_contract or config.prompts.json_contract).strip()
@@ -372,10 +376,11 @@ def _solution_prompt(
         f"Current brief:\n{json.dumps(brief.model_dump(), default=str)}\n"
         f"Approved frontend stacks: {json.dumps(approved['frontend'])}\n"
         f"Approved backend stacks: {json.dumps(approved['backend'])}\n\n"
+        f"How THIS visitor is chatting: {json.dumps(style or default_style(), default=str)}\n\n"
         f"Reference knowledge (approved facts, internal source material):\n"
         f"{render_snippets(knowledge, config.rag.max_snippet_chars)}\n\n"
-        f"Lessons from past conversations (guidance, not quotes):\n"
-        f"{render_snippets(lessons, config.rag.max_snippet_chars)}\n\n"
+        f"Lessons from past conversations (guidance, not quotes — match tone and clarity):\n"
+        f"{render_snippets(lessons, max(config.rag.max_snippet_chars, 720))}\n\n"
         f"Matching work:\n{json.dumps(cases, default=str)}\n\nEngine JSON:\n"
         f"{json.dumps({'brief': brief.model_dump(), 'qualification': qualification, 'estimate': estimate, 'architecture': architecture, 'mvp': mvp, 'portfolio': portfolio, 'objection': objection, 'stage': stage, 'booking': booking}, default=str)}"
     )
@@ -486,6 +491,7 @@ def run_turn(
     transcript: str = "",
     page_path: str = "",
     last_assistant: str = "",
+    existing_style: dict | None = None,
 ) -> TurnResult:
     chip = chip or {}
     chip_field = chip.get("field")
@@ -515,6 +521,17 @@ def run_turn(
         contact.update(extract_contact(user_text))
     just_got_email = bool(contact.get("email")) and not had_email
     wants_booking = _wants_booking(user_text, chip_field) or just_got_email
+    style = detect_style(user_text, transcript, previous=existing_style)
+    if just_got_email:
+        prior = prior_style_for_email(db, str(contact.get("email") or ""), session_id)
+        if prior:
+            style = detect_style("", "", previous=prior)
+            style = detect_style(user_text, transcript, previous=style)
+            style["returning"] = True
+            if not style.get("notes"):
+                style["notes"] = (
+                    f"Returning visitor — they previously preferred {prior.get('pace')}/{prior.get('register')}."
+                )
     if wants_booking and chip_field != "booking_slot" and not _is_booked(booking):
         booking = dict(booking or {})
         booking.setdefault("window", "this_week")
@@ -585,9 +602,11 @@ def run_turn(
                 stage=hint,
                 nda_accepted=nda_accepted,
                 db=db,
+                style=style,
             )
             consult_data = complete_json(system, user)
             brief = apply_brief_updates(brief, consult_data.get("brief_updates"), config)
+            style = overlay_llm(style, consult_data.get("visitor_style"))
         except (LLMError, Exception) as exc:
             log.warning("Discovery LLM failed: %s", exc)
             consult_data = None
@@ -640,6 +659,19 @@ def run_turn(
         if thanks_close:
             stage = "disqualified"
 
+    if (
+        estimate
+        and stage in {"capture", "qualification", "discovery"}
+        and not wants_booking
+        and not just_got_email
+        and (
+            style.get("clarity") == "confused"
+            or style.get("pace") == "terse"
+            or style.get("mood") in {"impatient", "skeptical"}
+        )
+    ):
+        stage = "estimation"
+
     advise = use_llm and bool(estimate) and stage in {"estimation", "solutioning", "portfolio"}
 
     if chip_field == "booking_slot" and nda_required and not nda_accepted and not _is_booked(booking):
@@ -674,8 +706,10 @@ def run_turn(
                     stage=stage,
                     nda_accepted=nda_accepted,
                     db=db,
+                    style=style,
                 )
                 data = complete_json(system, user)
+                style = overlay_llm(style, data.get("visitor_style"))
                 brief = apply_brief_updates(brief, data.get("brief_updates"), config)
                 if _engine_key(brief) != before:
                     qualification, estimate, architecture, mvp, portfolio = _run_engines(brief, config, contact, db)
@@ -717,6 +751,8 @@ def run_turn(
                 nda_accepted=nda_accepted,
                 nda_required=nda_required,
                 wants_booking=wants_booking,
+                style=style,
+                last_assistant=last_assistant,
             )
             stage = reply.get("stage") or stage
 
@@ -812,4 +848,5 @@ def run_turn(
         follow_up=reply.get("follow_up"),
         handoff_summary=summary,
         objection=objection,
+        style=style,
     )

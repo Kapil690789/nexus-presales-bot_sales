@@ -13,12 +13,13 @@ from backend.app.models.entities import RagOutcomeRow
 from backend.app.rag.ingest import ingest
 from backend.app.rag.learn import OUTCOME_PORTFOLIO
 from backend.app.rag.retrieve import (
+    _mix_lessons,
     render_snippets,
     retrieve_knowledge,
     retrieve_lessons,
     semantic_case_scores,
 )
-from backend.app.rag.store import get_store
+from backend.app.rag.store import Hit, get_store
 
 AI_BRIEF = ProjectBrief(
     service="ai_product",
@@ -99,6 +100,36 @@ def test_retrieval_is_a_no_op_without_a_session() -> None:
     assert retrieve_knowledge(None, "anything", AI_BRIEF, config.rag) == []
     assert retrieve_lessons(None, AI_BRIEF, "estimation", config.rag) == []
     assert render_snippets([], config.rag.max_snippet_chars) == "(none)"
+
+
+def test_lesson_retrieval_mixes_success_and_avoid() -> None:
+    def hit(doc_id: str, outcome: str, score: float) -> Hit:
+        return Hit(
+            doc_id=doc_id,
+            title=doc_id,
+            content=outcome,
+            kind="lesson",
+            source="session",
+            source_id=doc_id,
+            metadata={"outcome": outcome},
+            score=score,
+        )
+
+    mixed = _mix_lessons(
+        [
+            hit("s1", "handoff", 0.9),
+            hit("s2", "qualified", 0.8),
+            hit("s3", "qualified", 0.7),
+            hit("a1", "abandoned", 0.4),
+        ],
+        3,
+    )
+    outcomes = [item.metadata["outcome"] for item in mixed]
+    assert len(mixed) == 3
+    assert "handoff" in outcomes
+    assert "abandoned" in outcomes
+    assert mixed[0].doc_id == "s1"
+    assert mixed[1].doc_id == "a1"
 
 
 def test_snippets_are_truncated_for_the_prompt() -> None:

@@ -13,6 +13,9 @@
 <form method="post" action="/admin/rag/reindex">
   <button type="submit">Re-index from config and content</button>
 </form>
+<form method="post" action="/admin/rag/backfill">
+  <button type="submit">Learn from past sessions</button>
+</form>
 
 <article>
   <h3>Corpus</h3>
@@ -31,7 +34,7 @@
 
 <article>
   <h3>What the agent has learned</h3>
-  <p>Lessons come from sessions that reached handoff or scored {{ rag.learning.min_score or "the book threshold" }} and above. Delete one to stop it influencing future conversations.</p>
+  <p>Lessons come from sessions that reached handoff, scored {{ rag.learning.min_score or "the book threshold" }} and above, or — when failed-chat learning is on — stalled, objected, or were disqualified. Delete one to stop it influencing future conversations.</p>
   {% if lessons %}
   <table>
     <thead><tr><th>When</th><th>Outcome</th><th>Service</th><th>Mode</th><th>Lesson</th><th></th></tr></thead>
@@ -51,7 +54,7 @@
       {% endfor %}
     </tbody>
   </table>
-  {% else %}<p>Nothing learned yet. Complete a conversation through to handoff.</p>{% endif %}
+  {% else %}<p>Nothing learned yet. Finish a conversation, or click Learn from past sessions to index history.</p>{% endif %}
 </article>
 
 <article>

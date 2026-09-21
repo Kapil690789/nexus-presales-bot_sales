@@ -1,5 +1,6 @@
 from backend.app.agents.brief import ProjectBrief, brief_ready
 from backend.app.agents.chips import DISCOVERY_PROMPTS, DISQUALIFIED_CHIPS, chips_for
+from backend.app.agents.style import apply_live_style, default_style
 from backend.app.config_loader.loader import AppConfig
 from backend.app.engines.calendar import slot_chips
 from backend.app.engines.google_client import is_live
@@ -32,7 +33,10 @@ def fallback_reply(
     nda_accepted: bool = False,
     nda_required: bool = False,
     wants_booking: bool = False,
+    style: dict | None = None,
+    last_assistant: str = "",
 ) -> dict:
+    style = style or default_style()
     if stage == "greeting":
         extras = extra_questions or []
         message = opening or config.pages.default.opening
@@ -46,7 +50,11 @@ def fallback_reply(
             "stage": "disqualified",
         }
     if stage == "objections" and objection:
-        return {"message": objection["reply"], "chips": chips_for(brief, "discovery"), "stage": "objections"}
+        return _styled(
+            {"message": objection["reply"], "chips": chips_for(brief, "discovery"), "stage": "objections"},
+            style,
+            last_assistant=last_assistant,
+        )
     if stage == "rfp_review":
         bits = []
         if brief.goal:
@@ -57,11 +65,15 @@ def fallback_reply(
             bits.append("Platforms: " + ", ".join(brief.platforms))
         missing = brief.missing_discovery()
         ask = DISCOVERY_PROMPTS.get(missing[0], "What should we confirm next?") if missing else "Shall I estimate this?"
-        return {
-            "message": f"I treated the upload as untrusted source material and extracted this:\n{'; '.join(bits) or 'I pulled the document in.'}\n\n{ask}",
-            "chips": chips_for(brief, "discovery"),
-            "stage": "rfp_review",
-        }
+        return _styled(
+            {
+                "message": f"I treated the upload as untrusted source material and extracted this:\n{'; '.join(bits) or 'I pulled the document in.'}\n\n{ask}",
+                "chips": chips_for(brief, "discovery"),
+                "stage": "rfp_review",
+            },
+            style,
+            last_assistant=last_assistant,
+        )
     if stage == "discovery":
         missing = brief.missing_discovery()
         if missing:
@@ -70,38 +82,57 @@ def fallback_reply(
             field = "company_size"
         else:
             field = "goal"
-        preface = "Noted. " if user_text and brief.goal and field != "goal" else ""
-        return {"message": f"{preface}{DISCOVERY_PROMPTS[field]}", "chips": chips_for(brief, "discovery"), "stage": "discovery"}
+        preface = ""
+        if user_text and brief.goal and field != "goal" and style.get("pace") != "terse":
+            preface = "Noted. "
+        return _styled(
+            {"message": f"{preface}{DISCOVERY_PROMPTS[field]}", "chips": chips_for(brief, "discovery"), "stage": "discovery"},
+            style,
+            last_assistant=last_assistant,
+        )
     if stage == "estimation" and estimate:
         arch = architecture or {}
         stacks = ", ".join((arch.get("frontend") or []) + (arch.get("backend") or [])) or "an approved stack"
-        return {
-            "message": (
-                f"Based on what you've shared, an indicative MVP sits around **{estimate['range_label']}** "
-                f"over about **{estimate['timeline_weeks']} weeks** with {', '.join(estimate['team'][:3])}. "
-                f"I'd start on {stacks}. This is a low-side first pass — {config.agency.disclaimer.strip()}"
-            ),
-            "chips": _post_estimate_chips(),
-            "stage": "estimation",
-        }
+        return _styled(
+            {
+                "message": (
+                    f"Based on what you've shared, an indicative MVP sits around **{estimate['range_label']}** "
+                    f"over about **{estimate['timeline_weeks']} weeks** with {', '.join(estimate['team'][:3])}. "
+                    f"I'd start on {stacks}. This is a low-side first pass — {config.agency.disclaimer.strip()}"
+                ),
+                "chips": _post_estimate_chips(),
+                "stage": "estimation",
+            },
+            style,
+            estimate=estimate,
+            last_assistant=last_assistant,
+        )
     if stage == "solutioning" and mvp:
         items = "\n".join(f"- {row}" for row in mvp.get("mvp", [])[:4])
         later = "\n".join(f"- {row}" for row in mvp.get("later", [])[:3])
-        return {
-            "message": f"**MVP I'd protect**\n{items}\n\n**Later**\n{later}\n\nWant a couple of relevant case studies?",
-            "chips": [
-                {"label": "Show relevant work", "field": "show_portfolio", "value": "yes"},
-                {"label": "Continue to contact", "field": "continue_contact", "value": "yes"},
-            ],
-            "stage": "solutioning",
-        }
+        return _styled(
+            {
+                "message": f"**MVP I'd protect**\n{items}\n\n**Later**\n{later}\n\nWant a couple of relevant case studies?",
+                "chips": [
+                    {"label": "Show relevant work", "field": "show_portfolio", "value": "yes"},
+                    {"label": "Continue to contact", "field": "continue_contact", "value": "yes"},
+                ],
+                "stage": "solutioning",
+            },
+            style,
+            last_assistant=last_assistant,
+        )
     if stage == "portfolio" and portfolio:
         titles = ", ".join(item["title"] for item in portfolio[:2])
-        return {
-            "message": f"Closest work: {titles}. These are studio examples. Share a work email and I'll package the brief, range, and these references.",
-            "chips": [{"label": "Continue to contact", "field": "continue_contact", "value": "yes"}],
-            "stage": "capture",
-        }
+        return _styled(
+            {
+                "message": f"Closest work: {titles}. These are studio examples. Share a work email and I'll package the brief, range, and these references.",
+                "chips": [{"label": "Continue to contact", "field": "continue_contact", "value": "yes"}],
+                "stage": "capture",
+            },
+            style,
+            last_assistant=last_assistant,
+        )
     if stage == "capture":
         contact = contact or {}
         if not contact.get("email"):
@@ -147,3 +178,14 @@ def fallback_reply(
         "chips": chips_for(brief, "discovery"),
         "stage": "discovery",
     }
+
+
+def _styled(payload: dict, style: dict, *, estimate: dict | None = None, last_assistant: str = "") -> dict:
+    shaped = dict(payload)
+    shaped["message"] = apply_live_style(
+        str(payload.get("message") or ""),
+        style,
+        estimate=estimate,
+        last_assistant=last_assistant,
+    )
+    return shaped

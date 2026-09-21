@@ -109,6 +109,72 @@ pages:
       sanity-check scope, and share an indicative range before you speak with a strategist.
     extra_questions:
       - What are you looking to build?
+  - match: /about
+    service: null
+    opening: >
+      DevConsult is a B2B software consultancy — we help teams define, design, and ship
+      custom software with a named delivery lead. Tell me what you want to build and I'll
+      sanity-check scope before you speak with anyone on our side.
+    extra_questions:
+      - What are you looking to build?
+  - match: /process
+    service: null
+    opening: >
+      An engagement starts with discovery, an MVP cut on an approved stack, then a strategist
+      to confirm the real number. Tell me the product and I'll walk the first-release cut —
+      not a go-live date we cannot own.
+    extra_questions:
+      - What are you looking to build?
+  - match: /careers
+    service: null
+    opening: >
+      If you are here about a role, mention which one and I will point you to hello@devconsult.example.
+      If you are here about a product we should build, tell me what it is and I'll help shape an MVP.
+    extra_questions:
+      - Are you here about a role, or about a product we should build?
+  - match: /insights/grounding-ai
+    service: ai_product
+    opening: >
+      Grounding an AI product starts with the job and the corpus — not a model that invents sources.
+      I'll map what the assistant should do, what it can read, and an honest first-pass range.
+    extra_questions:
+      - What should the assistant actually do for the user?
+      - Do you already have documents or systems it should read?
+  - match: /insights/mvp-first
+    service: null
+    opening: >
+      We start with one user and one journey — not the platform you will need in year three.
+      Tell me who the first user is and I'll help cut a first release you can take to stakeholders.
+    extra_questions:
+      - Who is the first user, and what must ship for them?
+  - match: /insights/indicative-ranges
+    service: null
+    opening: >
+      A number from this chat is an indicative range you can take to stakeholders, not a contract.
+      Tell me what you're building and I'll share a low-side first pass — a strategist confirms the quote.
+    extra_questions:
+      - What kind of product is this?
+  - match: /insights
+    service: null
+    opening: >
+      These notes cover MVP cuts, indicative ranges, and grounded AI. Tell me what you want to build
+      and I'll apply the same thinking — first user, first journey, honest first-pass range.
+    extra_questions:
+      - What are you looking to build?
+  - match: /privacy
+    service: null
+    opening: >
+      This page is a dummy privacy note for the demo — I cannot give legal advice.
+      If you want help scoping a product, tell me what you're building and I'll stay on discovery.
+    extra_questions:
+      - What are you looking to build?
+  - match: /terms
+    service: null
+    opening: >
+      These are dummy terms for the demo site — they do not create a delivery contract, and I cannot
+      give legal advice. If you want to scope a product, tell me what you're building.
+    extra_questions:
+      - What are you looking to build?
   - match: /demo
     service: null
     opening: >

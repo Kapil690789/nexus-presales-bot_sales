@@ -51,6 +51,52 @@ def test_page_context_is_path_aware() -> None:
     service, opening, _ = config.page_for("/contact.html")
     assert service is None
     assert "build" in opening.lower() or "range" in opening.lower()
+    service, opening, extras = config.page_for("/mobile-app-development.html")
+    assert service == "mobile_app"
+    assert any("android" in item.lower() for item in extras)
+    service, opening, extras = config.page_for("/ai-development")
+    assert service == "ai_product"
+    assert extras
+
+
+def test_unmapped_site_pages_have_distinct_openings() -> None:
+    config = get_config()
+    _, home, _ = config.page_for("/")
+    service, about, _ = config.page_for("/about.html")
+    assert service is None
+    assert about != home
+    assert "consult" in about.lower()
+    service, process, _ = config.page_for("/process.html")
+    _, pricing, _ = config.page_for("/pricing.html")
+    assert service is None
+    assert process != pricing
+    assert "engagement" in process.lower() or "discovery" in process.lower()
+    service, careers, extras = config.page_for("/careers")
+    assert service is None
+    assert "role" in careers.lower()
+    assert extras and "role" in extras[0].lower()
+    service, insights, _ = config.page_for("/insights.html")
+    assert service is None
+    assert "mvp" in insights.lower() or "notes" in insights.lower() or "range" in insights.lower()
+    service, grounding, extras = config.page_for("/insights/grounding-ai.html")
+    assert service == "ai_product"
+    assert "ground" in grounding.lower() or "assistant" in grounding.lower() or "corpus" in grounding.lower()
+    assert extras
+    service, mvp, _ = config.page_for("/insights/mvp-first")
+    assert service is None
+    assert "user" in mvp.lower() or "journey" in mvp.lower()
+    service, ranges, _ = config.page_for("/insights/indicative-ranges.html")
+    assert service is None
+    assert "indicative" in ranges.lower() or "stakeholders" in ranges.lower()
+    service, privacy, _ = config.page_for("/privacy.html")
+    assert service is None
+    assert "legal" in privacy.lower()
+    service, terms, _ = config.page_for("/terms")
+    assert service is None
+    assert "legal" in terms.lower() or "contract" in terms.lower()
+    assert privacy != terms
+    assert about != process
+    assert careers != home
 
 
 def test_enrichment_directory_loads() -> None:
