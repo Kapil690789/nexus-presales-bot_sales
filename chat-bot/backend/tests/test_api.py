@@ -39,6 +39,16 @@ def test_public_config_hides_pricing(client) -> None:
     assert "low_side_factor" not in str(body)
 
 
+def test_public_config_survives_calendar_lookup_failure(client, monkeypatch) -> None:
+    def boom() -> bool:
+        raise OSError("db down")
+
+    monkeypatch.setattr("backend.app.api.public_config.is_live", boom)
+    body = client.get("/api/v1/public-config").json()
+    assert body["brand"]["logo_text"]
+    assert body["booking"]["live"] is False
+
+
 def test_session_is_page_aware(client) -> None:
     mobile = client.post("/api/v1/sessions", json={"path": "/demo/mobile-app-development.html", "page_title": "Mobile"}).json()
     web = client.post("/api/v1/sessions", json={"path": "/demo/web-app-development.html", "page_title": "Web"}).json()

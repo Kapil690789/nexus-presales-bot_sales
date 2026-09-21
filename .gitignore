@@ -10,6 +10,7 @@ __pycache__
 dist
 node_modules
 **/widget/dist
+**/public/widget/
 **/backend/uploads
 *.db
 *.db-journal

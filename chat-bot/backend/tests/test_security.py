@@ -97,6 +97,45 @@ def test_cors_origin_regex_allows_vercel(monkeypatch) -> None:
         get_settings.cache_clear()
 
 
+def test_empty_cors_allows_localhost_and_vercel(monkeypatch) -> None:
+    monkeypatch.setenv("CORS_ORIGINS", "")
+    monkeypatch.setenv("CORS_ORIGIN_REGEX", "")
+    get_settings.cache_clear()
+    try:
+        from backend.app.main import create_app
+
+        local = TestClient(create_app())
+        blocked = local.post("/api/v1/sessions", json={"path": "/"}, headers={"Origin": "https://evil.example"})
+        assert blocked.status_code == 403
+        vercel = local.post(
+            "/api/v1/sessions",
+            json={"path": "/"},
+            headers={"Origin": "https://dummy-web-portal-ten.vercel.app"},
+        )
+        assert vercel.status_code == 200
+        site = local.post(
+            "/api/v1/sessions",
+            json={"path": "/"},
+            headers={"Origin": "http://localhost:3000"},
+        )
+        assert site.status_code == 200
+    finally:
+        get_settings.cache_clear()
+
+
+def test_health_survives_init_db_failure(monkeypatch) -> None:
+    def boom() -> None:
+        raise OSError("read-only filesystem")
+
+    monkeypatch.setattr("backend.app.main.init_db", boom)
+    from backend.app.main import create_app
+
+    with TestClient(create_app()) as local:
+        body = local.get("/health").json()
+        assert body["ok"] is True
+        assert "brand" in local.get("/api/v1/public-config").json()
+
+
 def test_message_and_upload_limits(client) -> None:
     session_id = client.post("/api/v1/sessions", json={"path": "/"}).json()["session_id"]
     too_long = client.post(f"/api/v1/sessions/{session_id}/messages", json={"content": "x" * 4001})

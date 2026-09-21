@@ -15,19 +15,26 @@ from backend.app.core.settings import ROOT, get_settings
 from backend.app.models.db import init_db
 from backend.app.rag.ingest import ingest_on_startup
 
-settings = get_settings()
 log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_application: FastAPI):
-    init_db()
+    settings = get_settings()
+    try:
+        init_db()
+    except Exception:
+        log.exception("Database init failed; serving without a writable store.")
     ingest_on_startup()
-    Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+    try:
+        Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+    except Exception:
+        log.exception("Could not create upload dir %s", settings.upload_dir)
     yield
 
 
 def create_app() -> FastAPI:
+    settings = get_settings()
     assert_admin_configured(settings)
     get_config()
     if not llm_available():
@@ -40,7 +47,7 @@ def create_app() -> FastAPI:
         "allow_methods": ["*"],
         "allow_headers": ["*"],
     }
-    regex = settings.cors_origin_regex.strip()
+    regex = settings.effective_cors_origin_regex
     if regex:
         cors_kwargs["allow_origin_regex"] = regex
     application.add_middleware(CORSMiddleware, **cors_kwargs)
@@ -51,9 +58,12 @@ def create_app() -> FastAPI:
     application.include_router(admin.router)
 
     widget_dir = ROOT / "widget" / "dist"
+    public_widget = ROOT / "public" / "widget"
     public_dir = ROOT / "public"
     if widget_dir.exists():
         application.mount("/widget", StaticFiles(directory=widget_dir), name="widget")
+    elif public_widget.exists():
+        application.mount("/widget", StaticFiles(directory=public_widget), name="widget")
     if public_dir.exists() and not os.environ.get("VERCEL"):
         application.mount("/", StaticFiles(directory=public_dir, html=True), name="public")
     return application

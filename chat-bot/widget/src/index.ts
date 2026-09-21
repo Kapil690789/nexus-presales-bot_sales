@@ -18,8 +18,40 @@ type Brand = {
   position: string; widget_title: string; widget_subtitle: string; placeholder: string;
 };
 
-const script = document.currentScript as HTMLScriptElement | null;
-const API = (script?.dataset.api || window.location.origin).replace(/\/$/, "");
+const FALLBACK_BRAND: Brand = {
+  primary: "#1A2B4C",
+  accent: "#1A2B4C",
+  background: "#FFFFFF",
+  surface: "#FFFFFF",
+  text: "#1A2B4C",
+  muted: "#5C6670",
+  success: "#10B981",
+  radius_px: 16,
+  logo_text: "DevConsult",
+  launcher_text: "Talk to an advisor",
+  launcher_subtitle: "Scope, estimate, and next steps",
+  position: "bottom-right",
+  widget_title: "DevConsult Advisor",
+  widget_subtitle: "Online",
+  placeholder: "Type your message...",
+};
+
+declare global {
+  interface Window {
+    CHAT_BOT_URL?: string;
+  }
+}
+
+function resolveApi(): string {
+  const tagged = document.querySelector<HTMLScriptElement>('script[src*="consultant.js"][data-api]');
+  const fromScript = (tagged?.dataset.api || "").trim();
+  if (fromScript) return fromScript.replace(/\/$/, "");
+  const fromWindow = String(window.CHAT_BOT_URL || "").trim();
+  if (fromWindow) return fromWindow.replace(/\/$/, "");
+  return window.location.origin.replace(/\/$/, "");
+}
+
+let API = "";
 
 let onBookSlot: ((iso: string, windowValue: string, label: string) => void) | null = null;
 
@@ -260,13 +292,28 @@ async function readSSE(
   }
 }
 
+async function loadPublicConfig(): Promise<{ brand: Brand; nda?: { title?: string; body?: string; label?: string } } | null> {
+  try {
+    const response = await fetch(`${API}/api/v1/public-config`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data?.brand) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 async function boot() {
   if (document.getElementById("nl-widget-root")) return;
   const style = el("style");
   style.textContent = css;
   document.head.appendChild(style);
 
-  const cfg = await fetch(`${API}/api/v1/public-config`).then((r) => r.json());
+  API = resolveApi();
+  const loaded = await loadPublicConfig();
+  const reachable = loaded !== null;
+  const cfg = loaded || { brand: FALLBACK_BRAND };
   const brand: Brand = cfg.brand;
   const root = el("div", "nl-root");
   root.id = "nl-widget-root";
@@ -413,6 +460,10 @@ async function boot() {
     if (closed) input.placeholder = "Conversation ended — start a new one";
     else input.placeholder = brand.placeholder;
   };
+  if (!reachable) {
+    addMsg("assistant", md("Cannot reach the advisor API right now. The chat button is available, but messages will not send until the service is healthy."));
+    setConversationClosed(true);
+  }
   const applyMeta = (data: Record<string, unknown>) => {
     bookBtn.hidden = !data.can_book || data.stage === "handoff";
     if (data.nda_accepted) {

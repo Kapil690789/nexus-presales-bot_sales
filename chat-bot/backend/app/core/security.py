@@ -104,7 +104,7 @@ def origin_allowed(request: Request) -> None:
         return
     if origin in origins:
         return
-    pattern = settings.cors_origin_regex.strip()
+    pattern = settings.effective_cors_origin_regex
     if pattern and re.fullmatch(pattern, origin):
         return
     raise HTTPException(status_code=403, detail="Origin is not allowed")

@@ -101,7 +101,7 @@ The bundled website uses [`../website/bot-config.js`](../website/bot-config.js) 
 
 This folder is one Vercel project (Root Directory `chat-bot`). Import [`.env.example`](.env.example), then fill `CORS_ORIGINS`, `PUBLIC_BASE_URL`, and `GOOGLE_REDIRECT_URI` after you have the production URLs. The website is a second Vercel project; see the [repo README](../README.md).
 
-The widget is built during the Vercel build (`npm --prefix widget ci && npm --prefix widget run build`). Python 3.12. `maxDuration` is 60s in [`vercel.json`](vercel.json).
+The widget is built during the Vercel build and copied to `public/widget/consultant.js` so the CDN can serve it. Python 3.12. `maxDuration` is 60s in [`vercel.json`](vercel.json); that file also packages `config/`, `content/`, widget dist, and admin templates into the function.
 
 On Vercel, RFP files go to `/tmp` unless `GCS_BUCKET` is set. Neon + the pooler URL needs `postgresql+pg8000://...&ssl=true`; a console `postgresql://` paste is rewritten at startup.
 

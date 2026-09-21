@@ -1,12 +1,18 @@
-.PHONY: install widget run docker test smoke ingest ingest-dry
+.PHONY: install widget copy-widget run docker test smoke ingest ingest-dry
 
 install:
 	python3 -m venv .venv
 	.venv/bin/pip install -r requirements.txt
 	cd widget && npm install && npm run build
+	$(MAKE) copy-widget
 
 widget:
 	cd widget && npm install && npm run build
+	$(MAKE) copy-widget
+
+copy-widget:
+	mkdir -p public/widget
+	cp widget/dist/consultant.js public/widget/consultant.js
 
 run:
 	PYTHONPATH=. .venv/bin/uvicorn backend.app.main:app --reload --port 8000

@@ -1,4 +1,4 @@
-from backend.app.core.settings import Settings, normalize_database_url
+from backend.app.core.settings import ROOT, Settings, VERCEL_ORIGIN_REGEX, normalize_database_url
 
 
 def test_normalize_neon_libpq_url() -> None:
@@ -50,3 +50,24 @@ def test_google_redirect_keeps_explicit_value() -> None:
         public_base_url="https://bot.example.com",
     )
     assert settings.google_redirect_uri == "http://localhost:8000/admin/google/callback"
+
+
+def test_relative_data_dirs_resolve_against_root() -> None:
+    settings = Settings(config_dir="./config", content_dir="./content", upload_dir="backend/uploads")
+    assert settings.config_dir == (ROOT / "config").resolve()
+    assert settings.content_dir == (ROOT / "content").resolve()
+    assert settings.upload_dir == (ROOT / "backend" / "uploads").resolve()
+    assert (settings.config_dir / "brand.yaml").is_file()
+
+
+def test_absolute_upload_dir_is_kept() -> None:
+    settings = Settings(upload_dir="/tmp/uploads")
+    assert settings.upload_dir.is_absolute()
+    assert settings.upload_dir.as_posix().endswith("/tmp/uploads")
+
+
+def test_empty_cors_falls_back_to_localhost_and_vercel() -> None:
+    settings = Settings(cors_origins="", cors_origin_regex="")
+    assert "http://localhost:3000" in settings.cors_origin_list
+    assert "http://localhost:8000" in settings.cors_origin_list
+    assert settings.effective_cors_origin_regex == VERCEL_ORIGIN_REGEX

@@ -18,20 +18,13 @@ make run
 ```
 
 Open [http://localhost:8000/](http://localhost:8000/) for the standalone advisor.  
-Admin: [http://localhost:8000/admin](http://localhost:8000/admin) (`admin` / `northline-admin`).
+Admin: [http://localhost:8000/admin](http://localhost:8000/admin) — HTTP Basic. Set `ADMIN_USERNAME` / `ADMIN_PASSWORD` in `.env`.
 
 Leave `LLM_API_KEY` empty to use the built-in fallback consultant (fully demoable offline).
 
 ```bash
 make docker
 make test
-```
-
-Cloud Run deploys **only** `chat-bot/`:
-
-```bash
-cd chat-bot
-gcloud builds submit --config cloudbuild.yaml
 ```
 
 See [`chat-bot/README.md`](chat-bot/README.md).
@@ -47,11 +40,47 @@ Keep the bot running on port 8000. Pages load `consultant.js` from `window.CHAT_
 
 See [`website/README.md`](website/README.md).
 
+## Deploy on Vercel (two projects)
+
+Create **two** Vercel projects from this GitHub repo. Do not deploy the repo root as a single project.
+
+### 1. Chat-bot
+
+1. New Project → this repo → **Root Directory** `chat-bot`.
+2. Settings → Environment Variables → import [`chat-bot/.env.example`](chat-bot/.env.example).
+3. Deploy. Copy the URL (`https://YOUR-BOT.vercel.app`).
+4. In the Neon SQL editor run `CREATE EXTENSION IF NOT EXISTS vector;` so RAG can use pgvector. Without it the bot still runs (in-process fallback).
+
+### 2. Website
+
+1. New Project → this repo → **Root Directory** `website`.
+2. Import [`website/.env.example`](website/.env.example).
+3. Set `CHAT_BOT_URL` to the bot URL from step 1 (no trailing slash).
+4. Deploy. Copy the URL (`https://YOUR-SITE.vercel.app`).
+
+### 3. After both URLs exist
+
+Update the **bot** project env and redeploy:
+
+```
+CORS_ORIGINS=https://YOUR-SITE.vercel.app,https://YOUR-BOT.vercel.app
+PUBLIC_BASE_URL=https://YOUR-BOT.vercel.app
+GOOGLE_REDIRECT_URI=https://YOUR-BOT.vercel.app/admin/google/callback
+```
+
+Optional: set `CORS_ORIGIN_REGEX` to `https://.*\.vercel\.app` so Preview deployments can call the API. Blank CORS values also fall back to localhost plus that Vercel regex.
+
+In Google Cloud OAuth, add `https://YOUR-BOT.vercel.app/admin/google/callback` as an authorized redirect URI, then connect the calendar at `/admin/calendar`.
+
+RFP uploads on Vercel are stored under `/tmp` and are not durable unless you later set `GCS_BUCKET`.
+
+Cloud Run remains supported for the bot only (`cd chat-bot && gcloud builds submit --config cloudbuild.yaml`). See [`chat-bot/README.md`](chat-bot/README.md).
+
 ## Embed on any site
 
 ```html
-<script src="https://YOUR_CLOUD_RUN_URL/widget/consultant.js"
-        data-api="https://YOUR_CLOUD_RUN_URL"
+<script src="https://YOUR_BOT_URL/widget/consultant.js"
+        data-api="https://YOUR_BOT_URL"
         async></script>
 ```
 

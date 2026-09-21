@@ -1,6 +1,6 @@
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
@@ -24,12 +24,19 @@ from backend.app.rag.store import corpus_stats, get_store
 from backend.app.services.sessions import loads
 
 router = APIRouter()
-templates = Jinja2Templates(directory=str(ROOT / "backend" / "app" / "admin" / "templates"))
+_TEMPLATES_DIR = ROOT / "backend" / "app" / "admin" / "templates"
+templates = Jinja2Templates(directory=str(_TEMPLATES_DIR)) if _TEMPLATES_DIR.is_dir() else None
+
+
+def _page(request: Request, name: str, context: dict) -> HTMLResponse:
+    if templates is None:
+        raise HTTPException(status_code=503, detail="Admin templates are not packaged.")
+    return templates.TemplateResponse(request, name, context)
 
 
 @router.get("/admin/calendar", response_class=HTMLResponse)
 def admin_calendar(request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
-    return templates.TemplateResponse(
+    return _page(
         request,
         "calendar.html",
         {"status": connection_status(db), "error": request.query_params.get("error") or ""},
@@ -74,7 +81,7 @@ def admin_google_disconnect(db: Session = Depends(get_db), _: str = Depends(requ
 def admin_home(request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     leads = db.scalars(select(LeadRow).order_by(LeadRow.created_at.desc())).all()
     sessions = db.scalars(select(SessionRow).order_by(SessionRow.updated_at.desc()).limit(40)).all()
-    return templates.TemplateResponse(request, "index.html", {"leads": leads, "sessions": sessions})
+    return _page(request, "index.html", {"leads": leads, "sessions": sessions})
 
 
 @router.get("/admin/sessions/{session_id}", response_class=HTMLResponse)
@@ -102,7 +109,7 @@ def admin_session(session_id: str, request: Request, db: Session = Depends(get_d
                 "event_id": payload.get("event_id") or "",
             }
         )
-    return templates.TemplateResponse(
+    return _page(
         request,
         "session.html",
         {
@@ -159,7 +166,7 @@ def _outcomes(db: Session, prior: int) -> list[dict]:
 @router.get("/admin/rag", response_class=HTMLResponse)
 def admin_rag(request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     config = get_config()
-    return templates.TemplateResponse(
+    return _page(
         request,
         "rag.html",
         {

@@ -9,6 +9,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = ROOT.parent
 
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000"
+)
+VERCEL_ORIGIN_REGEX = r"https://.*\.vercel\.app"
+
+
+def resolve_app_path(value: Path | str) -> Path:
+    """Resolve relative data dirs against the chat-bot root, not process cwd."""
+    path = Path(value)
+    if not path.is_absolute():
+        path = ROOT / path
+    return path.resolve()
+
 
 def _dotenv_value(path: Path, key: str) -> str:
     if not path.is_file():
@@ -59,7 +72,7 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = ""
     admin_password_hash: str = ""
-    cors_origins: str = "http://localhost:8000,http://127.0.0.1:8000"
+    cors_origins: str = DEFAULT_CORS_ORIGINS
     cors_origin_regex: str = ""
     upload_dir: Path = ROOT / "backend" / "uploads"
     gcs_bucket: str = ""
@@ -83,6 +96,9 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def normalize_runtime_urls(self):
         object.__setattr__(self, "database_url", normalize_database_url(self.database_url))
+        object.__setattr__(self, "config_dir", resolve_app_path(self.config_dir))
+        object.__setattr__(self, "content_dir", resolve_app_path(self.content_dir))
+        object.__setattr__(self, "upload_dir", resolve_app_path(self.upload_dir))
         redirect = self.google_redirect_uri.strip()
         public = self.public_base_url.strip().rstrip("/")
         if not redirect and public:
@@ -107,8 +123,24 @@ class Settings(BaseSettings):
         return self
 
     @property
-    def cors_origin_list(self) -> list[str]:
+    def explicit_cors_origins(self) -> list[str]:
         return [part.strip() for part in self.cors_origins.split(",") if part.strip()]
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        parts = self.explicit_cors_origins
+        if parts or self.cors_origin_regex.strip():
+            return parts
+        return [part.strip() for part in DEFAULT_CORS_ORIGINS.split(",") if part.strip()]
+
+    @property
+    def effective_cors_origin_regex(self) -> str:
+        pattern = self.cors_origin_regex.strip()
+        if pattern:
+            return pattern
+        if self.explicit_cors_origins:
+            return ""
+        return VERCEL_ORIGIN_REGEX
 
 
 @lru_cache

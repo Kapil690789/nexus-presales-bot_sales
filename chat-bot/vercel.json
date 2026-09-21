@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "backend/app/main.py": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "{config/**,content/**,widget/dist/**,backend/app/admin/templates/**}"
     }
   }
 }

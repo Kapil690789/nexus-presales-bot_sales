@@ -9,6 +9,10 @@ router = APIRouter()
 @router.get("/api/v1/public-config")
 def public_config() -> dict:
     config = get_config()
+    try:
+        live = is_live()
+    except Exception:
+        live = False
     return {
         "agency": {"name": config.agency.name, "tagline": config.agency.tagline, "ask_email": config.agency.ask_email},
         "brand": config.brand.model_dump(),
@@ -20,7 +24,7 @@ def public_config() -> dict:
         },
         "disclaimer": config.agency.disclaimer.strip(),
         "booking": {
-            "live": is_live(),
+            "live": live,
             "timezone": config.calendar.timezone,
             "duration_minutes": config.calendar.duration_minutes,
         },
