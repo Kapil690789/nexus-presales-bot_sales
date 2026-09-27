@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +17,29 @@ def uploads_root() -> Path:
     if os.environ.get("VERCEL"):
         return Path("/tmp/presales-uploads")
     return ROOT / "backend" / "uploads"
+
+
+def normalize_database_url(url: str) -> str:
+    """Use pg8000 for Postgres and drop libpq SSL query params.
+
+    pg8000 1.31+ rejects ``connect(ssl=True)``. ``ssl=true`` on the URL becomes
+    that call and raises TypeError. TLS is applied with ``ssl_context`` instead.
+    """
+    url = (url or "").strip()
+    if url.startswith("postgresql://"):
+        url = "postgresql+pg8000://" + url[len("postgresql://") :]
+    elif url.startswith("postgres://"):
+        url = "postgresql+pg8000://" + url[len("postgres://") :]
+    if url.startswith("postgresql+pg8000://"):
+        parts = urlsplit(url)
+        query = dict(parse_qsl(parts.query, keep_blank_values=True))
+        query.pop("channel_binding", None)
+        query.pop("sslmode", None)
+        query.pop("ssl", None)
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
+    if os.environ.get("VERCEL") and url == DEFAULT_SQLITE_URL:
+        return VERCEL_SQLITE_URL
+    return url
 
 
 class Settings(BaseSettings):
@@ -51,15 +75,8 @@ class Settings(BaseSettings):
     llm_calls_per_ip_per_hour: int = 60
 
     @model_validator(mode="after")
-    def normalize_database_url(self):
-        url = (self.database_url or "").strip()
-        if url.startswith("postgresql://"):
-            url = "postgresql+pg8000://" + url[len("postgresql://") :]
-        elif url.startswith("postgres://"):
-            url = "postgresql+pg8000://" + url[len("postgres://") :]
-        elif os.environ.get("VERCEL") and url == DEFAULT_SQLITE_URL:
-            url = VERCEL_SQLITE_URL
-        self.database_url = url
+    def apply_database_url(self):
+        self.database_url = normalize_database_url(self.database_url)
         return self
 
     @property

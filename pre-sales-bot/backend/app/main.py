@@ -20,18 +20,21 @@ log = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_application: FastAPI):
-    settings = get_settings()
     try:
-        uploads_root().mkdir(parents=True, exist_ok=True)
-        init_db()
-        with SessionLocal() as db:
-            ingest_all(db)
+        settings = get_settings()
+        # Indexing and database setup stay off the Vercel cold start. The first
+        # database request runs them, so a hung database cannot fail every route.
+        if not os.environ.get("VERCEL"):
+            uploads_root().mkdir(parents=True, exist_ok=True)
+            init_db()
+            with SessionLocal() as db:
+                ingest_all(db)
+        if embedding_backend() == "hash" and not os.environ.get("VERCEL"):
+            log.warning("Using the local hash embedder. Install sentence-transformers for BAAI/bge-small-en-v1.5.")
+        if not settings.llm_api_key.strip():
+            log.warning("LLM_API_KEY is empty. Answers stay grounded in retrieved notes without generation.")
     except Exception:
-        log.exception("Startup index failed")
-    if embedding_backend() == "hash" and not os.environ.get("VERCEL"):
-        log.warning("Using the local hash embedder. Install sentence-transformers for BAAI/bge-small-en-v1.5.")
-    if not settings.llm_api_key.strip():
-        log.warning("LLM_API_KEY is empty. Answers stay grounded in retrieved notes without generation.")
+        log.exception("Startup failed")
     yield
 
 

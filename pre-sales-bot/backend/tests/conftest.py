@@ -45,6 +45,9 @@ def _clear_settings():
     _message_hits.clear()
     _llm_session_counts.clear()
     _llm_ip_hits.clear()
+    from backend.app.models import db as dbmod
+
+    dbmod._ready = False
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

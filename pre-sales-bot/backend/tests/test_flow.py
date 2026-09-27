@@ -30,14 +30,36 @@ def test_health_and_widget(client):
     assert client.get("/api/v1/public-config", params={"tenant": "missing"}).status_code == 404
 
 
-def test_vercel_auto_embedder_stays_on_hash(monkeypatch):
+def test_public_widget_matches_source():
+    from backend.app.core.settings import ROOT
+
+    source = (ROOT / "widget" / "consultant.js").read_text(encoding="utf-8")
+    public = (ROOT / "public" / "widget" / "consultant.js").read_text(encoding="utf-8")
+    assert source == public
+    assert "dataset.tenant" in public
+
+
+def test_postgres_url_strips_ssl_params():
+    from backend.app.core.settings import Settings
+
+    settings = Settings(
+        database_url="postgresql://user:pass@host/db?sslmode=require&ssl=true&channel_binding=require"
+    )
+    assert settings.database_url.startswith("postgresql+pg8000://")
+    assert "sslmode" not in settings.database_url
+    assert "ssl=true" not in settings.database_url
+    assert "channel_binding" not in settings.database_url
+
+
+def test_vercel_always_uses_hash_embedder(monkeypatch):
     monkeypatch.setenv("VERCEL", "1")
-    monkeypatch.setenv("EMBEDDING_BACKEND", "auto")
     from backend.app.core.settings import get_settings
     from backend.app.rag.embeddings import embedding_backend
 
-    get_settings.cache_clear()
-    assert embedding_backend() == "hash"
+    for choice in ("auto", "sentence-transformers", "hash"):
+        monkeypatch.setenv("EMBEDDING_BACKEND", choice)
+        get_settings.cache_clear()
+        assert embedding_backend() == "hash"
 
 
 def test_production_default_password_still_serves_public_routes(monkeypatch):

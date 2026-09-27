@@ -5,7 +5,6 @@ from collections import defaultdict
 from contextvars import ContextVar, Token
 from time import time
 
-import bcrypt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
@@ -37,6 +36,10 @@ def password_matches(password: str, settings: Settings | None = None) -> bool:
     settings = settings or get_settings()
     hashed = settings.admin_password_hash.strip()
     if hashed:
+        try:
+            import bcrypt
+        except ImportError:
+            return False
         try:
             return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
         except (ValueError, TypeError):

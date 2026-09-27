@@ -2,7 +2,8 @@
 .env.*
 !.env.example
 
-models/
+# Downloaded embedding weights only. backend/app/models is application code.
+/models/
 backend/uploads/
 *.db
 *.db-journal
