@@ -53,16 +53,35 @@ def complete_json(system: str, user: str) -> dict[str, Any]:
     except LLMError:
         raise
     except Exception as exc:
-        log.warning("Model call failed (%s). The answer continues from project notes.", type(exc).__name__)
+        log.warning(
+            "Model call failed (%s): %s. The answer continues from project notes.",
+            type(exc).__name__,
+            _public_error(exc),
+        )
         raise LLMError("The model is unavailable") from exc
+
+
+def _public_error(exc: Exception) -> str:
+    text = " ".join(str(exc).split())
+    key = get_settings().llm_api_key.strip()
+    if key:
+        text = text.replace(key, "[redacted]")
+    return text[:300]
 
 
 def _openai(system: str, user: str, api_key: str, model: str, base_url: str) -> dict[str, Any]:
     from openai import OpenAI
 
-    kwargs: dict[str, Any] = {"api_key": api_key}
+    kwargs: dict[str, Any] = {"api_key": api_key, "timeout": 20.0}
     if base_url.strip():
+        referer = get_settings().public_base_url.strip() or "http://127.0.0.1:8010"
         kwargs["base_url"] = base_url.strip()
+        # Quota errors are not transient. Retrying them burns the free daily cap.
+        kwargs["max_retries"] = 0
+        kwargs["default_headers"] = {
+            "HTTP-Referer": referer,
+            "X-Title": "pre-sales-bot",
+        }
     client = OpenAI(**kwargs)
     create_kwargs: dict[str, Any] = {
         "model": model or "gpt-4.1-mini",
@@ -92,7 +111,16 @@ def _anthropic(system: str, user: str, api_key: str, model: str) -> dict[str, An
 
 def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
     import google.generativeai as genai
+    from google.api_core import exceptions, retry
 
     genai.configure(api_key=api_key)
     llm = genai.GenerativeModel(model or "gemini-3.8-flash", system_instruction=system)
-    return _parse_json(llm.generate_content(user).text or "{}")
+    # Quota errors are not transient. Retrying them blocks the chat for minutes.
+    limited = retry.Retry(
+        predicate=retry.if_exception_type(exceptions.ServiceUnavailable, exceptions.DeadlineExceeded),
+        initial=0.5,
+        maximum=2,
+        timeout=8,
+    )
+    response = llm.generate_content(user, request_options={"retry": limited, "timeout": 8})
+    return _parse_json(response.text or "{}")

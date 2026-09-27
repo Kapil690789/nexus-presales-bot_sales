@@ -1,5 +1,6 @@
 from sqlalchemy import func, select
 
+from backend.app.core.settings import get_settings
 from backend.app.memory.rewrite import rewrite_query
 from backend.app.models.db import SessionLocal
 from backend.app.models.entities import ChunkRow, EventRow, FeedbackPairRow, SessionRow, TenantRow
@@ -282,14 +283,36 @@ def test_fallback_and_grader_withholds(client, monkeypatch):
     body = weak.json()
     assert body["route"] == "fallback"
     assert "assistant" in body["message"].lower()
+    assert "short call" not in body["message"].lower()
     assert "Zephyr" not in body["message"]
-    assert any(chip["field"] == "booking_window" for chip in body["chips"])
+    assert {chip["field"] for chip in body["chips"]} == {"service"}
+    assert not any(chip["field"] == "booking_window" for chip in body["chips"])
 
     monkeypatch.setattr("backend.app.rag.grade.llm_available", lambda: True)
     monkeypatch.setattr("backend.app.rag.grade.complete_json", lambda *_a, **_k: {"relevant": False})
     rejected = client.post(f"/api/v1/sessions/{sid}/messages", json={"content": ZEPHYR})
     assert rejected.json()["route"] == "fallback"
     assert "Zephyr" not in rejected.json()["message"]
+
+
+def test_quota_during_discovery_does_not_offer_booking(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "llm_api_key", "test-key")
+    monkeypatch.setattr(get_settings(), "llm_provider", "gemini")
+
+    def quota(*_args, **_kwargs):
+        raise RuntimeError("429 quota exceeded")
+
+    monkeypatch.setattr("backend.app.core.llm._gemini", quota)
+    session = client.post("/api/v1/sessions", json={"tenant": "demo"}).json()
+    response = client.post(
+        f"/api/v1/sessions/{session['session_id']}/messages",
+        json={"content": "Mobile app", "chip": {"field": "service", "value": "mobile_app", "label": "Mobile app"}},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["route"] == "discovery"
+    assert "What should this first version actually do for people?" in body["message"]
+    assert not any(chip["field"] == "booking_window" for chip in body["chips"])
 
 
 def test_memory_follow_up(client):
@@ -441,6 +464,27 @@ def test_suggestion_chips_cover_open_questions(client, monkeypatch):
     assert len(calls) == 1
     assert {chip["field"] for chip in users["chips"]} == {"users"}
     assert {chip["value"] for chip in users["chips"]} == {"consumers", "business", "internal"}
+
+
+def test_suggestion_chips_when_model_fails(client, monkeypatch):
+    from backend.app.core.llm import LLMError
+
+    def fail(_system, _user):
+        raise LLMError("The model is unavailable")
+
+    monkeypatch.setattr("backend.app.agents.suggestions.complete_json", fail)
+    monkeypatch.setattr("backend.app.agents.suggestions.llm_available", lambda: True)
+
+    session = client.post("/api/v1/sessions", json={"tenant": "demo"}).json()
+    response = client.post(
+        f"/api/v1/sessions/{session['session_id']}/messages",
+        json={"content": "Mobile app", "chip": {"field": "service", "value": "mobile_app", "label": "Mobile app"}},
+    )
+    assert response.status_code == 200, response.text
+    chips = response.json()["chips"]
+    assert chips
+    assert {chip["field"] for chip in chips} == {"goal"}
+    assert all(chip["label"] and chip["value"] for chip in chips)
 
 
 def test_feedback_and_booking(client, monkeypatch):

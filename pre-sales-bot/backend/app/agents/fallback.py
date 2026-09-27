@@ -9,7 +9,9 @@ def fallback_message(config: TenantConfig, brief: ProjectBrief, estimate: dict |
     parts = [
         f"I'm {name}'s assistant, and I don't have a matching source in our project library for that."
     ]
-    if estimate and brief_ready(brief):
+    if not brief_ready(brief):
+        return " ".join(parts)
+    if estimate:
         parts.append(
             f"If it helps, a clearly indicative range from the details so far is {estimate['range_label']}. That is not a quote."
         )

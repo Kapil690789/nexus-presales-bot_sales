@@ -160,12 +160,13 @@ def run_turn(
         chunk_ids = []
         route = "fallback"
     extra = _continuation(brief)
-    chips = [BOOK_CHIP]
     if extra:
         message = f"{message}\n\n{extra[0]}"
-        chips = [BOOK_CHIP] + extra[1]
+        chips = list(extra[1])
     elif brief_ready(brief):
         chips = [BOOK_CHIP, PORTFOLIO_CHIP]
+    else:
+        chips = []
     return _finish(
         session, brief, contact, summary,
         message=message,

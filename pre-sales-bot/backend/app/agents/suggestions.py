@@ -5,6 +5,12 @@ from backend.app.core.guard import UNTRUSTED_RULE, wrap_visitor
 from backend.app.core.llm import LLMError, complete_json, llm_available
 from backend.app.screening.slots import BOOK_CHIP, PORTFOLIO_CHIP, chips_for_field
 
+_GOAL_FALLBACK = (
+    {"label": "Book appointments", "field": "goal", "value": "Let people book appointments"},
+    {"label": "Manage customers", "field": "goal", "value": "Help the team manage customers"},
+    {"label": "Take payments", "field": "goal", "value": "Let customers pay in the product"},
+)
+
 _SYSTEM = (
     "You suggest tappable reply chips for a pre-sales consultant. "
     'Return JSON {"chips": [{"label": "short label", "value": "stored answer"}]}. '
@@ -27,6 +33,10 @@ def ensure_chips(brief: ProjectBrief, message: str, passages: list[str] | None =
     suggested = _llm_chips(field, message, passages or [])
     if suggested:
         return suggested
+    if field == "goal":
+        return [dict(item) for item in _GOAL_FALLBACK]
+    if field:
+        return []
     return [dict(BOOK_CHIP), dict(PORTFOLIO_CHIP)]
 
 
