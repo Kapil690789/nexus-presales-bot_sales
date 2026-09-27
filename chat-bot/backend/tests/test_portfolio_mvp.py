@@ -16,6 +16,15 @@ def test_mvp_puts_goal_first() -> None:
     assert rec["mvp"][0].endswith("Cut close time in half")
 
 
+def test_mvp_includes_named_features() -> None:
+    rec = recommend_mvp(
+        ProjectBrief(service="web_app", goal="Cut close time in half", features=["Payments", "Admin"])
+    )
+    blob = " ".join(rec["mvp"])
+    assert "Payments" in blob
+    assert "Admin" in blob
+
+
 def test_portfolio_prefers_matching_service() -> None:
     config = load_config()
     matches = match_portfolio(ProjectBrief(service="ai_product", industry="professional_services", ai_features=["rfp"]), config.portfolio)

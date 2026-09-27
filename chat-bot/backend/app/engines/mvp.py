@@ -44,6 +44,14 @@ def recommend_mvp(brief: ProjectBrief) -> dict:
     mvp, later = list(template["mvp"]), list(template["later"])
     if brief.goal:
         mvp.insert(0, f"Prove this outcome: {brief.goal}")
+    named_features = [item.strip() for item in (brief.features or []) if item.strip()]
+    if named_features:
+        insert_at = 1 if brief.goal else 0
+        mvp[insert_at:insert_at] = [f"v1: {item}" for item in named_features[:4]]
+        if len(named_features) > 4:
+            later = [f"Later: {item}" for item in named_features[4:6]] + later
+    if brief.user_flow and brief.user_flow not in {"not_specified", "skipped", "none"}:
+        mvp.append(f"Follow this journey: {brief.user_flow[:160]}")
     if brief.integrations:
         named = [item for item in brief.integrations if item.lower() not in {"none", "no", "n/a"}]
         if named:

@@ -1,7 +1,7 @@
 from backend.app.agents import orchestrator
 from backend.app.agents.brief import ProjectBrief, brief_ready
 from backend.app.agents.chips import DISCOVERY_PROMPTS, chips_for_field
-from backend.app.agents.extract import apply_brief_updates, capture_goal_reply, extract_from_text
+from backend.app.agents.extract import apply_brief_updates, capture_features_reply, capture_goal_reply, extract_from_text
 from backend.app.agents.transcript import render_transcript
 from backend.app.config_loader.loader import load_config
 
@@ -42,6 +42,11 @@ def test_apply_brief_updates_merges_and_rejects_invalid() -> None:
     assert brief.timeline == "1_3_months"
     assert brief.decision_role == "founder_or_exec"
     assert "salesforce" in brief.integrations
+    brief = apply_brief_updates(brief, {"features": ["Payments"], "user_flow": "not_specified"}, config)
+    assert brief.features == ["Payments"]
+    assert brief.user_flow == "not_specified"
+    skipped = apply_brief_updates(ProjectBrief(), {"features": []}, config)
+    assert skipped.features == []
 
 
 def test_apply_brief_updates_does_not_blank_existing() -> None:
@@ -401,3 +406,184 @@ def test_out_of_scope_typed_thanks_closes() -> None:
     assert result.stage == "disqualified"
     assert result.chips == []
     assert config.agency.out_of_scope_thanks.strip() in result.message
+
+
+def test_offline_after_goal_asks_features_without_noted() -> None:
+    result = orchestrator.run_turn(
+        config=load_config(),
+        brief=ProjectBrief(service="web_app"),
+        contact={},
+        nda_accepted=False,
+        booking=None,
+        user_text="Ops console for distributors to track orders and inventory alerts",
+        chip=None,
+        page_opening="Building a web product?",
+        extra_questions=[],
+    )
+    assert result.brief.goal
+    assert result.brief.features is None
+    assert not result.message.lower().lstrip().startswith("noted")
+    assert "noted." not in result.message.lower()
+    assert "must-have" not in result.message.lower()
+    assert DISCOVERY_PROMPTS["features"] in result.message
+    assert {chip["field"] for chip in result.chips} == {"features"}
+
+
+def test_offline_unclear_text_asks_clarifying_question() -> None:
+    result = orchestrator.run_turn(
+        config=load_config(),
+        brief=ProjectBrief(
+            service="web_app",
+            goal="Ops console for distributors",
+            features=[],
+            user_flow="not_specified",
+        ),
+        contact={},
+        nda_accepted=False,
+        booking=None,
+        user_text="it should work like the old plant-maintenance module we used to run",
+        chip=None,
+        page_opening="Building a web product?",
+        extra_questions=[],
+    )
+    assert "sure i have this right" in result.message.lower()
+    assert DISCOVERY_PROMPTS["platforms"] not in result.message
+    assert not result.message.lower().lstrip().startswith("noted")
+
+
+def test_offline_unclear_does_not_loop_after_clarifier() -> None:
+    result = orchestrator.run_turn(
+        config=load_config(),
+        brief=ProjectBrief(
+            service="web_app",
+            goal="Ops console for distributors",
+            features=[],
+            user_flow="not_specified",
+        ),
+        contact={},
+        nda_accepted=False,
+        booking=None,
+        user_text="it should work like the old plant-maintenance module we used to run",
+        chip=None,
+        page_opening="Building a web product?",
+        extra_questions=[],
+        last_assistant="I want to be sure I have this right — when you say flibbert, could you say a bit more?",
+    )
+    assert DISCOVERY_PROMPTS["platforms"] in result.message
+    assert "sure i have this right" not in result.message.lower()
+
+
+def test_feature_skip_chip_then_optional_flow() -> None:
+    result = orchestrator.run_turn(
+        config=load_config(),
+        brief=ProjectBrief(service="web_app", goal="Ops console for distributors"),
+        contact={},
+        nda_accepted=False,
+        booking=None,
+        user_text="Not sure yet — give me a range",
+        chip={"label": "Not sure yet — give me a range", "field": "features", "value": "skipped"},
+        page_opening="Building a web product?",
+        extra_questions=[],
+    )
+    assert result.brief.features == []
+    assert DISCOVERY_PROMPTS["user_flow"] in result.message
+    assert any(chip["field"] == "user_flow" for chip in result.chips)
+
+    skipped_flow = orchestrator.run_turn(
+        config=load_config(),
+        brief=result.brief,
+        contact={},
+        nda_accepted=False,
+        booking=None,
+        user_text="No flow yet",
+        chip={"label": "No flow yet", "field": "user_flow", "value": "not_specified"},
+        page_opening="Building a web product?",
+        extra_questions=[],
+    )
+    assert skipped_flow.brief.user_flow == "not_specified"
+    assert DISCOVERY_PROMPTS["platforms"] in skipped_flow.message
+
+
+def test_feature_skip_does_not_block_estimate() -> None:
+    brief = ProjectBrief(
+        service="web_app",
+        goal="Ops console for distributors",
+        features=[],
+        user_flow="not_specified",
+        platforms=["web"],
+        timeline="1_3_months",
+        budget_band="40_80k",
+        decision_role="founder_or_exec",
+        users="internal",
+        integrations=["none"],
+        company_size="smb",
+    )
+    result = orchestrator.run_turn(
+        config=load_config(),
+        brief=brief,
+        contact={},
+        nda_accepted=False,
+        booking=None,
+        user_text="Show me a range",
+        chip=None,
+        page_opening="Building a web product?",
+        extra_questions=[],
+    )
+    assert brief_ready(result.brief)
+    assert result.estimate
+    assert result.stage in {"estimation", "solutioning"}
+
+
+def test_ask_field_features_attaches_feature_chips(monkeypatch) -> None:
+    config = load_config()
+
+    def fake_complete_json(system: str, user: str) -> dict:
+        return {
+            "brief_updates": {"goal": "Marketplace for independent growers"},
+            "ask_field": "features",
+            "message": "Which capabilities matter in the first release?",
+            "chips": [],
+            "stage": "discovery",
+        }
+
+    monkeypatch.setattr(orchestrator, "llm_available", lambda: True)
+    monkeypatch.setattr(orchestrator, "complete_json", fake_complete_json)
+    result = orchestrator.run_turn(
+        config=config,
+        brief=ProjectBrief(service="mobile_app", platforms=["ios"]),
+        contact={},
+        nda_accepted=False,
+        booking=None,
+        user_text="A marketplace for growers",
+        chip=None,
+        page_opening="Planning a mobile product?",
+        extra_questions=[],
+    )
+    assert {chip["field"] for chip in result.chips} == {"features"}
+    labels = {chip["label"] for chip in result.chips}
+    assert "Not sure yet — give me a range" in labels
+
+
+def test_handoff_summary_includes_features_and_flow() -> None:
+    config = load_config()
+    brief = ProjectBrief(
+        service="web_app",
+        goal="Ops console",
+        features=["Login & accounts", "Payments"],
+        user_flow="Sign up → create order → notify buyer",
+        platforms=["web"],
+        timeline="1_3_months",
+        budget_band="40_80k",
+        decision_role="founder_or_exec",
+    )
+    summary = orchestrator.build_handoff_summary(brief, {"score": 80, "band": "hot"}, None, None, None, None, {}, config)
+    assert "Login & accounts" in summary
+    assert "Sign up" in summary
+
+
+def test_offline_feature_list_is_captured() -> None:
+    brief = ProjectBrief(service="web_app", goal="Ops console")
+    brief = capture_features_reply(brief, "login, payments, and an admin dashboard")
+    assert brief.features
+    assert any("login" in item.lower() for item in brief.features)
+    assert any("payment" in item.lower() for item in brief.features)

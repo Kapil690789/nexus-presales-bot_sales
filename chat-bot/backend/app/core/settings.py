@@ -1,13 +1,20 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import os
 
 from pydantic import model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    DotEnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = ROOT.parent
+KNOWN_ENVIRONMENTS = ("development", "production")
 
 DEFAULT_CORS_ORIGINS = (
     "http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000"
@@ -23,17 +30,84 @@ def resolve_app_path(value: Path | str) -> Path:
     return path.resolve()
 
 
-def _dotenv_value(path: Path, key: str) -> str:
+def parse_dotenv(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
     if not path.is_file():
-        return ""
-    prefix = f"{key}="
+        return values
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
-        if not line or line.startswith("#") or not line.upper().startswith(prefix.upper()):
+        if not line or line.startswith("#") or "=" not in line:
             continue
-        value = line.split("=", 1)[1].strip().strip("'").strip('"')
-        return value.strip()
-    return ""
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key:
+            continue
+        values[key] = value.strip().strip("'").strip('"')
+    return values
+
+
+def _dotenv_value(path: Path, key: str) -> str:
+    return parse_dotenv(path).get(key, "").strip()
+
+
+def resolve_environment_name() -> str:
+    raw = os.environ.get("ENVIRONMENT")
+    if raw is None or not str(raw).strip():
+        raw = _dotenv_value(ROOT / ".env", "ENVIRONMENT") or _dotenv_value(
+            REPO_ROOT / ".env", "ENVIRONMENT"
+        )
+    name = (raw or "development").strip().lower()
+    if name not in KNOWN_ENVIRONMENTS:
+        return "development"
+    return name
+
+
+def settings_env_files() -> tuple[str, ...]:
+    """Named env first, then `.env` so local secrets overlay the checklist."""
+    environment = resolve_environment_name()
+    files: list[str] = []
+    for base in (REPO_ROOT, ROOT):
+        files.append(str(base / f".env.{environment}"))
+        files.append(str(base / ".env"))
+    return tuple(files)
+
+
+def dotenv_search_paths() -> tuple[Path, ...]:
+    environment = resolve_environment_name()
+    paths: list[Path] = []
+    for base in (ROOT, REPO_ROOT):
+        paths.append(base / ".env")
+        paths.append(base / f".env.{environment}")
+        for name in KNOWN_ENVIRONMENTS:
+            path = base / f".env.{name}"
+            if path not in paths:
+                paths.append(path)
+    return tuple(paths)
+
+
+def missing_env_keys(path: Path) -> list[str]:
+    return [key for key, value in parse_dotenv(path).items() if not value.strip()]
+
+
+def print_missing_env_keys() -> None:
+    """Print which checklist fields are blank. Never prints secret values."""
+    files = (
+        ("development", ROOT / ".env.development"),
+        ("production", ROOT / ".env.production"),
+        ("local overlay", ROOT / ".env"),
+        ("website development", REPO_ROOT / "website" / ".env.development"),
+        ("website production", REPO_ROOT / "website" / ".env.production"),
+    )
+    for label, path in files:
+        if not path.is_file():
+            print(f"{label}: file missing ({path})")
+            continue
+        parsed = parse_dotenv(path)
+        filled = [key for key, value in parsed.items() if value.strip()]
+        blank = [key for key, value in parsed.items() if not value.strip()]
+        print(f"{label} ({path.name})")
+        print(f"  filled: {', '.join(filled) or '(none)'}")
+        print(f"  missing: {', '.join(blank) or '(none)'}")
 
 
 def normalize_database_url(url: str) -> str:
@@ -58,13 +132,40 @@ def normalize_database_url(url: str) -> str:
     return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), parts.fragment))
 
 
+class SkipEmptyDotEnvSettingsSource(DotEnvSettingsSource):
+    """Blank checklist fields mean 'missing', not 'set to empty'."""
+
+    def __call__(self) -> dict[str, Any]:
+        return {
+            key: value
+            for key, value in super().__call__().items()
+            if value is not None and str(value).strip() != ""
+        }
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=(str(REPO_ROOT / ".env"), str(ROOT / ".env")),
+        env_file=settings_env_files(),
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False,
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            env_settings,
+            SkipEmptyDotEnvSettingsSource(settings_cls),
+            file_secret_settings,
+        )
 
     environment: str = "development"
     port: int = 8000
@@ -117,7 +218,7 @@ class Settings(BaseSettings):
             return self
         if self.llm_api_key.strip():
             return self
-        for path in (ROOT / ".env", REPO_ROOT / ".env"):
+        for path in dotenv_search_paths():
             value = _dotenv_value(path, "LLM_API_KEY")
             if value:
                 object.__setattr__(self, "llm_api_key", value)

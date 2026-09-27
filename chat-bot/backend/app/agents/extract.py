@@ -1,7 +1,7 @@
 import re
 from typing import Any
 
-from backend.app.agents.brief import ProjectBrief
+from backend.app.agents.brief import FLOW_SKIPPED, ProjectBrief, is_features_skip
 
 SERVICE_ALIASES = {
     "mobile app": "mobile_app",
@@ -63,10 +63,12 @@ SMALLTALK_RE = re.compile(
     r"^(hi|hello|hey|thanks|thank you|ok|okay|yo|good morning|good afternoon)[\s!.]*$",
     re.I,
 )
-LIST_FIELDS = {"platforms", "integrations", "ai_features", "constraints"}
+LIST_FIELDS = {"platforms", "integrations", "ai_features", "constraints", "features"}
 BOOL_FIELDS = {"auth", "admin", "realtime", "marketplace"}
-STRING_FIELDS = {"goal", "users", "industry"}
+STRING_FIELDS = {"goal", "users", "industry", "user_flow"}
 SKIP_GOAL_TOKENS = ("my email", "@", "nda", "book", "schedule")
+FEATURE_SKIP_RE = re.compile(r"\b(not sure|skip(?: it)?|give me a range|later|don't know|dont know)\b", re.I)
+FLOW_SKIP_RE = re.compile(r"\b(no flow|not yet|skip(?: it)?|don'?t have|no journey)\b", re.I)
 
 
 def _looks_like_marketing_site(text: str) -> bool:
@@ -157,6 +159,61 @@ def capture_goal_reply(brief: ProjectBrief, text: str) -> ProjectBrief:
     return brief
 
 
+def _split_features(text: str) -> list[str]:
+    parts = re.split(r"[\n,;]+|\band\b", text)
+    items: list[str] = []
+    for part in parts:
+        cleaned = re.sub(r"^\s*[-*]\s*", "", part).strip(" .")
+        if 2 <= len(cleaned) <= 80 and cleaned not in items:
+            items.append(cleaned)
+        if len(items) >= 8:
+            break
+    if len(items) >= 2:
+        return items
+    stripped = text.strip()[:160]
+    return [stripped] if stripped else []
+
+
+def capture_features_reply(brief: ProjectBrief, text: str, chip_field: str | None = None) -> ProjectBrief:
+    """Offline wizard: the answer to the features prompt becomes named capabilities."""
+    if brief.features is not None or not (text or "").strip():
+        return brief
+    if chip_field and chip_field != "features":
+        return brief
+    stripped = text.strip()
+    if SMALLTALK_RE.match(stripped) or len(stripped) < 4:
+        return brief
+    if any(token in stripped.lower() for token in SKIP_GOAL_TOKENS):
+        return brief
+    if FEATURE_SKIP_RE.search(stripped):
+        brief.features = []
+        return brief
+    items = _split_features(stripped)
+    if items:
+        brief.features = items
+    return brief
+
+
+def capture_user_flow_reply(brief: ProjectBrief, text: str, chip_field: str | None = None) -> ProjectBrief:
+    """Offline wizard: optional journey, or an explicit skip."""
+    if brief.user_flow is not None or not (text or "").strip():
+        return brief
+    if chip_field and chip_field != "user_flow":
+        return brief
+    stripped = text.strip()
+    if SMALLTALK_RE.match(stripped):
+        return brief
+    if FLOW_SKIP_RE.search(stripped) or is_features_skip(stripped):
+        brief.user_flow = FLOW_SKIPPED
+        return brief
+    if len(stripped) < 8:
+        return brief
+    if any(token in stripped.lower() for token in SKIP_GOAL_TOKENS):
+        return brief
+    brief.user_flow = stripped[:400]
+    return brief
+
+
 def extract_contact(text: str) -> dict[str, str]:
     found: dict[str, str] = {}
     email = EMAIL_RE.search(text or "")
@@ -197,6 +254,13 @@ def apply_brief_updates(brief: ProjectBrief, payload: Any, config: Any) -> Proje
     for field, value in payload.items():
         if field not in brief.model_fields or field.startswith("_"):
             continue
+        if field == "features" and is_features_skip(value):
+            if brief.features is None:
+                brief.features = []
+            continue
+        if field == "user_flow" and str(value or "").strip().lower() in {FLOW_SKIPPED, "skipped", "none"}:
+            brief.user_flow = FLOW_SKIPPED
+            continue
         if value in (None, "", [], {}):
             continue
         allowed = _enum_values(config, field)
@@ -205,7 +269,7 @@ def apply_brief_updates(brief: ProjectBrief, payload: Any, config: Any) -> Proje
             current = list(getattr(brief, field) or [])
             for item in items:
                 text = str(item).strip()
-                if not text:
+                if not text or is_features_skip(text):
                     continue
                 if allowed is not None and text not in allowed:
                     continue
@@ -221,7 +285,8 @@ def apply_brief_updates(brief: ProjectBrief, payload: Any, config: Any) -> Proje
         if value in (None, ""):
             continue
         if field in STRING_FIELDS:
-            text = str(value).strip()[:240]
+            cap = 400 if field == "user_flow" else 240
+            text = str(value).strip()[:cap]
             if text:
                 setattr(brief, field, text)
             continue

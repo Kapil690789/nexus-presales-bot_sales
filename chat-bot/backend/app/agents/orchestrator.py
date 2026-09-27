@@ -5,14 +5,16 @@ import logging
 import re
 from typing import Any
 
-from backend.app.agents.brief import ProjectBrief, brief_ready, engine_gaps
+from backend.app.agents.brief import FLOW_SKIPPED, ProjectBrief, brief_ready, engine_gaps, next_discovery_field
 from backend.app.agents.chips import ACTION_CHIP_FIELDS, DISCOVERY_PROMPTS, DISQUALIFIED_CHIPS, chips_for, chips_for_field
 from backend.app.agents.extract import (
     apply_architecture,
     apply_brief_updates,
     apply_mvp,
     apply_payload,
+    capture_features_reply,
     capture_goal_reply,
+    capture_user_flow_reply,
     extract_contact,
 )
 from backend.app.agents.style import apply_live_style, default_style, detect_style, overlay_llm, prior_style_for_email
@@ -39,6 +41,7 @@ BOOK_INTENT_RE = re.compile(
     r"book(?:\s+(?:a|me\s+a))?\s+(?:call|slot|meeting|consultation)"
     r"|schedule(?:\s+a)?\s+(?:call|meeting|consultation|time)"
     r"|continue to contact"
+    r"|talk with the team"
     r")\b",
     re.I,
 )
@@ -79,6 +82,12 @@ def build_handoff_summary(
         f"- Goal: {brief.goal or '—'}",
         f"- Score: {(qualification or {}).get('score', '—')} ({(qualification or {}).get('band', '—')})",
     ]
+    if brief.features:
+        lines.append(f"- Features: {', '.join(brief.features)}")
+    elif brief.features == []:
+        lines.append("- Features: not specified")
+    if brief.user_flow and brief.user_flow != FLOW_SKIPPED:
+        lines.append(f"- User flow: {brief.user_flow}")
     if estimate:
         lines += [
             "",
@@ -168,7 +177,7 @@ def _valid_chip(chip: Any, config: AppConfig) -> bool:
     if field not in ProjectBrief.model_fields:
         return False
     value = chip.get("value")
-    if field in {"platforms", "integrations", "ai_features", "constraints"}:
+    if field in {"platforms", "integrations", "ai_features", "constraints", "features", "user_flow"}:
         return True
     if field in {"auth", "admin", "realtime", "marketplace"}:
         return True
@@ -303,6 +312,8 @@ def _engine_key(brief: ProjectBrief) -> tuple:
         brief.marketplace,
         tuple(brief.constraints),
         brief.industry,
+        tuple(brief.features or []),
+        brief.user_flow,
     )
 
 
@@ -396,7 +407,7 @@ def _ensure_range(message: str, estimate: dict | None, architecture: dict | None
     arch = architecture or {}
     stacks = ", ".join((arch.get("frontend") or []) + (arch.get("backend") or [])) or "an approved stack"
     lead = (
-        f"Based on what you've shared, an indicative MVP sits around **{estimate['range_label']}** "
+        f"Based on what you've shared, a sensible first release sits around **{estimate['range_label']}** "
         f"over about **{estimate['timeline_weeks']} weeks** with {', '.join((estimate.get('team') or [])[:3])}. "
         f"I'd start on {stacks}. This is a low-side first pass — {config.agency.disclaimer.strip()}"
     )
@@ -496,6 +507,8 @@ def run_turn(
     chip = chip or {}
     chip_field = chip.get("field")
     also = dict(chip.get("also") or {})
+    before_dump = brief.model_dump()
+    pending_field = next_discovery_field(brief, existing_style)
     already_disqualified = bool(brief.out_of_scope or brief.decision_role == "intern_or_student")
     thanks_close = chip_field == "close_out" or (already_disqualified and _looks_like_thanks(user_text))
     booking_error = ""
@@ -540,6 +553,11 @@ def run_turn(
     use_llm = llm_available() and not is_opening and not thanks_close
     if not use_llm and user_text:
         brief = capture_goal_reply(brief, user_text)
+        if pending_field == "features":
+            brief = capture_features_reply(brief, user_text, chip_field)
+        if pending_field == "user_flow":
+            brief = capture_user_flow_reply(brief, user_text, chip_field)
+    facts_captured = brief.model_dump() != before_dump
 
     if pending_slot:
         if nda_required and not nda_accepted:
@@ -753,12 +771,14 @@ def run_turn(
                 wants_booking=wants_booking,
                 style=style,
                 last_assistant=last_assistant,
+                facts_captured=facts_captured,
+                chip_field=chip_field,
             )
             stage = reply.get("stage") or stage
 
     if wait_for_size:
         stage = "discovery"
-        reply["chips"] = chips_for(brief, "discovery")
+        reply["chips"] = chips_for_field(brief, "company_size")
         reply["message"] = DISCOVERY_PROMPTS["company_size"]
 
     if thanks_close and not is_opening:

@@ -4,7 +4,7 @@ Config-driven AI pre-sales agent: discovery, qualification, a **low-side indicat
 
 This folder is a complete deployable unit. It does **not** depend on [`../website`](../website). Opening the service root serves a standalone chat page.
 
-Business behavior lives in [`config/`](config/). Secrets live in `.env`.
+Business behavior lives in [`config/`](config/). Secrets live in `.env` (gitignored). Use the same production API keys locally. Compare [`.env.development`](.env.development) and [`.env.production`](.env.production) to see which fields are still blank (`make env-check`).
 
 ## Quick start
 
@@ -107,7 +107,7 @@ The bundled website uses [`../website/bot-config.js`](../website/bot-config.js) 
 
 ## Vercel
 
-This folder is one Vercel project (Root Directory `chat-bot`). Import [`.env.example`](.env.example), then fill `CORS_ORIGINS`, `PUBLIC_BASE_URL`, and `GOOGLE_REDIRECT_URI` after you have the production URLs. The website is a second Vercel project; see the [repo README](../README.md).
+This folder is one Vercel project (Root Directory `chat-bot`). Import [`.env.production`](.env.production), paste the same API keys from local `.env`, then fill `CORS_ORIGINS`, `PUBLIC_BASE_URL`, and `GOOGLE_REDIRECT_URI` after you have the production URLs. The website is a second Vercel project; see the [repo README](../README.md).
 
 The widget is built during the Vercel build and copied to `public/widget/consultant.js` so the CDN can serve it. Runtime Python packages must be listed in [`pyproject.toml`](pyproject.toml) (`[project.dependencies]`); Vercel ignores `requirements.txt` when that file is present. Python 3.12. `maxDuration` is 60s in [`vercel.json`](vercel.json); that file also packages `config/`, `content/`, widget dist, and admin templates into the function.
 
@@ -191,7 +191,7 @@ Email and CRM remain stubbed in `backend/app/stubs/notify.py` (rows go to `event
 When a visitor books a call, the bot posts to one Slack channel via Incoming Webhook. Qualified-lead Slack from handoff stays stubbed.
 
 1. Create an Incoming Webhook for the channel (Slack Apps → Incoming Webhooks, or [api.slack.com/apps](https://api.slack.com/apps)).
-2. Put the URL in `.env` as `SLACK_WEBHOOK_URL`. The service reads both `chat-bot/.env` and the repo-root `.env`.
+2. Put the URL in `.env` as `SLACK_WEBHOOK_URL`. The service reads `.env.development` / `.env.production` (from `ENVIRONMENT`) then `.env`, in both `chat-bot/` and the repo root.
 3. Optional: set `PUBLIC_BASE_URL` to the public origin of this app (no trailing slash) so the Slack message links to `/admin/sessions/<id>`.
 4. The channel name used in the admin preview lives in [`config/handoff.yaml`](config/handoff.yaml) under `notify.slack.channel`. Set `notify.slack.enabled` to `false` to keep bookings local even if a webhook is present.
 
@@ -205,7 +205,7 @@ Visitors book against **your** calendar. They do not sign in with Google.
 2. Add this exact redirect URI to the OAuth client:
    - local: `http://localhost:8000/admin/google/callback`
    - production: `https://YOUR_CLOUD_RUN_URL/admin/google/callback`
-3. Put `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (or `Google_Client_ID` / `Google_Client_Secret`) in `.env`. The service reads both `chat-bot/.env` and the repo-root `.env`.
+3. Put `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (or `Google_Client_ID` / `Google_Client_Secret`) in `.env`. The service reads `.env.development` / `.env.production` then `.env`, in both `chat-bot/` and the repo root.
 4. If the consent screen is in Testing, add your Google account as a test user.
 5. Sign in to `/admin/calendar` and click **Connect Google Calendar**. Grant calendar access. A refresh token is stored so bookings keep working after restart.
 

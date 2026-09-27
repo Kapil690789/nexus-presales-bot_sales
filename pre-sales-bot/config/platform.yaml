@@ -1,0 +1,16 @@
+embedding_model: BAAI/bge-small-en-v1.5
+embedding_dim: 384
+chunk_tokens: 500
+chunk_overlap_tokens: 80
+semantic_break_similarity: 0.5
+max_chunks_per_doc: 2
+top_k: 4
+faq_min_score: 0.82
+show_min_score: 0.55
+weak_min_score: 0.35
+memory_turns: 8
+summary_every: 4
+finetune_min_positives: 64
+calendar:
+  timezone: America/New_York
+  duration_minutes: 30

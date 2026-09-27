@@ -1,4 +1,12 @@
-from backend.app.core.settings import ROOT, Settings, VERCEL_ORIGIN_REGEX, normalize_database_url
+from backend.app.core.settings import (
+    ROOT,
+    Settings,
+    VERCEL_ORIGIN_REGEX,
+    missing_env_keys,
+    normalize_database_url,
+    parse_dotenv,
+    settings_env_files,
+)
 
 
 def test_normalize_neon_libpq_url() -> None:
@@ -80,6 +88,25 @@ def test_empty_cors_falls_back_to_localhost_and_vercel() -> None:
     assert "http://localhost:3000" in settings.cors_origin_list
     assert "http://localhost:8000" in settings.cors_origin_list
     assert settings.effective_cors_origin_regex == VERCEL_ORIGIN_REGEX
+
+
+def test_named_env_files_share_the_same_keys() -> None:
+    development = parse_dotenv(ROOT / ".env.development")
+    production = parse_dotenv(ROOT / ".env.production")
+    assert development.keys() == production.keys()
+    assert development["ENVIRONMENT"] == "development"
+    assert production["ENVIRONMENT"] == "production"
+    assert "LLM_API_KEY" in missing_env_keys(ROOT / ".env.development")
+    assert "DATABASE_URL" in missing_env_keys(ROOT / ".env.development")
+    assert "PUBLIC_BASE_URL" in missing_env_keys(ROOT / ".env.production")
+    assert "CORS_ORIGINS" in missing_env_keys(ROOT / ".env.production")
+    assert "GOOGLE_REDIRECT_URI" in missing_env_keys(ROOT / ".env.production")
+
+
+def test_settings_env_files_prefer_named_then_overlay() -> None:
+    files = settings_env_files()
+    assert any(path.endswith(".env.development") or path.endswith(".env.production") for path in files)
+    assert files[-1].endswith(".env")
 
 
 def test_production_applies_vercel_regex_even_with_localhost_origins() -> None:

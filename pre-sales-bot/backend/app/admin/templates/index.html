@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Clients{% endblock %}
+{% block body %}
+<h1>Pre-sales clients</h1>
+<table>
+  <tr><th>Client</th><th>Slug</th><th>Chunks</th><th>Embedding</th></tr>
+  {% for tenant in tenants %}
+  <tr>
+    <td>{{ tenant.name }}</td>
+    <td><a href="/admin/rag?tenant={{ tenant.slug }}">{{ tenant.slug }}</a></td>
+    <td>{{ tenant.chunks }}</td>
+    <td>{{ tenant.model }}</td>
+  </tr>
+  {% endfor %}
+</table>
+<h2>New client</h2>
+<form method="post" action="/admin/tenants">
+  <input name="slug" placeholder="slug" required />
+  <input name="name" placeholder="Display name" required />
+  <input name="logo_text" placeholder="Logo text" />
+  <input name="primary" placeholder="#1A2B4C" />
+  <button type="submit">Create</button>
+</form>
+<h2>Recent sessions</h2>
+<table>
+  <tr><th>When</th><th>Client</th><th>Stage</th></tr>
+  {% for session in sessions %}
+  <tr>
+    <td><a href="/admin/sessions/{{ session.id }}">{{ session.created_at }}</a></td>
+    <td>{{ labels.get(session.tenant_id, "") }}</td>
+    <td>{{ session.stage }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

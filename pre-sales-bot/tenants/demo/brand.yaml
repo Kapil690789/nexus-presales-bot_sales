@@ -1,0 +1,19 @@
+name: Northline
+slug: demo
+logo_text: Northline
+primary: "#1A2B4C"
+accent: "#1A2B4C"
+background: "#FFFFFF"
+surface: "#FFFFFF"
+text: "#1A2B4C"
+muted: "#5C6670"
+radius_px: 16
+launcher_text: Talk to an advisor
+launcher_subtitle: Scope, estimate, and next steps
+widget_title: Northline Advisor
+widget_subtitle: Online
+placeholder: Type your message...
+position: bottom-right
+disclaimer: Indicative range only, not a fixed quote.
+nda_text: Some project stories are confidential. Accept to see them in this chat.
+nda_version: "2026-01"

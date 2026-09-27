@@ -1,17 +1,21 @@
-from backend.app.agents.brief import ProjectBrief
+from backend.app.agents.brief import ProjectBrief, next_discovery_field
 from backend.app.engines.calendar import slot_chips
 
 DISCOVERY_PROMPTS = {
     "service": "What are you looking to build — mobile, web, AI, or design?",
-    "goal": "In one sentence, what should the first release achieve?",
+    "goal": "What should this first version actually do for people?",
+    "features": "Which capabilities matter in v1 — the ones you'd be unhappy to ship without?",
+    "user_flow": "If you already have a user journey (sign up → core action → result), sketch it. If not, we can skip this.",
     "platforms": "Which platforms matter for the first release?",
-    "users": "Who is the first user?",
-    "integrations": "Any systems this must talk to on day one?",
-    "timeline": "When do you want a first version in people's hands?",
-    "budget_band": "Which budget band should I estimate against? This stays indicative.",
-    "decision_role": "What's your role in the decision?",
+    "users": "Who is the first person this should work well for?",
+    "integrations": "Any systems this needs to talk to on day one?",
+    "timeline": "When would you like a first version in people's hands?",
+    "budget_band": "Which budget range should I size this against? It's only a first pass, not a quote.",
+    "decision_role": "What's your role when this decision gets made?",
     "company_size": "Roughly how large is the company?",
 }
+
+CONTACT_CHIP = {"label": "Talk with the team", "field": "continue_contact", "value": "yes"}
 
 ACTION_CHIP_FIELDS = {
     "show_portfolio",
@@ -37,6 +41,18 @@ def chips_for_field(brief: ProjectBrief, field: str) -> list[dict]:
             {"label": "Web app / SaaS", "field": "service", "value": "web_app"},
             {"label": "AI product", "field": "service", "value": "ai_product"},
             {"label": "UI/UX only", "field": "service", "value": "ui_ux"},
+        ]
+    if field == "features":
+        return [
+            {"label": "Login & accounts", "field": "features", "value": ["Login & accounts"]},
+            {"label": "Payments", "field": "features", "value": ["Payments"]},
+            {"label": "Admin", "field": "features", "value": ["Admin"]},
+            {"label": "Notifications", "field": "features", "value": ["Notifications"]},
+            {"label": "Not sure yet — give me a range", "field": "features", "value": "skipped"},
+        ]
+    if field == "user_flow":
+        return [
+            {"label": "No flow yet", "field": "user_flow", "value": "not_specified"},
         ]
     if field == "platforms":
         if brief.service == "mobile_app":
@@ -93,29 +109,21 @@ def chips_for_field(brief: ProjectBrief, field: str) -> list[dict]:
     return []
 
 
-def chips_for(brief: ProjectBrief, stage: str) -> list[dict]:
+def chips_for(brief: ProjectBrief, stage: str, style: dict | None = None) -> list[dict]:
     if stage == "discovery":
-        if not brief.service:
-            return chips_for_field(brief, "service")
-        if not brief.platforms:
+        field = next_discovery_field(brief, style)
+        chips = chips_for_field(brief, field) if field else []
+        if chips:
+            return chips
+        # Goal is typed, not chipped. Keep page-aware shortcuts (e.g. iOS/Android).
+        if field == "goal" and not brief.platforms:
             return chips_for_field(brief, "platforms")
-        if not brief.users:
-            return chips_for_field(brief, "users")
-        if not brief.integrations:
-            return chips_for_field(brief, "integrations")
-        if not brief.timeline:
-            return chips_for_field(brief, "timeline")
-        if not brief.budget_band:
-            return chips_for_field(brief, "budget_band")
-        if not brief.decision_role:
-            return chips_for_field(brief, "decision_role")
-        if not brief.company_size:
-            return chips_for_field(brief, "company_size")
+        return []
     if stage in {"estimation", "solutioning"}:
         return [
             {"label": "Show MVP cut", "field": "show_mvp", "value": "yes"},
             {"label": "Show relevant work", "field": "show_portfolio", "value": "yes"},
-            {"label": "Continue to contact", "field": "continue_contact", "value": "yes"},
+            CONTACT_CHIP,
         ]
     if stage == "booking":
         return slot_chips("this_week")

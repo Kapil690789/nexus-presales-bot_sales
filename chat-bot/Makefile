@@ -1,4 +1,4 @@
-.PHONY: install widget copy-widget run docker test smoke ingest ingest-dry learn-backfill
+.PHONY: install widget copy-widget run docker test smoke ingest ingest-dry learn-backfill env-check
 
 install:
 	python3 -m venv .venv
@@ -31,6 +31,9 @@ docker:
 
 test:
 	PYTHONPATH=. .venv/bin/pytest -q
+
+env-check:
+	PYTHONPATH=. .venv/bin/python -c "from backend.app.core.settings import print_missing_env_keys; print_missing_env_keys()"
 
 smoke:
 	@curl -sf http://localhost:8000/health >/dev/null && echo "health ok"

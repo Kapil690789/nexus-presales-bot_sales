@@ -29,7 +29,7 @@ Add the website origin (for example `https://www.example.com` or `http://localho
 ## Deploy on Vercel
 
 1. Create a Vercel project from this GitHub repo with **Root Directory** `website`.
-2. Import [`.env.example`](.env.example) (this folder). `CHAT_BOT_URL` can stay blank for the first deploy.
+2. Import [`.env.production`](.env.production) (this folder). `CHAT_BOT_URL` is blank there until the bot has a URL; local defaults are in [`.env.development`](.env.development).
 3. After the chat-bot project has a URL, set `CHAT_BOT_URL=https://YOUR-BOT.vercel.app` (no trailing slash) and redeploy.
 4. Put this site’s origin on the bot’s `CORS_ORIGINS` and redeploy the bot.
 

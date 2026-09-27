@@ -2,7 +2,7 @@ name: DevConsult
 legal_name: DevConsult Advisory
 tagline: B2B software consulting for ambitious companies
 website: https://devconsult.example
-tone: consultative
+tone: warm professional
 languages:
   - en
 markets:
@@ -43,6 +43,9 @@ never_say:
   - We have worked with Apple
   - We have worked with Google
   - 100% satisfaction
+  - List the must-haves
+  - List the must haves
+  - "Noted. List"
 out_of_scope_close: >
   This sounds outside the work we take on. I can point you in a better direction,
   or we can revisit if the scope shifts toward a custom product engagement.

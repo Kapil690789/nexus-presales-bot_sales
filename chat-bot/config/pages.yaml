@@ -2,9 +2,8 @@ default:
   match: /
   service: null
   opening: >
-    Hello! I'm here to help you with your B2B software consulting needs.
-    I can help you define the product, sanity-check scope, and see if we're a fit
-    before you speak with anyone on our side.
+    Hello — I can help you shape what you want to build, sketch a sensible first
+    release, and see whether we're a fit before you talk with anyone on our side.
   extra_questions:
     - What are you looking to build?
 pages:

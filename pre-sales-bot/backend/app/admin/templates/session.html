@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Session{% endblock %}
+{% block body %}
+<p><a href="/admin">Clients</a></p>
+<h1>Session {{ session.id }}</h1>
+<p>Client: {{ tenant.slug if tenant else "" }} · Stage: {{ session.stage }} · NDA: {{ session.nda_accepted }}</p>
+<h2>Brief</h2>
+<pre>{{ brief }}</pre>
+<h2>Estimate</h2>
+<pre>{{ estimate }}</pre>
+<h2>Booking</h2>
+<pre>{{ booking }}</pre>
+<h2>Handoff</h2>
+<pre>{{ handoff }}</pre>
+<h2>Messages</h2>
+{% for message in messages %}
+<p><strong>{{ message.role }}</strong> {{ message.content }}</p>
+{% endfor %}
+<h2>Events</h2>
+{% for event in events %}
+<p>{{ event.kind }} {{ event.payload_json }}</p>
+{% endfor %}
+{% endblock %}

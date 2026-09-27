@@ -105,6 +105,8 @@ def _book_first_slot(client, session_id: str, window: str = "this_week"):
 def _discover(client, session_id: str) -> None:
     steps = [
         ("Ops console for distributors to track orders and inventory alerts", None),
+        ("Login, orders, and alerts", _chip("Login & accounts", "features", ["Login & accounts"])),
+        ("No flow yet", _chip("No flow yet", "user_flow", "not_specified")),
         ("Web", _chip("Web", "platforms", ["web"])),
         ("Internal team", _chip("Internal team", "users", "internal")),
         ("None yet", _chip("None yet", "integrations", ["none"])),
@@ -144,7 +146,7 @@ def test_stage_progression_mvp_portfolio_contact(client) -> None:
     assert portfolio.status_code == 200
     contact = client.post(
         f"/api/v1/sessions/{session_id}/messages",
-        json={"content": "Continue to contact", "chip": _chip("Continue to contact", "continue_contact", "yes")},
+        json={"content": "Talk with the team", "chip": _chip("Talk with the team", "continue_contact", "yes")},
     )
     assert contact.status_code == 200
     email = client.post(f"/api/v1/sessions/{session_id}/messages", json={"content": "founder@acme.test"})

@@ -1,0 +1,36 @@
+in_scope:
+  mobile_app:
+    label: Mobile app
+    summary: Native or cross-platform iOS and Android products
+    platforms: [ios, android, both]
+    stacks: [Flutter, React Native, Swift + Kotlin]
+    backend_stacks: [Node.js + PostgreSQL, Python FastAPI + PostgreSQL, Firebase]
+  web_app:
+    label: Web application
+    summary: Custom SaaS, dashboards, and operational web products
+    platforms: [web]
+    stacks: [Next.js, React, Vue]
+    backend_stacks: [Node.js + PostgreSQL, Python FastAPI + PostgreSQL]
+  ai_product:
+    label: AI product
+    summary: Assistants, RAG, document intelligence, and agent workflows
+    platforms: [web, api, embedded]
+    stacks: [Python + FastAPI, Next.js]
+    backend_stacks: [Python FastAPI + PostgreSQL, PostgreSQL]
+  ui_ux:
+    label: UI/UX design
+    summary: Product design, design systems, and prototype validation
+    platforms: [mobile, web]
+    stacks: [Figma]
+    backend_stacks: []
+  staff_augmentation:
+    label: Staff augmentation
+    summary: Embedded engineers and designers on a monthly retainer
+    platforms: [any]
+    stacks: [Matches your existing stack]
+    backend_stacks: []
+out_of_scope:
+  - shopify_only
+  - crypto_web3
+  - pure_marketing_site
+  - homework_or_student_project

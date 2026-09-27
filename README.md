@@ -18,7 +18,7 @@ make run
 ```
 
 Open [http://localhost:8000/](http://localhost:8000/) for the standalone advisor.  
-Admin: [http://localhost:8000/admin](http://localhost:8000/admin) — HTTP Basic. Set `ADMIN_USERNAME` / `ADMIN_PASSWORD` in `.env`.
+Admin: [http://localhost:8000/admin](http://localhost:8000/admin) — HTTP Basic. Set `ADMIN_USERNAME` / `ADMIN_PASSWORD` in `.env` (same production keys are used locally). Field checklists: [`chat-bot/.env.development`](chat-bot/.env.development) and [`chat-bot/.env.production`](chat-bot/.env.production).
 
 Leave `LLM_API_KEY` empty to use the built-in fallback consultant (fully demoable offline).
 
@@ -47,14 +47,14 @@ Create **two** Vercel projects from this GitHub repo. Do not deploy the repo roo
 ### 1. Chat-bot
 
 1. New Project → this repo → **Root Directory** `chat-bot`.
-2. Settings → Environment Variables → import [`chat-bot/.env.example`](chat-bot/.env.example).
+2. Settings → Environment Variables → import [`chat-bot/.env.production`](chat-bot/.env.production). Copy the same API keys you use locally from `.env`.
 3. Deploy. Copy the URL (`https://YOUR-BOT.vercel.app`).
 4. In the Neon SQL editor run `CREATE EXTENSION IF NOT EXISTS vector;` so RAG can use pgvector. Without it the bot still runs (in-process fallback).
 
 ### 2. Website
 
 1. New Project → this repo → **Root Directory** `website`.
-2. Import [`website/.env.example`](website/.env.example).
+2. Import [`website/.env.production`](website/.env.production).
 3. Set `CHAT_BOT_URL` to the bot URL from step 1 (no trailing slash).
 4. Deploy. Copy the URL (`https://YOUR-SITE.vercel.app`).
 

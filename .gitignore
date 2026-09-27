@@ -1,4 +1,9 @@
+# Real environment files. Templates named .env.example stay commitable.
 .env
+.env.*
+!.env.example
+
+# Python
 .venv
 venv
 __pycache__
@@ -7,15 +12,28 @@ __pycache__
 .pytest_cache
 .mypy_cache
 .ruff_cache
-dist
+
+# Node and build output
 node_modules
+dist
+.next
+.turbo
 **/widget/dist
 **/public/widget/
+
+# Local databases, uploads, and downloaded model weights
 **/backend/uploads
 *.db
 *.db-journal
+*.sqlite
+*.sqlite3
+pre-sales-bot/models/
+
+# Editor, OS, coverage
 .DS_Store
 .idea
 .vscode
 htmlcov
 .coverage
+coverage
+*.log

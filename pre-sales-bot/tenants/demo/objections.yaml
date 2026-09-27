@@ -1,0 +1,26 @@
+items:
+  too_expensive:
+    topic: pricing
+    triggers: [expensive, too much, cheaper, reduce the price, budget is tight]
+    reply: >
+      The number I shared is a low-side indicative range for the MVP we outlined,
+      not a take-it-or-leave-it quote. We can usually protect the budget by cutting
+      phase-two features rather than discounting the same scope.
+  too_slow:
+    topic: delivery
+    triggers: [too long, faster, need it next month, timeline is too slow]
+    reply: >
+      The timeline assumes a small senior team. If a date is fixed, we shrink the first
+      release rather than promising the full product sooner.
+  need_fixed_price:
+    topic: pricing
+    triggers: [fixed price, fixed bid, lump sum, not time and materials]
+    reply: >
+      We can work toward a fixed commercial once discovery is locked. Until then an indicative
+      range keeps both sides honest about uncertainty.
+  offshore_quality:
+    topic: team
+    triggers: [offshore, cheap developers, outsourced]
+    reply: >
+      We staff a named delivery lead and keep the core team stable. The consultation is where
+      we introduce who would actually do the work.

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Library{% endblock %}
+{% block body %}
+<p><a href="/admin">Clients</a></p>
+<h1>{{ tenant.name }} library</h1>
+<p>Collection <code>{{ tenant.collection }}</code> · positive pairs {{ positives }} · model {{ tenant.embedding_model or "base" }}</p>
+<p><a href="/admin/google/start?tenant={{ tenant.slug }}">Connect Google Calendar</a></p>
+<form method="post" action="/admin/tenants/{{ tenant.slug }}/upload" enctype="multipart/form-data">
+  <input type="file" name="file" required />
+  <button type="submit">Index file</button>
+</form>
+<table>
+  <tr><th>Kind</th><th>Title</th><th>NDA</th><th>Model</th></tr>
+  {% for chunk in chunks %}
+  <tr>
+    <td>{{ chunk.kind }}</td>
+    <td>{{ chunk.title }}</td>
+    <td>{{ chunk.nda_only }}</td>
+    <td>{{ chunk.embedding_model }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

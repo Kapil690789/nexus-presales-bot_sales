@@ -1,0 +1,146 @@
+items:
+  - id: process
+    topic: delivery
+    question: How do you run a project?
+    answer: We start with a short discovery, then a named team ships on a weekly cadence.
+  - id: security
+    topic: security
+    question: How do you handle client data?
+    answer: Production data stays in the client's cloud, and we sign an NDA before confidential material is shared.
+  - id: team
+    topic: team
+    question: Who will actually do the work?
+    answer: A named delivery lead and a stable senior team. The consultation is where we introduce them.
+  - id: industries
+    topic: industries
+    tags: [marketplace, fintech, health, b2b]
+    question: Which industries do you work with?
+    answer: Product companies in marketplaces, fintech, health, and B2B software.
+  - id: discovery
+    topic: delivery
+    question: What happens during the initial discovery phase?
+    answer: We map out core requirements, define technical scope, establish clear milestones, and introduce your dedicated engineering squad.
+  - id: stack
+    topic: stack
+    question: What technology stack do you typically use?
+    answer: We build modern web, mobile, and cloud solutions using frameworks like React, Node.js, Python, Flutter, and native cloud services on AWS, GCP, and Azure.
+  - id: pricing
+    topic: pricing
+    question: How is project pricing structured?
+    answer: We offer flexible models depending on scope, including dedicated monthly team retainers and fixed-price milestones for well-defined deliverables.
+  - id: communication
+    topic: delivery
+    question: How do we stay updated on project progress?
+    answer: You get direct access to your team via shared Slack channels, weekly sprint reviews, and a dedicated project manager who provides regular status updates.
+  - id: ip_ownership
+    topic: legal
+    question: Who owns the intellectual property and source code?
+    answer: You retain 100% ownership of all intellectual property, source code, designs, and deployment configurations upon project completion or milestone sign-off.
+  - id: maintenance
+    topic: support
+    question: Do you provide ongoing support after launch?
+    answer: Yes, we offer customized post-launch maintenance, monitoring, security patching, and continuous feature development retainers.
+  - id: team_scale
+    topic: team
+    question: How quickly can you scale a development team up or down?
+    answer: We can typically onboard vetted engineers and scale your dedicated team capacity within 1 to 2 weeks based on specific skill requirements.
+  - id: code_quality
+    topic: delivery
+    question: What code quality and testing standards do you enforce?
+    answer: Every commit undergoes rigorous automated unit testing, integration testing, code reviews, and static analysis before merging into staging.
+  - id: existing_codebase
+    topic: delivery
+    question: Can your agency take over and refactor an existing legacy codebase?
+    answer: Yes, our senior engineers routinely audit legacy codebases, identify architectural bottlenecks, and execute seamless refactoring or modernization plans.
+  - id: project_management
+    topic: delivery
+    question: What project management tools do you use for tracking?
+    answer: We primarily use Jira, Linear, or Trello coupled with GitHub or GitLab for version control, giving you complete visibility into issue backlogs.
+  - id: timezones
+    topic: team
+    question: How do you handle time zone differences during collaboration?
+    answer: We structure our daily overlap hours to align smoothly with your local business hours, ensuring real-time communication without lag.
+  - id: onboarding_speed
+    topic: delivery
+    question: How fast can a new project kick off after signing?
+    answer: Project kickoff usually happens within 3 to 5 business days following contract finalization and initial deposit clearance.
+  - id: payment_terms
+    topic: pricing
+    question: What are your standard billing and payment milestones?
+    answer: We typically operate on an advance milestone structure, such as 30% upfront, intermediate milestone completions, and final delivery sign-off.
+  - id: agile_adaptation
+    topic: delivery
+    question: How do you handle mid-project scope changes or feature additions?
+    answer: We use an agile backlog management process where scope adjustments are evaluated, estimated, and swapped in without disrupting current sprint velocity.
+  - id: data_migration
+    topic: infra
+    question: Can you assist with migrating data from our old systems?
+    answer: Yes, our database specialists build secure, zero-downtime data migration scripts and ETL pipelines to transition legacy data safely.
+  - id: third_party_integration
+    topic: infra
+    question: Do you integrate third-party APIs and payment gateways?
+    answer: We regularly integrate complex third-party tools, including Stripe, PayPal, Salesforce, Twilio, AWS services, and custom REST/GraphQL APIs.
+  - id: UI_UX_design
+    topic: design
+    question: Do you handle UI/UX design or do we need to provide wireframes?
+    answer: We provide end-to-end product design, including user research, wireframing, high-fidelity Figma prototypes, and complete design system creation.
+  - id: developer_vetting
+    topic: team
+    question: How do you vet and select your software engineers?
+    answer: Our developers undergo a rigorous 4-stage screening process testing algorithmic problem-solving, architectural design, system coding, and communication.
+  - id: infrastructure_setup
+    topic: infra
+    question: Do you help set up cloud infrastructure and domain routing?
+    answer: Yes, our DevOps specialists configure secure cloud environments, DNS records, SSL certificates, load balancers, and automated deployments from scratch.
+  - id: source_code_access
+    topic: delivery
+    question: Will we have direct access to the GitHub or GitLab repository?
+    answer: Yes, you are granted full administrator access to the repository from day one so you can inspect commits and code progress at any time.
+  - id: project_manager_allocation
+    topic: team
+    question: Will we have a single point of contact throughout the project?
+    answer: You are assigned a dedicated technical project manager or product owner who serves as your direct point of contact for all daily operations.
+  - id: post_launch_warranty
+    topic: support
+    question: Do you offer a bug-fix warranty period after final delivery?
+    answer: Yes, we include a standard 30-day post-launch warranty period to resolve any unforeseen bugs or configuration issues at zero additional cost.
+  - id: security_compliance
+    topic: legal
+    question: Can you build software compliant with GDPR, HIPAA, or SOC 2?
+    answer: Our team specializes in engineering secure, compliant architectures meeting stringent regulatory frameworks like GDPR, HIPAA, and PCI-DSS.
+  - id: custom_ai_integration
+    topic: stack
+    question: Can you integrate LLMs, AI models, or custom machine learning pipelines?
+    answer: We build production-ready AI solutions using OpenAI, LangChain, vector databases, custom fine-tuned models, and scalable Python inference APIs.
+  - id: native_vs_cross_platform
+    topic: stack
+    question: Should we build cross-platform mobile apps or native apps?
+    answer: We help you weigh tradeoffs; Flutter or React Native works exceptionally well for fast time-to-market, while native Swift/Kotlin suits high-performance hardware needs.
+  - id: contract_termination
+    topic: legal
+    question: What are the terms if we need to terminate the contract early?
+    answer: Contracts include a standard notice period (usually 2 weeks), after which all completed work and repository access are handed over cleanly with settled accounts.
+  - id: testing_devices
+    topic: delivery
+    question: How do you ensure cross-device and cross-browser compatibility?
+    answer: We test web applications across all major browsers and devices using automated tools alongside real-device cloud testing farms like BrowserStack.
+  - id: scalability_planning
+    topic: infra
+    question: How do you ensure the software scales under heavy user loads?
+    answer: We design systems using microservices, caching layers like Redis, database indexing, and horizontal auto-scaling groups to handle massive traffic spikes.
+  - id: documentation_handover
+    topic: delivery
+    question: What kind of technical documentation do you provide upon completion?
+    answer: We deliver comprehensive API documentation, architecture diagrams, environment setup guides, and team handover video walkthroughs.
+  - id: trial_period
+    topic: team
+    question: Do you offer a trial period for long-term staff augmentation?
+    answer: Yes, we offer a 2-week risk-free trial period for dedicated staff augmentation agreements to ensure a strong cultural and technical fit.
+  - id: local_laws
+    topic: legal
+    question: Are your contracts governed by standard international legal frameworks?
+    answer: Our standard Master Services Agreements (MSA) and Statements of Work (SOW) follow robust international commercial laws and clear dispute resolution terms.
+  - id: emergency_support
+    topic: support
+    question: Do you provide emergency on-call support for critical production outages?
+    answer: We offer tiered Service Level Agreements (SLAs) with 24/7 monitoring and rapid emergency response protocols for critical enterprise applications.

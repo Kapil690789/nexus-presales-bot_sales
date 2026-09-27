@@ -1,0 +1,46 @@
+cases:
+  - id: harvest-mobile
+    title: Harvest — farm-to-buyer marketplace
+    industry: marketplace
+    service: mobile_app
+    platforms: [ios, android]
+    stacks: [Flutter, Firebase]
+    tags: [marketplace, mobile, payments]
+    outcome: Launched a two-sided MVP in 16 weeks; first 1,200 listings in 90 days.
+    url: /work/harvest.html
+  - id: ledger-web
+    title: Ledgerly — multi-entity finance ops
+    industry: fintech
+    service: web_app
+    platforms: [web]
+    stacks: [Next.js, PostgreSQL]
+    tags: [saas, admin, auth]
+    outcome: Replaced three spreadsheets with a role-based ops console for 40 accountants.
+    url: /work/ledgerly.html
+  - id: atlas-ai
+    title: Atlas — RFP assistant
+    industry: professional_services
+    service: ai_product
+    platforms: [web]
+    stacks: [Python, RAG]
+    tags: [ai, documents, rag]
+    outcome: Cut first-draft response time from 3 days to 4 hours on a large corpus.
+    url: /work/atlas.html
+  - id: zephyr-clinic
+    title: Zephyr Clinic companion
+    industry: health
+    service: mobile_app
+    platforms: [ios, android]
+    stacks: [React Native, Node.js]
+    tags: [health, auth, mobile]
+    outcome: The Zephyr clinic companion cut no-shows by 18 percent during the pilot.
+    url: /work/zephyr.html
+  - id: northstar-ux
+    title: Northstar — B2B onboarding redesign
+    industry: b2b
+    service: ui_ux
+    platforms: [web]
+    stacks: [Figma]
+    tags: [saas, onboarding]
+    outcome: Redesigned activation; trial-to-paid conversion up 22 percent.
+    url: /work/northstar.html
