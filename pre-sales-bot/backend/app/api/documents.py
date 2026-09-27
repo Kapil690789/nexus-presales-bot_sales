@@ -8,12 +8,12 @@ from sqlalchemy.orm import Session
 from backend.app.api.sessions import _add, _public, _session
 from backend.app.core.guard import UPLOAD_REFUSAL, looks_like_jailbreak
 from backend.app.core.security import rate_limit_messages
+from backend.app.core.settings import uploads_root
 from backend.app.documents.extract import UnsafeUpload, extract_text
 from backend.app.models.db import get_db
 from backend.app.models.entities import DocumentRow, SessionRow, TenantRow
 from backend.app.tenants.loader import TenantNotFound, load_tenant
 from backend.app.tenants.schema import TenantConfig
-from backend.app.core.settings import ROOT
 
 router = APIRouter()
 
@@ -73,7 +73,7 @@ async def upload_document(
         return _refused_upload(db, session, config)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    folder = ROOT / "backend" / "uploads" / tenant.slug / session.id
+    folder = uploads_root() / tenant.slug / session.id
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / filename
     target.write_bytes(data)

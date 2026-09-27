@@ -1,1 +1,2 @@
-window.CHAT_BOT_URL = window.CHAT_BOT_URL || "http://localhost:8000";
+window.CHAT_BOT_URL = "https://pre-sales-bot-ten.vercel.app";
+window.CHAT_BOT_TENANT = "demo";

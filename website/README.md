@@ -2,11 +2,11 @@
 
 Static DevConsult marketing site. Deploy this folder on its own (Vercel, GCS + CDN, Netlify, Firebase Hosting, or any static host). There is no Python or Docker build for the site.
 
-The advisor is **not** bundled here. Pages load it from the chat-bot service via [`bot-config.js`](bot-config.js) and [`embed.js`](embed.js).
+The advisor is **not** bundled here. Pages load it from the pre-sales bot via [`bot-config.js`](bot-config.js) and [`embed.js`](embed.js).
 
 ## Local
 
-Start the bot first (`cd ../chat-bot && make run` on port 8000), then:
+Start the bot first (`cd ../pre-sales-bot && make run` on port 8010), then:
 
 ```bash
 python3 -m http.server 3000
@@ -19,18 +19,18 @@ Open [http://localhost:3000/](http://localhost:3000/). The header switches dummy
 Locally, edit [`bot-config.js`](bot-config.js):
 
 ```js
-window.CHAT_BOT_URL = "https://YOUR_BOT_URL";
+window.CHAT_BOT_URL = "https://pre-sales-bot-ten.vercel.app";
+window.CHAT_BOT_TENANT = "demo";
 ```
 
-On Vercel, leave that file as localhost and set the `CHAT_BOT_URL` env var instead. [`scripts/write-bot-config.js`](scripts/write-bot-config.js) rewrites it at build time when the var is non-empty.
+On Vercel, [`scripts/write-bot-config.js`](scripts/write-bot-config.js) rewrites that file at build time. A `CHAT_BOT_URL` that still points at the older chat-bot is ignored; the fallback is `https://pre-sales-bot-ten.vercel.app`. `CHAT_BOT_TENANT` defaults to `demo`.
 
 Add the website origin (for example `https://www.example.com` or `http://localhost:3000`) to the bot’s `CORS_ORIGINS`.
 
 ## Deploy on Vercel
 
 1. Create a Vercel project from this GitHub repo with **Root Directory** `website`.
-2. Import [`.env.production`](.env.production) (this folder). `CHAT_BOT_URL` is blank there until the bot has a URL; local defaults are in [`.env.development`](.env.development).
-3. After the chat-bot project has a URL, set `CHAT_BOT_URL=https://YOUR-BOT.vercel.app` (no trailing slash) and redeploy.
-4. Put this site’s origin on the bot’s `CORS_ORIGINS` and redeploy the bot.
+2. Set `CHAT_BOT_URL=https://pre-sales-bot-ten.vercel.app` (no trailing slash) and `CHAT_BOT_TENANT=demo`, then redeploy.
+3. Put this site’s origin on the pre-sales bot’s `CORS_ORIGINS` and redeploy the bot.
 
-You can still upload this folder as a static site on any other host. Keep `bot-config.js` pointed at the production chat-bot URL.
+You can still upload this folder as a static site on any other host. Keep `bot-config.js` pointed at the production pre-sales bot URL.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -7,6 +8,14 @@ from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_SQLITE_URL = "sqlite:///./backend/presales.db"
+VERCEL_SQLITE_URL = "sqlite:////tmp/presales.db"
+
+
+def uploads_root() -> Path:
+    if os.environ.get("VERCEL"):
+        return Path("/tmp/presales-uploads")
+    return ROOT / "backend" / "uploads"
 
 
 class Settings(BaseSettings):
@@ -19,7 +28,7 @@ class Settings(BaseSettings):
 
     environment: str = "development"
     port: int = 8010
-    database_url: str = "sqlite:///./backend/presales.db"
+    database_url: str = DEFAULT_SQLITE_URL
     admin_username: str = "admin"
     admin_password: str = ""
     admin_password_hash: str = ""
@@ -48,6 +57,8 @@ class Settings(BaseSettings):
             url = "postgresql+pg8000://" + url[len("postgresql://") :]
         elif url.startswith("postgres://"):
             url = "postgresql+pg8000://" + url[len("postgres://") :]
+        elif os.environ.get("VERCEL") and url == DEFAULT_SQLITE_URL:
+            url = VERCEL_SQLITE_URL
         self.database_url = url
         return self
 

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.app.api import admin, documents, health, public_config, sessions
 from backend.app.core.security import assert_admin_configured
-from backend.app.core.settings import ROOT, get_settings
+from backend.app.core.settings import ROOT, get_settings, uploads_root
 from backend.app.models.db import SessionLocal, init_db
 from backend.app.rag.embeddings import embedding_backend
 from backend.app.rag.ingest import ingest_all
@@ -21,8 +20,8 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_application: FastAPI):
     settings = get_settings()
-    Path(ROOT / "backend" / "uploads").mkdir(parents=True, exist_ok=True)
     try:
+        uploads_root().mkdir(parents=True, exist_ok=True)
         init_db()
         with SessionLocal() as db:
             ingest_all(db)

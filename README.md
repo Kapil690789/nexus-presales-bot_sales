@@ -36,7 +36,7 @@ cd website
 python3 -m http.server 3000
 ```
 
-Keep the bot running on port 8000. Pages load `consultant.js` from `window.CHAT_BOT_URL` in [`website/bot-config.js`](website/bot-config.js). Change that value for production, and add the website origin to `chat-bot` `CORS_ORIGINS`.
+Pages load `consultant.js` from `window.CHAT_BOT_URL` in [`website/bot-config.js`](website/bot-config.js), which points at the deployed pre-sales bot. Add the website origin to the pre-sales bot `CORS_ORIGINS`.
 
 See [`website/README.md`](website/README.md).
 
@@ -55,7 +55,7 @@ Create **two** Vercel projects from this GitHub repo. Do not deploy the repo roo
 
 1. New Project → this repo → **Root Directory** `website`.
 2. Import [`website/.env.production`](website/.env.production).
-3. Set `CHAT_BOT_URL` to the bot URL from step 1 (no trailing slash).
+3. Set `CHAT_BOT_URL` to the pre-sales bot URL (`https://pre-sales-bot-ten.vercel.app`, no trailing slash) and `CHAT_BOT_TENANT=demo`.
 4. Deploy. Copy the URL (`https://YOUR-SITE.vercel.app`).
 
 ### 3. After both URLs exist
