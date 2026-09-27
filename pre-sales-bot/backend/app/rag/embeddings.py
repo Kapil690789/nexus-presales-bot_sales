@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import re
 from functools import lru_cache
 from typing import NamedTuple
@@ -32,6 +33,10 @@ class EmbeddingBatch(NamedTuple):
 
 def embedding_backend() -> str:
     choice = get_settings().embedding_backend.strip().lower() or "auto"
+    # sentence-transformers pulls in PyTorch and is not installed on Vercel.
+    # Auto must stay on the hash embedder so startup indexing cannot download a model.
+    if os.environ.get("VERCEL") and choice == "auto":
+        return "hash"
     if choice == "hash":
         return "hash"
     if choice == "sentence-transformers":

@@ -31,3 +31,6 @@ embeddings = ["sentence-transformers>=3.3.0"]
 
 [tool.vercel]
 entrypoint = "backend.app.main:app"
+
+[tool.vercel.scripts]
+build = "mkdir -p public/widget && cp widget/consultant.js public/widget/consultant.js"

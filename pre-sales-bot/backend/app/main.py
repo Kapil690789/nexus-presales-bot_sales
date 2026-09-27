@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -27,7 +28,7 @@ async def lifespan(_application: FastAPI):
             ingest_all(db)
     except Exception:
         log.exception("Startup index failed")
-    if embedding_backend() == "hash":
+    if embedding_backend() == "hash" and not os.environ.get("VERCEL"):
         log.warning("Using the local hash embedder. Install sentence-transformers for BAAI/bge-small-en-v1.5.")
     if not settings.llm_api_key.strip():
         log.warning("LLM_API_KEY is empty. Answers stay grounded in retrieved notes without generation.")
@@ -36,7 +37,12 @@ async def lifespan(_application: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    assert_admin_configured(settings)
+    try:
+        assert_admin_configured(settings)
+    except RuntimeError:
+        log.warning(
+            "Admin password is missing or a default value. The app will still serve. Set a unique ADMIN_PASSWORD."
+        )
     application = FastAPI(title="Pre-Sales Consultant", version="1.0.0", lifespan=lifespan)
     application.add_middleware(
         CORSMiddleware,
@@ -50,12 +56,15 @@ def create_app() -> FastAPI:
     application.include_router(sessions.router)
     application.include_router(documents.router)
     application.include_router(admin.router)
-    widget_dir = ROOT / "widget"
-    public_dir = ROOT / "public"
-    if widget_dir.is_dir():
-        application.mount("/widget", StaticFiles(directory=widget_dir), name="widget")
-    if public_dir.is_dir():
-        application.mount("/", StaticFiles(directory=public_dir, html=True), name="public")
+    # Vercel serves public/ from the CDN, including public/widget/consultant.js.
+    # Mounting those directories here keeps them inside the function because of CORS.
+    if not os.environ.get("VERCEL"):
+        widget_dir = ROOT / "widget"
+        public_dir = ROOT / "public"
+        if widget_dir.is_dir():
+            application.mount("/widget", StaticFiles(directory=widget_dir), name="widget")
+        if public_dir.is_dir():
+            application.mount("/", StaticFiles(directory=public_dir, html=True), name="public")
     return application
 
 

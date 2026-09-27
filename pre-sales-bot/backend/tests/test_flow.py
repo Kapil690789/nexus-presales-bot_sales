@@ -30,6 +30,35 @@ def test_health_and_widget(client):
     assert client.get("/api/v1/public-config", params={"tenant": "missing"}).status_code == 404
 
 
+def test_vercel_auto_embedder_stays_on_hash(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.setenv("EMBEDDING_BACKEND", "auto")
+    from backend.app.core.settings import get_settings
+    from backend.app.rag.embeddings import embedding_backend
+
+    get_settings.cache_clear()
+    assert embedding_backend() == "hash"
+
+
+def test_production_default_password_still_serves_public_routes(monkeypatch):
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("ADMIN_PASSWORD", "admin123")
+    monkeypatch.setenv("ADMIN_PASSWORD_HASH", "")
+    from fastapi.testclient import TestClient
+
+    from backend.app.core.settings import get_settings
+    from backend.app.main import create_app
+
+    get_settings.cache_clear()
+    with TestClient(create_app()) as production:
+        health = production.get("/health")
+        assert health.status_code == 200
+        widget = production.get("/widget/consultant.js")
+        assert widget.status_code == 200
+        assert "dataset.tenant" in widget.text
+        assert production.get("/admin").status_code == 401
+
+
 def test_admin_auth_and_library(client, auth):
     assert client.get("/admin").status_code == 401
     page = client.get("/admin", auth=auth)
