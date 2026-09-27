@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any
 
 from backend.app.core.settings import get_settings
+
+log = logging.getLogger(__name__)
 
 
 class LLMError(RuntimeError):
@@ -41,11 +44,17 @@ def complete_json(system: str, user: str) -> dict[str, Any]:
     if not allow_llm_call():
         raise LLMError("LLM budget exceeded")
     provider = settings.llm_provider.lower().strip()
-    if provider == "anthropic":
-        return _anthropic(system, user, settings.llm_api_key, settings.llm_model)
-    if provider == "gemini":
-        return _gemini(system, user, settings.llm_api_key, settings.llm_model)
-    return _openai(system, user, settings.llm_api_key, settings.llm_model, settings.llm_base_url)
+    try:
+        if provider == "anthropic":
+            return _anthropic(system, user, settings.llm_api_key, settings.llm_model)
+        if provider == "gemini":
+            return _gemini(system, user, settings.llm_api_key, settings.llm_model)
+        return _openai(system, user, settings.llm_api_key, settings.llm_model, settings.llm_base_url)
+    except LLMError:
+        raise
+    except Exception as exc:
+        log.warning("Model call failed (%s). The answer continues from project notes.", type(exc).__name__)
+        raise LLMError("The model is unavailable") from exc
 
 
 def _openai(system: str, user: str, api_key: str, model: str, base_url: str) -> dict[str, Any]:

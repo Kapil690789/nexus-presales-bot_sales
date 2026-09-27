@@ -86,6 +86,25 @@ def test_llm_budget_skips_provider(client, monkeypatch):
     assert calls["n"] == 1
 
 
+def test_provider_quota_error_still_answers(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "llm_api_key", "test-key")
+    monkeypatch.setattr(get_settings(), "llm_provider", "gemini")
+
+    def quota(*_args, **_kwargs):
+        raise RuntimeError("429 quota exceeded")
+
+    monkeypatch.setattr("backend.app.core.llm._gemini", quota)
+    session = client.post("/api/v1/sessions", json={"tenant": "demo"}).json()
+    response = client.post(
+        f"/api/v1/sessions/{session['session_id']}/messages",
+        json={"content": "We need a mobile app for clinic scheduling"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["message"]
+    assert "Something went wrong" not in body["message"]
+
+
 def test_upload_injection_is_not_echoed(client):
     session = client.post("/api/v1/sessions", json={"tenant": "demo"}).json()
     response = client.post(
