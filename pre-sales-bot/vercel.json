@@ -3,7 +3,8 @@
   "functions": {
     "backend/app/main.py": {
       "maxDuration": 60,
-      "includeFiles": "{config/**,tenants/**,widget/**,backend/app/admin/templates/**}"
+      "includeFiles": "{config/**,tenants/**,widget/**,backend/app/admin/templates/**}",
+      "excludeFiles": "{backend/tests/**,docker-compose.yml,Dockerfile,Makefile,pytest.ini,**/*.db}"
     }
   }
 }

@@ -1,0 +1,11 @@
+.venv
+venv
+.git
+backend/tests
+**/__pycache__
+.pytest_cache
+**/*.db
+docker-compose.yml
+Dockerfile
+Makefile
+pytest.ini

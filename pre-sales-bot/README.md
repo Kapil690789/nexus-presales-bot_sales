@@ -40,7 +40,7 @@ Add the site origin to `CORS_ORIGINS`. An unknown `data-tenant` is rejected.
 2. Screening FAQ: the question is embedded, not the answer. A hit at or above `faq_min_score` (0.82) returns the stored answer and does not call the generator.
 3. Otherwise the client's collection is searched. The grader shows a grounded answer only when the top score is at least 0.55 and, if a generator is configured, the snippets actually answer the question.
 4. Below that, the assistant says it does not have a matching source, may add a clearly indicative range when the brief is complete, and asks the visitor to book a meeting. It does not quote chunks the grader withheld.
-5. Thumbs-up, and a completed booking, store query-to-chunk pairs. `make finetune TENANT=acme` trains `BAAI/bge-small-en-v1.5` with MultipleNegativesRankingLoss once that client has 64 positive pairs, then re-embeds only that collection.
+5. Thumbs-up, and a completed booking, store query-to-chunk pairs. `make finetune TENANT=acme` trains `BAAI/bge-small-en-v1.5` with MultipleNegativesRankingLoss once that client has 64 positive pairs, then re-embeds only that collection. That job needs `pip install 'sentence-transformers>=3.3.0'` on a machine that can hold PyTorch. Vercel does not install it: the wheel is several gigabytes and exceeds the function size limit. Search there uses the built-in hash embedder.
 
 Follow-up questions that use words like "that" are rewritten with the recent summary and the previous visitor message before search.
 

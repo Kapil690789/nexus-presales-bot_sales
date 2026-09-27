@@ -23,11 +23,11 @@ dependencies = [
     "google-auth-oauthlib>=1.2.2",
     "google-auth-httplib2>=0.2.0",
     "bcrypt>=4.3.0",
-    "sentence-transformers>=3.3.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.3.5"]
+embeddings = ["sentence-transformers>=3.3.0"]
 
 [tool.vercel]
 entrypoint = "backend.app.main:app"

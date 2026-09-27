@@ -41,6 +41,58 @@ def test_admin_auth_and_library(client, auth):
     assert client.get("/admin/google/start", params={"tenant": "demo"}, auth=auth).status_code == 400
 
 
+def test_google_callback_reuses_pkce_verifier(client, auth, monkeypatch):
+    from backend.app.core.settings import get_settings
+
+    monkeypatch.setattr(get_settings(), "google_client_id", "client")
+    monkeypatch.setattr(get_settings(), "google_client_secret", "secret")
+    captured: dict = {}
+
+    class FakeFlow:
+        def __init__(self):
+            self.code_verifier = "verifier-from-start"
+            self.credentials = type("Creds", (), {"refresh_token": "refresh-1"})()
+
+        def authorization_url(self, **_kwargs):
+            return "https://accounts.google.com/o/oauth2/auth?x=1", "state-pkce"
+
+        def fetch_token(self, **kwargs):
+            captured["code"] = kwargs.get("code")
+
+        @classmethod
+        def from_client_config(cls, *_args, **kwargs):
+            captured["callback_kwargs"] = kwargs
+            flow = cls()
+            if kwargs.get("code_verifier"):
+                flow.code_verifier = kwargs["code_verifier"]
+            return flow
+
+    monkeypatch.setattr("google_auth_oauthlib.flow.Flow", FakeFlow)
+    start = client.get("/admin/google/start", params={"tenant": "demo"}, auth=auth, follow_redirects=False)
+    assert start.status_code == 307
+    with SessionLocal() as db:
+        row = db.scalar(select(TenantRow).where(TenantRow.slug == "demo"))
+        assert row is not None
+        assert row.oauth_state == "state-pkce"
+        assert row.oauth_code_verifier == "verifier-from-start"
+    done = client.get(
+        "/admin/google/callback",
+        params={"code": "abc", "state": "state-pkce"},
+        follow_redirects=False,
+    )
+    assert done.status_code == 303
+    assert captured["callback_kwargs"]["code_verifier"] == "verifier-from-start"
+    assert captured["callback_kwargs"]["autogenerate_code_verifier"] is False
+    assert captured["code"] == "abc"
+    with SessionLocal() as db:
+        row = db.scalar(select(TenantRow).where(TenantRow.slug == "demo"))
+        assert row is not None
+        assert row.google_refresh_token == "refresh-1"
+        assert row.oauth_code_verifier == ""
+        row.google_refresh_token = ""
+        db.commit()
+
+
 def test_screening_faq_skips_generation(client, monkeypatch):
     def explode(*_args, **_kwargs):
         raise AssertionError("FAQ hit must not call the model")

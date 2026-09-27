@@ -146,6 +146,7 @@ def google_start(tenant: str, db: Session = Depends(get_db), _: str = Depends(re
     )
     auth_url, state = flow.authorization_url(access_type="offline", prompt="consent")
     row.oauth_state = state
+    row.oauth_code_verifier = flow.code_verifier or ""
     db.commit()
     return RedirectResponse(auth_url)
 
@@ -157,6 +158,9 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
     row = db.scalar(select(TenantRow).where(TenantRow.oauth_state == state))
     if row is None or not code:
         raise HTTPException(status_code=400, detail="OAuth state was not recognized")
+    verifier = (row.oauth_code_verifier or "").strip()
+    if not verifier:
+        raise HTTPException(status_code=400, detail="Google sign-in expired. Click Connect and try again.")
     settings = get_settings()
     from google_auth_oauthlib.flow import Flow
 
@@ -167,16 +171,26 @@ def google_callback(request: Request, db: Session = Depends(get_db)):
                 "client_secret": settings.google_client_secret.strip(),
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [settings.google_redirect_uri.strip()],
             }
         },
         scopes=["https://www.googleapis.com/auth/calendar"],
         redirect_uri=settings.google_redirect_uri.strip(),
         state=state,
+        code_verifier=verifier,
+        autogenerate_code_verifier=False,
     )
-    flow.fetch_token(code=code)
+    try:
+        flow.fetch_token(code=code)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail="Google sign-in failed. Click Connect and finish in one pass. Reloading this page will not work.",
+        ) from exc
     token = flow.credentials.refresh_token
     if token:
         row.google_refresh_token = token
     row.oauth_state = ""
+    row.oauth_code_verifier = ""
     db.commit()
     return RedirectResponse(f"/admin/rag?tenant={row.slug}", status_code=303)

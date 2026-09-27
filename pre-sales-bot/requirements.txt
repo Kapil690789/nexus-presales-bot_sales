@@ -19,4 +19,6 @@ google-auth-oauthlib>=1.2.2
 google-auth-httplib2>=0.2.0
 bcrypt>=4.3.0
 pytest>=8.3.5
-sentence-transformers>=3.3.0
+# sentence-transformers pulls in PyTorch (several GB) and blows the Vercel
+# function limit. The app uses the local hash embedder when it is absent.
+# Install it only for local fine-tuning: pip install 'sentence-transformers>=3.3.0'
