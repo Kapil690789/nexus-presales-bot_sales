@@ -90,27 +90,44 @@ def embed_texts(texts: list[str], model_id: str | None = None) -> EmbeddingBatch
 
 def _gemini_embed(texts: list[str], model_id: str = "gemini-embedding-001") -> list[list[float]]:
     import httpx
+    import time
 
     key = get_settings().llm_api_key.strip()
-    if not key:
+    if not key or not texts:
         return [_hash_embed(text) for text in texts]
 
     target_model = model_id or "gemini-embedding-001"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:batchEmbedContents?key={key}"
-    requests = [{"model": f"models/{target_model}", "content": {"parts": [{"text": t or " "}]}} for t in texts]
+    batch_size = 50
+    all_vectors: list[list[float]] = []
 
     try:
-        with httpx.Client(timeout=15.0) as client:
-            resp = client.post(url, json={"requests": requests})
-            if resp.status_code == 200:
-                data = resp.json()
-                raw_embeddings = data.get("embeddings", [])
-                vectors = []
-                for item in raw_embeddings:
-                    values = [float(v) for v in item.get("values", [])]
-                    vectors.append(values)
-                if vectors and len(vectors) == len(texts):
-                    return vectors
+        with httpx.Client(timeout=30.0) as client:
+            for i in range(0, len(texts), batch_size):
+                chunk = texts[i : i + batch_size]
+                requests = [
+                    {"model": f"models/{target_model}", "content": {"parts": [{"text": t or " "}]}}
+                    for t in chunk
+                ]
+                success = False
+                for attempt in range(3):
+                    resp = client.post(url, json={"requests": requests})
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        raw_embeddings = data.get("embeddings", [])
+                        for item in raw_embeddings:
+                            values = [float(v) for v in item.get("values", [])]
+                            all_vectors.append(values)
+                        success = True
+                        break
+                    elif resp.status_code == 429:
+                        time.sleep(2.5 * (attempt + 1))
+                    else:
+                        break
+                if not success:
+                    return [_hash_embed(text) for text in texts]
+        if len(all_vectors) == len(texts):
+            return all_vectors
     except Exception:
         pass
     return [_hash_embed(text) for text in texts]
