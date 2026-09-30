@@ -19,7 +19,7 @@ from backend.app.tenants.loader import TenantNotFound, ensure_tenant_row, load_t
 from backend.app.tenants.schema import TenantConfig
 
 router = APIRouter()
-MAX_MESSAGE_CHARS = 4000
+MAX_MESSAGE_CHARS = 1000
 
 
 class SessionIn(BaseModel):

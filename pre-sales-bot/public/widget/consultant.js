@@ -149,6 +149,7 @@
   var form = el("form");
   var input = document.createElement("input");
   input.type = "text";
+  input.maxLength = 1000;
   var uploadId = "ps-upload-" + Math.random().toString(36).slice(2, 8);
   var uploadBtn = el("label", "ps-icon-btn");
   uploadBtn.title = "Upload a brief";
@@ -232,9 +233,22 @@
     thread.scrollTop = thread.scrollHeight;
   }
 
+  function renderMarkdown(text) {
+    if (!text) return "";
+    var safe = esc(text);
+    safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return safe;
+  }
+
   function say(role, text) {
     if (!text) return null;
-    var node = el("div", "ps-msg " + (role === "user" ? "user" : "assistant"), text);
+    var node = el("div", "ps-msg " + (role === "user" ? "user" : "assistant"));
+    if (role === "assistant") {
+      node.innerHTML = renderMarkdown(text);
+    } else {
+      node.textContent = text;
+    }
     thread.appendChild(node);
     scrollThread();
     return node;

@@ -59,10 +59,10 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:8010,http://127.0.0.1:8010"
     llm_provider: str = "gemini"
     llm_api_key: str = ""
-    llm_model: str = "gemini-3.8-flash"
+    llm_model: str = "gemini-2.5-flash"
     llm_base_url: str = ""
-    embedding_backend: str = "auto"
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_backend: str = "gemini"
+    embedding_model: str = "gemini-embedding-001"
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8010/admin/google/callback"
@@ -71,8 +71,8 @@ class Settings(BaseSettings):
     public_base_url: str = ""
     message_rate_limit: int = 20
     message_rate_window_seconds: int = 60
-    llm_calls_per_session: int = 24
-    llm_calls_per_ip_per_hour: int = 60
+    llm_calls_per_session: int = 30
+    llm_calls_per_ip_per_hour: int = 80
 
     @model_validator(mode="after")
     def apply_database_url(self):

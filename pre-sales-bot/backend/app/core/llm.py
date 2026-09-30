@@ -110,17 +110,31 @@ def _anthropic(system: str, user: str, api_key: str, model: str) -> dict[str, An
 
 
 def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
-    import google.generativeai as genai
-    from google.api_core import exceptions, retry
+    import httpx
 
-    genai.configure(api_key=api_key)
-    llm = genai.GenerativeModel(model or "gemini-3.8-flash", system_instruction=system)
-    # Quota errors are not transient. Retrying them blocks the chat for minutes.
-    limited = retry.Retry(
-        predicate=retry.if_exception_type(exceptions.ServiceUnavailable, exceptions.DeadlineExceeded),
-        initial=0.5,
-        maximum=2,
-        timeout=8,
-    )
-    response = llm.generate_content(user, request_options={"retry": limited, "timeout": 8})
-    return _parse_json(response.text or "{}")
+    target_model = (model or "").strip() or "gemini-2.5-flash"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={api_key.strip()}"
+    payload: dict[str, Any] = {
+        "contents": [{"parts": [{"text": user}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "temperature": 0.2,
+        },
+    }
+    if system.strip():
+        payload["systemInstruction"] = {"parts": [{"text": system.strip()}]}
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(url, json=payload)
+            if resp.status_code != 200:
+                raise LLMError(f"Gemini API error {resp.status_code}: {resp.text[:200]}")
+            data = resp.json()
+            candidates = data.get("candidates", [])
+            if not candidates:
+                raise LLMError("Gemini returned no candidates")
+            parts = candidates[0].get("content", {}).get("parts", [])
+            text = parts[0].get("text", "") if parts else ""
+            return _parse_json(text or "{}")
+    except httpx.RequestError as exc:
+        raise LLMError(f"Gemini connection error: {exc}") from exc

@@ -33,13 +33,16 @@ class EmbeddingBatch(NamedTuple):
 
 def embedding_backend() -> str:
     choice = get_settings().embedding_backend.strip().lower() or "auto"
-    # sentence-transformers pulls in PyTorch and is not installed on Vercel.
-    if os.environ.get("VERCEL"):
+    if os.environ.get("VERCEL") and choice != "gemini":
         return "hash"
+    if choice == "gemini":
+        return "gemini"
     if choice == "hash":
         return "hash"
     if choice == "sentence-transformers":
         return "sentence-transformers"
+    if get_settings().llm_api_key.strip():
+        return "gemini"
     try:
         import sentence_transformers  # noqa: F401
     except Exception:
@@ -48,7 +51,10 @@ def embedding_backend() -> str:
 
 
 def model_id_for(tenant: TenantRow | None) -> str:
-    if embedding_backend() == "hash":
+    backend = embedding_backend()
+    if backend == "gemini":
+        return get_settings().embedding_model.strip() or "gemini-embedding-001"
+    if backend == "hash":
         return HASH_MODEL
     custom = (tenant.embedding_model if tenant else "").strip()
     if custom.startswith("finetuned:"):
@@ -66,8 +72,13 @@ def model_source(model_id: str) -> str:
 
 
 def embed_texts(texts: list[str], model_id: str | None = None) -> EmbeddingBatch:
-    model = model_id or (HASH_MODEL if embedding_backend() == "hash" else model_id_for(None))
-    if embedding_backend() == "hash" or model == HASH_MODEL:
+    backend = embedding_backend()
+    model = model_id or (HASH_MODEL if backend == "hash" else model_id_for(None))
+    if backend == "gemini" or (model and "gemini" in model):
+        vectors = _gemini_embed(texts, model)
+        dim = len(vectors[0]) if vectors else 3072
+        return EmbeddingBatch(model, dim, vectors)
+    if backend == "hash" or model == HASH_MODEL:
         vectors = [_hash_embed(text) for text in texts]
         return EmbeddingBatch(HASH_MODEL, len(vectors[0]) if vectors else 384, vectors)
     encoder = _sentence_model(model_source(model))
@@ -75,6 +86,34 @@ def embed_texts(texts: list[str], model_id: str | None = None) -> EmbeddingBatch
     vectors = [list(map(float, row)) for row in raw]
     dim = len(vectors[0]) if vectors else 0
     return EmbeddingBatch(model, dim, vectors)
+
+
+def _gemini_embed(texts: list[str], model_id: str = "gemini-embedding-001") -> list[list[float]]:
+    import httpx
+
+    key = get_settings().llm_api_key.strip()
+    if not key:
+        return [_hash_embed(text) for text in texts]
+
+    target_model = model_id or "gemini-embedding-001"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:batchEmbedContents?key={key}"
+    requests = [{"model": f"models/{target_model}", "content": {"parts": [{"text": t or " "}]}} for t in texts]
+
+    try:
+        with httpx.Client(timeout=15.0) as client:
+            resp = client.post(url, json={"requests": requests})
+            if resp.status_code == 200:
+                data = resp.json()
+                raw_embeddings = data.get("embeddings", [])
+                vectors = []
+                for item in raw_embeddings:
+                    values = [float(v) for v in item.get("values", [])]
+                    vectors.append(values)
+                if vectors and len(vectors) == len(texts):
+                    return vectors
+    except Exception:
+        pass
+    return [_hash_embed(text) for text in texts]
 
 
 def _hash_embed(text: str, dim: int = 384) -> list[float]:

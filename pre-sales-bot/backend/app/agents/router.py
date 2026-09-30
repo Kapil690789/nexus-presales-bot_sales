@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.agents.brief import ProjectBrief, brief_ready, next_discovery_field
+from backend.app.agents.extractor import apply_extracted_slots, extract_slots
 from backend.app.agents.fallback import fallback_message
 from backend.app.agents.suggestions import ensure_chips
 from backend.app.core.platform import get_platform
@@ -99,6 +100,15 @@ def run_turn(
             portfolio=cases,
         )
 
+    if field == "close_out":
+        return _finish(
+            session, brief, contact, summary,
+            message="Thanks for chatting with us! If you'd like to talk through your project with our engineering team, feel free to book a short call anytime.",
+            stage=session.stage or "discovery",
+            route="discovery",
+            chips=[BOOK_CHIP],
+        )
+
     objection = None if field else _objection(db, tenant, config, text, session.nda_accepted)
     if objection:
         return _finish(
@@ -114,16 +124,22 @@ def run_turn(
         brief.apply_chip(field, value)
         _note_flags(brief)
         filled = True
-    elif text and not OPEN.search(text):
+    elif text:
         pending = _pending(brief)
-        if pending and _apply_free_text(brief, pending, text):
+        # 1. Try LLM-assisted multi-slot extraction if not a simple FAQ question
+        extracted = extract_slots(text, pending, brief)
+        if extracted and apply_extracted_slots(brief, extracted, pending):
+            _note_flags(brief)
+            filled = True
+        elif not OPEN.search(text) and pending and _apply_free_text(brief, pending, text):
+            # 2. Fallback to deterministic regex matching
             _note_flags(brief)
             filled = True
 
     if filled or (field and field not in ACTION):
         return _after_brief(session, config, brief, contact, summary)
 
-    queries = lookup_queries(text, summary, previous) or [text]
+    queries = lookup_queries(text, summary, previous[-3:]) or [text]
     filters = query_filters(text, service=brief.service, industry=brief.industry)
     faq_hits = _merge(db, tenant, queries, "faq", session.nda_accepted, filters)
     if faq_hits and faq_hits[0].score >= get_platform().faq_min_score:
