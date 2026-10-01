@@ -162,4 +162,21 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=get_engine())
     _ensure_columns("tenants", {"oauth_code_verifier": "TEXT DEFAULT ''"})
+    _ensure_columns(
+        "sessions",
+        {
+            "llm_calls_used": "INTEGER DEFAULT 0",
+            "expires_at": "TIMESTAMP NULL",
+            "handoff_summary": "TEXT DEFAULT ''",
+        },
+    )
+    _ensure_columns("leads", {"handoff_summary": "TEXT DEFAULT ''"})
+    _ensure_columns(
+        "rag_chunks",
+        {
+            "embedding_json": "TEXT DEFAULT ''",
+            "embedding_dim": "INTEGER DEFAULT 0",
+            "content_hash": "VARCHAR(64) DEFAULT ''",
+        },
+    )
     _pgvector_setup()
