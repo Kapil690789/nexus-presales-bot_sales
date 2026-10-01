@@ -55,6 +55,8 @@ class SessionRow(Base):
     nda_version: Mapped[str] = mapped_column(String(40), default="")
     booking_json: Mapped[str] = mapped_column(Text, default="")
     handoff_summary: Mapped[str] = mapped_column(Text, default="")
+    llm_calls_used: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
     messages: Mapped[list["MessageRow"]] = relationship(back_populates="session", cascade="all, delete-orphan")

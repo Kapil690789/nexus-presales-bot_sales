@@ -430,6 +430,7 @@
       .then(function (data) {
         if (!data) return;
         sessionId = data.session_id;
+        try { localStorage.setItem("ps_sess_" + tenant, sessionId); } catch (e) {}
         renderReply(data);
       })
       .catch(function () {

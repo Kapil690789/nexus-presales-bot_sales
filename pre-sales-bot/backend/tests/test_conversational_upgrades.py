@@ -58,3 +58,25 @@ def test_natural_language_discovery_flow(monkeypatch):
         assert result["route"] == "estimate"
         assert result["stage"] == "advising"
         assert "range_label" in (result.get("estimate") or {})
+
+
+def test_session_expiry_endpoint(client):
+    from datetime import datetime, timedelta, timezone
+    from backend.app.models.entities import SessionRow, TenantRow
+    from backend.app.models.db import SessionLocal
+
+    with SessionLocal() as db:
+        tenant = db.query(TenantRow).filter_by(slug="demo").first()
+        expired_session = SessionRow(
+            tenant_id=tenant.id,
+            stage="discovery",
+            expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+        db.add(expired_session)
+        db.commit()
+        db.refresh(expired_session)
+        expired_id = expired_session.id
+
+    resp = client.post(f"/api/v1/sessions/{expired_id}/messages", json={"content": "Hello"})
+    assert resp.status_code == 410
+    assert "expired" in resp.json().get("detail", "").lower()

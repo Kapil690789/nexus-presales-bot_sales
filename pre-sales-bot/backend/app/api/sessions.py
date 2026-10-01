@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -13,7 +14,7 @@ from backend.app.core.guard import REFUSAL_MESSAGE, looks_like_jailbreak
 from backend.app.core.security import bind_llm_actor, client_ip, rate_limit_messages, reset_llm_actor
 from backend.app.learning.pairs import save_thumb
 from backend.app.models.db import get_db
-from backend.app.models.entities import MessageRow, SessionRow, TenantRow
+from backend.app.models.entities import MessageRow, SessionRow, TenantRow, _now
 from backend.app.screening.slots import DISCOVERY_PROMPTS, chips_for_field
 from backend.app.tenants.loader import TenantNotFound, ensure_tenant_row, load_tenant
 from backend.app.tenants.schema import TenantConfig
@@ -111,6 +112,7 @@ def create_session(body: SessionIn, db: Session = Depends(get_db)) -> dict:
         page_title=body.page_title[:300],
         path=body.path[:300] or "/",
         stage="discovery",
+        expires_at=_now() + timedelta(days=7),
     )
     db.add(session)
     db.commit()
@@ -151,9 +153,19 @@ def _unsafe_message(text: str, chip: ChipIn | None) -> bool:
     return any(looks_like_jailbreak(part) for part in parts)
 
 
+def _is_expired(expires_at: datetime | None) -> bool:
+    if not expires_at:
+        return False
+    if expires_at.tzinfo is not None:
+        return expires_at < datetime.now(timezone.utc)
+    return expires_at < datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 @router.post("/api/v1/sessions/{session_id}/messages")
 def post_message(session_id: str, body: MessageIn, request: Request, db: Session = Depends(get_db)) -> dict:
     session = _session(db, session_id)
+    if _is_expired(session.expires_at):
+        raise HTTPException(status_code=410, detail="Session has expired. Please refresh to start a new chat.")
     tenant_row = db.get(TenantRow, session.tenant_id)
     if tenant_row is None:
         raise HTTPException(status_code=404, detail="Unknown client")
