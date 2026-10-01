@@ -1,0 +1,1399 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexus Studio — Live Proposal Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #050506;
+      --bg-surface: #0A0B0D;
+      --bg-card: #111215;
+      --bg-card-hover: #16181D;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-md: rgba(255, 255, 255, 0.14);
+      --border-accent: rgba(59, 130, 246, 0.3);
+      --text: #F3F4F6;
+      --text-muted: #9CA3AF;
+      --text-dim: #6B7280;
+      --accent: #3B82F6;
+      --accent-light: rgba(59, 130, 246, 0.12);
+      --accent-hover: #2563EB;
+      --green: #10B981;
+      --green-light: rgba(16, 185, 129, 0.12);
+      --purple: #8B5CF6;
+      --user-bubble: #1E3A5F;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .studio-wrap {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 54px;
+      min-height: 54px;
+      background: rgba(5, 5, 6, 0.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(20px);
+      z-index: 50;
+      flex-shrink: 0;
+    }
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .top-bar-logo {
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.03em;
+      color: #fff;
+      text-decoration: none;
+    }
+    .top-bar-logo span { color: var(--accent); }
+    .top-bar-sep { width: 1px; height: 18px; background: var(--border-md); }
+    .top-bar-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    .top-bar-right { display: flex; align-items: center; gap: 10px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12.5px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+      text-decoration: none;
+    }
+    .btn-ghost {
+      background: transparent;
+      border-color: var(--border-md);
+      color: var(--text-muted);
+    }
+    .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); background: var(--bg-card); }
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn svg { width: 14px; height: 14px; }
+
+    /* Progress bar */
+    .progress-bar-wrap { height: 2px; background: var(--bg-card); flex-shrink: 0; }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      width: 10%;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Panels Layout */
+    .panels {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ===== LEFT PANEL — PROPOSAL ===== */
+    .proposal-panel {
+      width: 50%;
+      min-width: 460px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .proposal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(10, 11, 13, 0.8);
+      flex-shrink: 0;
+    }
+    .proposal-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .proposal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 28px 60px;
+      scroll-behavior: smooth;
+    }
+    .proposal-body::-webkit-scrollbar { width: 5px; }
+    .proposal-body::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 4px; }
+
+    /* Proposal Header Card */
+    .doc-header {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--accent-light);
+      border: 1px solid var(--border-accent);
+      border-radius: 20px;
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .doc-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+    .doc-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .doc-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 14px;
+    }
+    .doc-meta-item {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+    .doc-meta-item strong { color: var(--text-muted); }
+
+    /* Sections */
+    .prop-section {
+      margin-bottom: 18px;
+      border-radius: var(--radius);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    .prop-section.filled { border-color: rgba(59, 130, 246, 0.25); }
+    .prop-section.filled .prop-section-head { background: rgba(59, 130, 246, 0.05); }
+    .prop-section.estimate-filled { border-color: rgba(16, 185, 129, 0.3); }
+    .prop-section.estimate-filled .prop-section-head { background: rgba(16, 185, 129, 0.06); }
+
+    .prop-section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .prop-section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .prop-section-title svg { width: 14px; height: 14px; color: var(--accent); }
+    .prop-section-status {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+    }
+    .prop-section-status.done { color: var(--green); font-weight: 600; }
+
+    .prop-section-body { padding: 16px 18px; }
+
+    .prop-empty {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-style: italic;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .prop-empty::before {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 2px;
+      background: var(--border-md);
+      border-radius: 2px;
+    }
+
+    /* Brief Grid */
+    .brief-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    .brief-item {
+      background: rgba(255, 255, 255, 0.02);
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .brief-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+    .brief-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .brief-item.full-width {
+      grid-column: 1 / -1;
+    }
+
+    /* Estimate Display */
+    .estimate-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .estimate-range {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--green);
+    }
+    .estimate-weeks {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--green);
+      font-family: var(--font-mono);
+      background: var(--green-light);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+    .estimate-team {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .estimate-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .estimate-list li {
+      font-size: 12px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .estimate-list li::before {
+      content: '✓';
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .estimate-disclaimer {
+      margin-top: 12px;
+      font-size: 10.5px;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* Architecture Rows */
+    .arch-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .arch-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      min-width: 75px;
+      padding-top: 2px;
+    }
+    .arch-value {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #fff;
+      font-family: var(--font-mono);
+    }
+    .arch-notes {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius-sm);
+      margin-top: 8px;
+    }
+
+    /* MVP */
+    .mvp-block { margin-bottom: 12px; }
+    .mvp-block:last-child { margin-bottom: 0; }
+    .mvp-block-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .mvp-block.later .mvp-block-title { color: var(--text-dim); }
+    .mvp-items {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .mvp-items li {
+      font-size: 12px;
+      color: var(--text);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      line-height: 1.45;
+    }
+    .mvp-items li::before {
+      content: '▸';
+      color: var(--accent);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+    .mvp-block.later .mvp-items li::before { color: var(--text-dim); }
+
+    /* Portfolio Cards */
+    .portfolio-grid { display: flex; flex-direction: column; gap: 10px; }
+    .case-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+    }
+    .case-name { font-size: 12.5px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+    .case-desc { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+
+    /* Next Steps */
+    .steps-list { display: flex; flex-direction: column; gap: 8px; }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius-sm);
+    }
+    .step-num {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      border: 1px solid var(--border-accent);
+      color: var(--accent);
+      font-size: 10px;
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-text { font-size: 12px; color: var(--text); line-height: 1.5; }
+
+    /* ===== RIGHT PANEL — CHAT ===== */
+    .chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      min-width: 0;
+    }
+
+    .chat-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .chat-panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chat-panel-title svg { width: 15px; height: 15px; color: var(--accent); }
+    .chat-stage-badge {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: var(--accent-light);
+      color: var(--accent);
+      border: 1px solid var(--border-accent);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+    .chat-messages::-webkit-scrollbar { width: 5px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 4px; }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 85%;
+      animation: fadeIn 0.3s ease forwards;
+    }
+    .msg.assistant { align-self: flex-start; }
+    .msg.user { align-self: flex-end; }
+
+    .msg-bubble {
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 13.5px;
+      line-height: 1.6;
+    }
+    .msg.assistant .msg-bubble {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 3px;
+      color: var(--text);
+    }
+    .msg.user .msg-bubble {
+      background: var(--user-bubble);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-bottom-right-radius: 3px;
+      color: #fff;
+    }
+    .msg-bubble strong { color: #fff; font-weight: 700; }
+    .msg-bubble em { color: var(--text-muted); font-style: italic; }
+
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+      max-width: 85%;
+    }
+    .chip {
+      padding: 6px 14px;
+      background: var(--bg-card-hover);
+      border: 1px solid var(--border-md);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .chip:hover {
+      border-color: var(--accent);
+      color: #fff;
+      background: var(--accent-light);
+    }
+    .chip:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .typing {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 12px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      border-bottom-left-radius: 3px;
+      width: fit-content;
+    }
+    .typing span {
+      display: block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      animation: bounce 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); background: var(--accent); }
+    }
+
+    .chat-input-area {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-surface);
+      flex-shrink: 0;
+    }
+    .chat-input-wrap {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .chat-input {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border-md);
+      border-radius: var(--radius);
+      padding: 11px 16px;
+      font-size: 13.5px;
+      color: #fff;
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      min-height: 46px;
+      max-height: 120px;
+      overflow-y: auto;
+      line-height: 1.5;
+      transition: border-color 0.15s;
+    }
+    .chat-input::placeholder { color: var(--text-dim); }
+    .chat-input:focus { border-color: var(--accent); }
+    .send-btn {
+      width: 46px; height: 46px;
+      border-radius: var(--radius-sm);
+      background: var(--accent);
+      border: none;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .send-btn:hover { background: var(--accent-hover); }
+    .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .send-btn svg { width: 18px; height: 18px; color: #fff; }
+    .chat-hint { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== PRINT / PDF EXPORT STYLES ===== */
+    @media print {
+      body { background: #fff !important; color: #111 !important; overflow: visible !important; font-size: 12pt; }
+      html, body, .studio-wrap { height: auto !important; }
+      .top-bar, .progress-bar-wrap, .chat-panel, .proposal-header { display: none !important; }
+      .panels { display: block !important; }
+      .proposal-panel {
+        width: 100% !important;
+        min-width: unset !important;
+        background: #fff !important;
+        border: none !important;
+        overflow: visible !important;
+      }
+      .proposal-body { overflow: visible !important; padding: 0 !important; }
+      .doc-title { color: #000 !important; }
+      .doc-subtitle, .brief-value, .arch-value, .case-name, .step-text, .mvp-items li { color: #111 !important; }
+      .doc-meta-item, .brief-label, .arch-label, .prop-section-title, .estimate-disclaimer { color: #555 !important; }
+      .prop-section {
+        border: 1px solid #ddd !important;
+        background: #fff !important;
+        margin-bottom: 20px !important;
+        break-inside: avoid;
+      }
+      .prop-section-head { background: #f8f9fa !important; border-bottom: 1px solid #ddd !important; }
+      .estimate-range { color: #059669 !important; }
+      .estimate-weeks { color: #059669 !important; background: #e6f4ea !important; border-color: #a8dab5 !important; }
+      .doc-badge { color: #2563eb !important; border-color: #93c5fd !important; background: #eff6ff !important; }
+      .prop-empty { display: none !important; }
+      .prop-section:has(.prop-empty) { display: none !important; }
+      .brief-item, .arch-row, .case-card, .step-item { background: #f9fafb !important; border-color: #e5e7eb !important; }
+      @page { margin: 15mm; size: A4; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="studio-wrap">
+
+  <!-- TOP BAR -->
+  <header class="top-bar">
+    <div class="top-bar-left">
+      <a href="/" class="top-bar-logo">Nexus<span>.</span></a>
+      <div class="top-bar-sep"></div>
+      <span class="top-bar-label">Studio — Live Proposal Builder</span>
+    </div>
+    <div class="top-bar-right">
+      <button class="btn btn-ghost" onclick="resetSession()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        New Session
+      </button>
+      <button class="btn btn-primary" id="downloadBtn" onclick="downloadPDF()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- PROGRESS BAR -->
+  <div class="progress-bar-wrap">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+
+  <!-- PANELS -->
+  <div class="panels">
+
+    <!-- LEFT: PROPOSAL -->
+    <div class="proposal-panel">
+      <div class="proposal-header">
+        <div class="proposal-header-left">
+          <div class="live-dot"></div>
+          Live Proposal Document
+        </div>
+        <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono);" id="proposalTimestamp"></span>
+      </div>
+
+      <div class="proposal-body" id="proposalBody">
+
+        <!-- Document Header -->
+        <div class="doc-header">
+          <div class="doc-badge">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+            Executive Proposal
+          </div>
+          <div class="doc-title" id="docTitle">Project Scope & Proposal</div>
+          <div class="doc-subtitle" id="docSubtitle">Generated live during discovery consultation with Nexus Engineering Studio.</div>
+          <div class="doc-meta">
+            <div class="doc-meta-item"><strong>Prepared by:</strong> Nexus Advisory</div>
+            <div class="doc-meta-item"><strong>Date:</strong> <span id="docDate"></span></div>
+            <div class="doc-meta-item"><strong>Status:</strong> <span id="docStatus" style="color:var(--text-muted)">Drafting Scope</span></div>
+          </div>
+        </div>
+
+        <!-- Section: Project Overview -->
+        <div class="prop-section" id="sec-brief">
+          <div class="prop-section-head">
+            <div class="prop-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              Project Overview
+            </div>
+            <span class="prop-section-status" id="brief-status">Pending discovery</span>
+          </div>
+          <div class="prop-section-body" id="brief-body">
+            <div class="prop-empty">Awaiting project details</div>
+          </div>
+        </div>
+
+        <!-- Section: Indicative Estimate -->
+        <div class="prop-section" id="sec-estimate">
+          <div class="prop-section-head">
+            <div class="prop-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+              Indicative Estimate & Investment
+            </div>
+            <span class="prop-section-status" id="estimate-status">Pending scope</span>
+          </div>
+          <div class="prop-section-body" id="estimate-body">
+            <div class="prop-empty">Awaiting project brief completion</div>
+          </div>
+        </div>
+
+        <!-- Section: Proposed Architecture -->
+        <div class="prop-section" id="sec-arch">
+          <div class="prop-section-head">
+            <div class="prop-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Proposed Architecture & Stack
+            </div>
+            <span class="prop-section-status" id="arch-status">Pending scope</span>
+          </div>
+          <div class="prop-section-body" id="arch-body">
+            <div class="prop-empty">Awaiting project brief completion</div>
+          </div>
+        </div>
+
+        <!-- Section: MVP Scope -->
+        <div class="prop-section" id="sec-mvp">
+          <div class="prop-section-head">
+            <div class="prop-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              MVP Scope Breakdown
+            </div>
+            <span class="prop-section-status" id="mvp-status">Pending scope</span>
+          </div>
+          <div class="prop-section-body" id="mvp-body">
+            <div class="prop-empty">Awaiting project brief completion</div>
+          </div>
+        </div>
+
+        <!-- Section: Similar Work -->
+        <div class="prop-section" id="sec-portfolio">
+          <div class="prop-section-head">
+            <div class="prop-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+              Relevant Case Studies
+            </div>
+            <span class="prop-section-status" id="portfolio-status">Pending scope</span>
+          </div>
+          <div class="prop-section-body" id="portfolio-body">
+            <div class="prop-empty">Awaiting project brief completion</div>
+          </div>
+        </div>
+
+        <!-- Section: Next Steps -->
+        <div class="prop-section" id="sec-nextsteps">
+          <div class="prop-section-head">
+            <div class="prop-section-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Recommended Next Steps
+            </div>
+            <span class="prop-section-status" id="nextsteps-status">Pending</span>
+          </div>
+          <div class="prop-section-body" id="nextsteps-body">
+            <div class="prop-empty">Awaiting proposal completion</div>
+          </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <div style="margin-top:20px;padding:12px 14px;background:var(--bg-card);border-radius:var(--radius-sm);border:1px solid var(--border);">
+          <p style="font-size:10.5px;color:var(--text-dim);line-height:1.6;">
+            <strong style="color:var(--text-muted);">Disclaimer:</strong> This is an indicative proposal generated by Nexus Pre-Sales Studio. Final timelines, architecture, and commercial quotes are confirmed during technical discovery.
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT: CHAT -->
+    <div class="chat-panel">
+      <div class="chat-panel-header">
+        <div class="chat-panel-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Discovery Chat
+        </div>
+        <span class="chat-stage-badge" id="stageBadge">discovery</span>
+      </div>
+
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <div class="chat-input-area">
+        <div class="chat-input-wrap">
+          <textarea
+            class="chat-input"
+            id="chatInput"
+            placeholder="Tell us about your project..."
+            rows="1"
+            onkeydown="handleKey(event)"
+            oninput="autoResize(this)"
+          ></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <div class="chat-hint">Press <kbd style="font-family:var(--font-mono);font-size:10px;padding:1px 4px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:3px;">Enter</kbd> to send &nbsp;·&nbsp; <kbd style="font-family:var(--font-mono);font-size:10px;padding:1px 4px;background:var(--bg-card);border:1px solid var(--border-md);border-radius:3px;">Shift+Enter</kbd> for new line</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+const TENANT = 'demo';
+
+let sessionId = null;
+let isLoading = false;
+let briefData = {};
+let proposalProgress = 10;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  setDate();
+  await createSession();
+});
+
+function setDate() {
+  const now = new Date();
+  document.getElementById('docDate').textContent = now.toLocaleDateString('en-US', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  });
+  document.getElementById('proposalTimestamp').textContent =
+    'Started ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function createSession() {
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/sessions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tenant: TENANT,
+        page_url: window.location.href,
+        page_title: 'Nexus Studio',
+        path: '/studio'
+      })
+    });
+    const data = await res.json();
+    sessionId = data.session_id;
+    appendMessage('assistant', data.message, data.chips);
+    updateFromResponse(data);
+  } catch(e) {
+    appendMessage('assistant', "I'm having trouble connecting right now. Please refresh to try again.");
+  }
+}
+
+async function resetSession() {
+  document.getElementById('chatMessages').innerHTML = '';
+  sessionId = null;
+  briefData = {};
+  proposalProgress = 10;
+  resetProposal();
+  await createSession();
+}
+
+async function sendMessage(text, chip) {
+  if (isLoading) return;
+  const input = document.getElementById('chatInput');
+  const userText = text || (input ? input.value.trim() : '');
+  if (!userText && !chip) return;
+  if (!sessionId) return;
+
+  if (!chip && input) {
+    input.value = '';
+    autoResize(input);
+  }
+
+  // Update brief immediately if chip was clicked
+  if (chip && chip.field) {
+    if (chip.field === 'service' && chip.value) briefData.service = chip.value;
+    if (chip.field === 'platforms' && chip.value) briefData.platforms = Array.isArray(chip.value) ? chip.value : [chip.value];
+    if (chip.field === 'timeline' && chip.value) briefData.timeline = chip.value;
+    if (chip.field === 'budget_band' && chip.value) briefData.budget_band = chip.value;
+    if (chip.field === 'decision_role' && chip.value) briefData.decision_role = chip.value;
+    if (chip.field === 'company_size' && chip.value) briefData.company_size = chip.value;
+    renderBrief();
+  }
+
+  appendMessage('user', userText || chip?.label || '');
+  disableChips();
+  setLoading(true);
+
+  try {
+    const body = { content: userText || '' };
+    if (chip) body.chip = chip;
+
+    const res = await fetch(`${API_BASE}/api/v1/sessions/${sessionId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if (res.status === 410) {
+        appendMessage('assistant', 'This session has expired. Starting a new one...');
+        await createSession();
+        return;
+      }
+      appendMessage('assistant', err.detail || 'Something went wrong. Please try again.');
+      return;
+    }
+
+    const data = await res.json();
+    appendMessage('assistant', data.message, data.chips);
+    updateFromResponse(data);
+
+  } catch(e) {
+    appendMessage('assistant', 'Connection error. Please check your network and try again.');
+  } finally {
+    setLoading(false);
+  }
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function setLoading(on) {
+  isLoading = on;
+  document.getElementById('sendBtn').disabled = on;
+  document.getElementById('chatInput').disabled = on;
+
+  if (on) {
+    const typingEl = document.createElement('div');
+    typingEl.className = 'typing';
+    typingEl.innerHTML = '<span></span><span></span><span></span>';
+    typingEl.id = 'typingIndicator';
+    document.getElementById('chatMessages').appendChild(typingEl);
+    scrollToBottom();
+  } else {
+    const t = document.getElementById('typingIndicator');
+    if (t) t.remove();
+    document.getElementById('chatInput').disabled = false;
+    document.getElementById('chatInput').focus();
+  }
+}
+
+function appendMessage(role, text, chips) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML = formatText(text);
+  div.appendChild(bubble);
+  container.appendChild(div);
+
+  if (chips && chips.length > 0 && role === 'assistant') {
+    const chipRow = document.createElement('div');
+    chipRow.className = 'chip-row';
+    chips.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'chip';
+      btn.textContent = c.label;
+      btn.onclick = () => sendMessage(c.label, { field: c.field, value: c.value, label: c.label });
+      chipRow.appendChild(btn);
+    });
+    container.appendChild(chipRow);
+  }
+
+  scrollToBottom();
+}
+
+function formatText(text) {
+  if (!text) return '';
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\n\n/g, '</p><p style="margin-top:8px">')
+    .replace(/\n/g, '<br/>')
+    .replace(/^/, '<p>')
+    .replace(/$/, '</p>');
+}
+
+function disableChips() {
+  document.querySelectorAll('.chip').forEach(c => c.disabled = true);
+}
+
+function scrollToBottom() {
+  const el = document.getElementById('chatMessages');
+  requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+}
+
+function updateFromResponse(data) {
+  if (data.stage) {
+    document.getElementById('stageBadge').textContent = data.stage;
+  }
+
+  // Merge full brief from backend if present
+  if (data.brief && typeof data.brief === 'object') {
+    Object.assign(briefData, data.brief);
+  }
+  renderBrief();
+
+  const cards = data.cards || [];
+  const estimateCard = cards.find(c => c.type === 'estimate');
+  const archCard = cards.find(c => c.type === 'architecture');
+  const mvpCard = cards.find(c => c.type === 'mvp');
+  const portfolioCard = cards.find(c => c.type === 'portfolio');
+
+  if (estimateCard) updateEstimateSection(estimateCard);
+  if (archCard) updateArchSection(archCard);
+  if (mvpCard) updateMVPSection(mvpCard);
+  if (portfolioCard) updatePortfolioSection(portfolioCard);
+
+  if (estimateCard || data.stage === 'handoff') {
+    updateNextSteps(data);
+  }
+
+  if (estimateCard) {
+    document.getElementById('downloadBtn').disabled = false;
+    document.getElementById('docStatus').textContent = 'Proposal Ready ✓';
+    document.getElementById('docStatus').style.color = 'var(--green)';
+    document.getElementById('docStatus').style.fontWeight = '700';
+  }
+
+  updateProgress(data);
+  updateDocTitle();
+}
+
+function renderBrief() {
+  const sec = document.getElementById('sec-brief');
+  const body = document.getElementById('brief-body');
+  const status = document.getElementById('brief-status');
+
+  const items = [];
+  if (briefData.service) items.push({ label: 'Service Category', value: formatService(briefData.service) });
+  if (briefData.platforms && briefData.platforms.length) {
+    const pStr = Array.isArray(briefData.platforms) ? briefData.platforms.join(', ').toUpperCase() : String(briefData.platforms).toUpperCase();
+    items.push({ label: 'Target Platforms', value: pStr });
+  }
+  if (briefData.timeline) items.push({ label: 'Target Timeline', value: formatTimeline(briefData.timeline) });
+  if (briefData.budget_band) items.push({ label: 'Budget Range', value: formatBudget(briefData.budget_band) });
+  if (briefData.decision_role) items.push({ label: 'Decision Role', value: formatRole(briefData.decision_role) });
+  if (briefData.company_size) items.push({ label: 'Organization', value: formatSize(briefData.company_size) });
+  if (briefData.features && briefData.features.length) {
+    const fStr = Array.isArray(briefData.features) ? briefData.features.join(', ') : String(briefData.features);
+    items.push({ label: 'Core Features', value: fStr });
+  }
+
+  if (items.length > 0 || briefData.goal) {
+    sec.classList.add('filled');
+    let html = '<div class="brief-grid">';
+    if (briefData.goal) {
+      html += `<div class="brief-item full-width"><div class="brief-label">Project Objective</div><div class="brief-value" style="font-size:13.5px;line-height:1.5;">${esc(briefData.goal)}</div></div>`;
+    }
+    items.forEach(i => {
+      html += `<div class="brief-item"><div class="brief-label">${i.label}</div><div class="brief-value">${esc(i.value)}</div></div>`;
+    });
+    html += '</div>';
+    body.innerHTML = html;
+
+    const filledCount = [briefData.service, briefData.goal, briefData.platforms?.length, briefData.timeline, briefData.budget_band, briefData.decision_role].filter(Boolean).length;
+    status.className = 'prop-section-status done';
+    status.textContent = `${filledCount} fields scoped ✓`;
+  }
+}
+
+function updateEstimateSection(card) {
+  const sec = document.getElementById('sec-estimate');
+  const body = document.getElementById('estimate-body');
+  const status = document.getElementById('estimate-status');
+
+  sec.classList.add('estimate-filled');
+  status.className = 'prop-section-status done';
+  status.textContent = 'Calculated ✓';
+
+  const inclusions = (card.inclusions || []).slice(0, 5);
+  const teamFormatted = Array.isArray(card.team) ? card.team.join(' · ') : String(card.team || '');
+
+  const html = `
+    <div>
+      <div class="estimate-hero">
+        <div class="estimate-range">${esc(card.range || '')}</div>
+        <div class="estimate-weeks">${esc(String(card.weeks || ''))} weeks</div>
+      </div>
+      <div class="estimate-team"><strong>Dedicated Squad:</strong> ${esc(teamFormatted)}</div>
+      ${inclusions.length ? `<ul class="estimate-list">${inclusions.map(i => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}
+      <p class="estimate-disclaimer">${esc(card.disclaimer || 'Indicative range only, not a fixed quote.')}</p>
+    </div>
+  `;
+  body.innerHTML = html;
+}
+
+function updateArchSection(card) {
+  const sec = document.getElementById('sec-arch');
+  const body = document.getElementById('arch-body');
+  const status = document.getElementById('arch-status');
+
+  sec.classList.add('filled');
+  status.className = 'prop-section-status done';
+  status.textContent = 'Recommended ✓';
+
+  const frontendStr = Array.isArray(card.frontend) ? card.frontend.join(' / ') : String(card.frontend || '');
+  const backendStr = Array.isArray(card.backend) ? card.backend.join(' / ') : String(card.backend || '');
+
+  let notesHtml = '';
+  if (card.notes) {
+    if (Array.isArray(card.notes)) {
+      notesHtml = card.notes.map(n => `<div>• ${esc(n)}</div>`).join('');
+    } else {
+      notesHtml = `<div>• ${esc(card.notes)}</div>`;
+    }
+  }
+
+  const html = `
+    <div>
+      ${frontendStr ? `<div class="arch-row"><div class="arch-label">Frontend</div><div class="arch-value">${esc(frontendStr)}</div></div>` : ''}
+      ${backendStr ? `<div class="arch-row"><div class="arch-label">Backend</div><div class="arch-value">${esc(backendStr)}</div></div>` : ''}
+      ${notesHtml ? `<div class="arch-notes"><strong>Architecture Rationale:</strong><div style="margin-top:4px;">${notesHtml}</div></div>` : ''}
+    </div>
+  `;
+  body.innerHTML = html;
+}
+
+function updateMVPSection(card) {
+  const sec = document.getElementById('sec-mvp');
+  const body = document.getElementById('mvp-body');
+  const status = document.getElementById('mvp-status');
+
+  sec.classList.add('filled');
+  status.className = 'prop-section-status done';
+  status.textContent = 'Scoped ✓';
+
+  const mvpItems = card.mvp || [];
+  const laterItems = card.later || [];
+
+  const html = `
+    <div>
+      ${mvpItems.length ? `
+        <div class="mvp-block">
+          <div class="mvp-block-title">v1 MVP Core Scope (Guaranteed Release)</div>
+          <ul class="mvp-items">${mvpItems.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+        </div>` : ''}
+      ${laterItems.length ? `
+        <div class="mvp-block later" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+          <div class="mvp-block-title">Phase 2+ Backlog (Post-Launch Expansion)</div>
+          <ul class="mvp-items">${laterItems.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
+        </div>` : ''}
+    </div>
+  `;
+  body.innerHTML = html;
+}
+
+function updatePortfolioSection(card) {
+  const sec = document.getElementById('sec-portfolio');
+  const body = document.getElementById('portfolio-body');
+  const status = document.getElementById('portfolio-status');
+  const cases = (card.cases || []).slice(0, 3);
+  if (!cases.length) return;
+
+  sec.classList.add('filled');
+  status.className = 'prop-section-status done';
+  status.textContent = `${cases.length} case studies matched ✓`;
+
+  const html = `
+    <div class="portfolio-grid">
+      ${cases.map(c => `
+        <div class="case-card">
+          <div class="case-name">${esc(c.title || c.name || '')}</div>
+          <div class="case-desc">${esc(c.summary || c.description || c.outcome || '')}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  body.innerHTML = html;
+}
+
+function updateNextSteps(data) {
+  const sec = document.getElementById('sec-nextsteps');
+  const body = document.getElementById('nextsteps-body');
+  const status = document.getElementById('nextsteps-status');
+
+  sec.classList.add('filled');
+  status.className = 'prop-section-status done';
+  status.textContent = 'Ready ✓';
+
+  const isBooked = data.stage === 'handoff';
+  const steps = [
+    { num: 1, text: isBooked ? '✅ Discovery call booked — invitation dispatched.' : 'Schedule a 30-minute discovery workshop with our solutions engineering team.' },
+    { num: 2, text: 'Nexus prepares a detailed technical milestone specification within 3 business days.' },
+    { num: 3, text: 'Confirm sprint cadence, design deliverables, and architecture sign-off.' },
+    { num: 4, text: 'Kick off implementation with dedicated pod (Designer, Engineers, QA, Delivery Lead).' },
+  ];
+
+  const html = `
+    <div class="steps-list">
+      ${steps.map(s => `
+        <div class="step-item">
+          <div class="step-num">${s.num}</div>
+          <div class="step-text">${esc(s.text)}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  body.innerHTML = html;
+}
+
+function updateProgress(data) {
+  const stages = { discovery: 35, advising: 75, booking: 90, handoff: 100, disqualified: 100 };
+  const base = stages[data.stage] || 25;
+  if (base > proposalProgress) {
+    proposalProgress = base;
+    document.getElementById('progressBar').style.width = proposalProgress + '%';
+  }
+}
+
+function updateDocTitle() {
+  if (briefData.goal) {
+    const title = briefData.goal.length > 55 ? briefData.goal.substring(0, 55) + '...' : briefData.goal;
+    document.getElementById('docTitle').textContent = title;
+  } else if (briefData.service) {
+    document.getElementById('docTitle').textContent = formatService(briefData.service) + ' Proposal';
+  }
+}
+
+function resetProposal() {
+  const empties = [
+    ['brief-body', 'Awaiting project details'],
+    ['estimate-body', 'Awaiting project brief completion'],
+    ['arch-body', 'Awaiting project brief completion'],
+    ['mvp-body', 'Awaiting project brief completion'],
+    ['portfolio-body', 'Awaiting project brief completion'],
+    ['nextsteps-body', 'Awaiting proposal completion'],
+  ];
+  empties.forEach(([id, msg]) => {
+    document.getElementById(id).innerHTML = `<div class="prop-empty">${msg}</div>`;
+  });
+  ['brief-status','estimate-status','arch-status','mvp-status','portfolio-status','nextsteps-status'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.className = 'prop-section-status'; el.textContent = 'Pending'; }
+  });
+  ['sec-brief','sec-estimate','sec-arch','sec-mvp','sec-portfolio','sec-nextsteps'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('filled', 'estimate-filled');
+  });
+  document.getElementById('progressBar').style.width = '10%';
+  document.getElementById('downloadBtn').disabled = true;
+  document.getElementById('docTitle').textContent = 'Project Scope & Proposal';
+  document.getElementById('docSubtitle').textContent = 'Generated live during discovery consultation with Nexus Engineering Studio.';
+  document.getElementById('docStatus').textContent = 'Drafting Scope';
+  document.getElementById('docStatus').style.color = 'var(--text-muted)';
+  setDate();
+}
+
+function downloadPDF() {
+  window.print();
+}
+
+function esc(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function formatService(s) {
+  const map = {
+    mobile_app: 'Mobile App (iOS & Android)',
+    web_app: 'Web Application / SaaS',
+    ai_product: 'AI Product & Agents',
+    ui_ux: 'UI/UX Product Design',
+    staff_augmentation: 'Dedicated Engineering Squad',
+    out_of_scope: 'Custom Enterprise'
+  };
+  return map[s] || s;
+}
+
+function formatTimeline(t) {
+  const map = {
+    asap: 'Urgent / ASAP',
+    '1_3_months': '1–3 months (Fast Track)',
+    '3_6_months': '3–6 months',
+    flexible: 'Flexible Cadence'
+  };
+  return map[t] || t;
+}
+
+function formatBudget(b) {
+  const map = {
+    exploring: 'Flexible / TBD',
+    under_15k: 'Under $15k',
+    '15_40k': '$15,000 – $40,000 USD',
+    '40_80k': '$40,000 – $80,000 USD',
+    '80k_plus': '$80,000+ USD'
+  };
+  return map[b] || b;
+}
+
+function formatRole(r) {
+  const map = {
+    founder_or_exec: 'Founder / C-Level Executive',
+    product_or_ops_lead: 'Product / VP Engineering Lead',
+    manager: 'Engineering Manager',
+    intern_or_student: 'Student / Academic',
+    agency_or_reseller: 'Partner / Agency'
+  };
+  return map[r] || r;
+}
+
+function formatSize(s) {
+  const map = {
+    startup: 'Early Stage Startup',
+    smb: 'Growing SMB',
+    mid_market: 'Mid-Market Enterprise',
+    enterprise: 'Global Enterprise'
+  };
+  return map[s] || s;
+}
+</script>
+</body>
+</html>

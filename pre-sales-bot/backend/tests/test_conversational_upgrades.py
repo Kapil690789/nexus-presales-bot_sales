@@ -9,7 +9,7 @@ from backend.app.tenants.loader import load_tenant
 
 def test_close_out_chip():
     with SessionLocal() as db:
-        tenant_row = TenantRow(slug="demo", name="Northline")
+        tenant_row = TenantRow(slug="demo", name="Nexus")
         config = load_tenant("demo")
         session = SessionRow(tenant_id=tenant_row.id, stage="discovery")
 
@@ -29,7 +29,7 @@ def test_close_out_chip():
 
 def test_natural_language_discovery_flow(monkeypatch):
     with SessionLocal() as db:
-        tenant_row = TenantRow(slug="demo", name="Northline")
+        tenant_row = TenantRow(slug="demo", name="Nexus")
         config = load_tenant("demo")
         session = SessionRow(tenant_id=tenant_row.id, stage="discovery")
 
@@ -84,7 +84,7 @@ def test_session_expiry_endpoint(client):
 
 def test_off_topic_deflection_flow():
     with SessionLocal() as db:
-        tenant_row = TenantRow(slug="demo", name="Northline")
+        tenant_row = TenantRow(slug="demo", name="Nexus")
         config = load_tenant("demo")
         session = SessionRow(tenant_id=tenant_row.id, stage="discovery")
 
@@ -104,7 +104,7 @@ def test_off_topic_deflection_flow():
 
 def test_sarah_fintech_flow(monkeypatch):
     with SessionLocal() as db:
-        tenant_row = TenantRow(slug="demo", name="Northline")
+        tenant_row = TenantRow(slug="demo", name="Nexus")
         config = load_tenant("demo")
         session = SessionRow(tenant_id=tenant_row.id, stage="discovery")
 

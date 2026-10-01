@@ -152,7 +152,7 @@ def google_start(tenant: str, db: Session = Depends(get_db), _: str = Depends(re
 
 
 @router.get("/admin/google/callback")
-def google_callback(request: Request, db: Session = Depends(get_db)):
+def google_callback(request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
     state = request.query_params.get("state") or ""
     code = request.query_params.get("code") or ""
     row = db.scalar(select(TenantRow).where(TenantRow.oauth_state == state))

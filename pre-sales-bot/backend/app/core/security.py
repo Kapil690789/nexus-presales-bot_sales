@@ -16,7 +16,7 @@ _message_hits: dict[str, list[float]] = defaultdict(list)
 _llm_session_counts: dict[str, int] = defaultdict(int)
 _llm_ip_hits: dict[str, list[float]] = defaultdict(list)
 _llm_actor: ContextVar[tuple[str, str] | None] = ContextVar("llm_actor", default=None)
-DEFAULT_ADMIN_PASSWORDS = frozenset({"admin", "password", "admin123", "northline-admin"})
+DEFAULT_ADMIN_PASSWORDS = frozenset({"admin", "password", "admin123", "nexus-admin"})
 ADMIN_LOCKOUT_LIMIT = 5
 ADMIN_LOCKOUT_WINDOW = 15 * 60
 LLM_IP_WINDOW = 60 * 60

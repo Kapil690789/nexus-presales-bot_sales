@@ -1,16 +1,16 @@
-name: Northline
+name: Nexus
 slug: demo
-logo_text: Northline
-primary: "#1A2B4C"
-accent: "#1A2B4C"
-background: "#FFFFFF"
-surface: "#FFFFFF"
-text: "#1A2B4C"
-muted: "#5C6670"
+logo_text: Nexus
+primary: "#0A0A0A"
+accent: "#3B82F6"
+background: "#0A0A0A"
+surface: "#121212"
+text: "#EDEDED"
+muted: "#A1A1AA"
 radius_px: 16
 launcher_text: Talk to an advisor
 launcher_subtitle: Scope, estimate, and next steps
-widget_title: Northline Advisor
+widget_title: Nexus Advisor
 widget_subtitle: Online
 placeholder: Type your message...
 position: bottom-right

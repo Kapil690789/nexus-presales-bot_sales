@@ -69,7 +69,7 @@ def run_turn(
             session.nda_version = config.brand.nda_version
         return _finish(
             session, brief, contact, summary,
-            message="Thanks. I can use confidential project notes in this chat now.",
+            message="Thanks! NDA acknowledged. I can now share detailed architectures and relevant case study metrics in this chat.",
             stage="discovery",
             route="nda",
             chips=_next_chips(brief),
@@ -82,7 +82,7 @@ def run_turn(
         slots, live = list_slots(tenant)
         return _finish(
             session, brief, contact, summary,
-            message="Here are a few times for a short call.",
+            message="Here are a few times for a short discovery call with our team:",
             stage="booking",
             route="booking",
             chips=[{"label": slot["label"], "field": "booking_slot", "value": slot["slot_iso"]} for slot in slots],
@@ -93,7 +93,7 @@ def run_turn(
         cases = match_portfolio(brief, config.portfolio)
         return _finish(
             session, brief, contact, summary,
-            message="These are the closest projects we can talk about from the structured portfolio.",
+            message="Here are relevant case studies and similar projects from our past work:",
             stage=session.stage or "advising",
             route="portfolio",
             chips=[BOOK_CHIP],
@@ -110,11 +110,11 @@ def run_turn(
             chips=[BOOK_CHIP],
         )
 
-    objection = None if field else _objection(db, tenant, config, text, session.nda_accepted)
-    if objection:
+    direct_objection = match_objection(text, config.objections) if (text and not field) else None
+    if direct_objection:
         return _finish(
             session, brief, contact, summary,
-            message=objection["reply"],
+            message=direct_objection["reply"],
             stage=session.stage or "discovery",
             route="objection",
             chips=_next_chips(brief) or [BOOK_CHIP],
@@ -152,6 +152,16 @@ def run_turn(
 
     if filled or (field and field not in ACTION):
         return _after_brief(session, config, brief, contact, summary)
+
+    semantic_objection = _objection(db, tenant, config, text, session.nda_accepted) if (text and not field) else None
+    if semantic_objection:
+        return _finish(
+            session, brief, contact, summary,
+            message=semantic_objection["reply"],
+            stage=session.stage or "discovery",
+            route="objection",
+            chips=_next_chips(brief) or [BOOK_CHIP],
+        )
 
     queries = lookup_queries(text, summary, previous[-3:]) or [text]
     filters = query_filters(text, service=brief.service, industry=brief.industry)
@@ -549,7 +559,8 @@ def _note_flags(brief: ProjectBrief) -> None:
         brief.admin = True
     if "marketplace" in blob:
         brief.marketplace = True
-    if "realtime" in blob or "live chat" in blob:
+    # Match "realtime", "real-time", and "real time"
+    if "realtime" in blob or "real-time" in blob or "real time" in blob or "live chat" in blob or "live-chat" in blob:
         brief.realtime = True
 
 
@@ -557,9 +568,11 @@ def _objection(db, tenant, config, text, nda_accepted: bool):
     found = match_objection(text, config.objections)
     if found or not text:
         return found
+    if len(text.split()) > 20:
+        return None
     hits = search(db, tenant, text, kind="objection", k=1, nda_accepted=nda_accepted)
     if hits and hits[0].score >= get_platform().faq_min_score:
-        return {"id": hits[0].source_id, "reply": hits[0].content, "match": "semantic"}
+        return {"id": getattr(hits[0], "source_id", "") or hits[0].id, "reply": hits[0].content, "match": "semantic"}
     return None
 
 

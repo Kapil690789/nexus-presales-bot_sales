@@ -110,6 +110,8 @@ def _anthropic(system: str, user: str, api_key: str, model: str) -> dict[str, An
 
 
 def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
+    import time
+
     import httpx
 
     target_model = (model or "").strip() or "gemini-2.5-flash"
@@ -124,17 +126,30 @@ def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
     if system.strip():
         payload["systemInstruction"] = {"parts": [{"text": system.strip()}]}
 
+    backoffs = [3, 6, 12, 20]
     try:
         with httpx.Client(timeout=15.0) as client:
-            resp = client.post(url, json=payload)
-            if resp.status_code != 200:
+            for attempt, backoff in enumerate(backoffs + [None]):
+                resp = client.post(url, json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if not candidates:
+                        raise LLMError("Gemini returned no candidates")
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    text = parts[0].get("text", "") if parts else ""
+                    return _parse_json(text or "{}")
+                if resp.status_code == 429:
+                    if backoff is None:
+                        raise LLMError(f"Gemini quota exceeded after {len(backoffs)} retries: {resp.text[:200]}")
+                    log.warning(
+                        "Gemini LLM rate limit hit (429), backing off for %ds (attempt %d/%d)",
+                        backoff,
+                        attempt + 1,
+                        len(backoffs),
+                    )
+                    time.sleep(backoff)
+                    continue
                 raise LLMError(f"Gemini API error {resp.status_code}: {resp.text[:200]}")
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if not candidates:
-                raise LLMError("Gemini returned no candidates")
-            parts = candidates[0].get("content", {}).get("parts", [])
-            text = parts[0].get("text", "") if parts else ""
-            return _parse_json(text or "{}")
     except httpx.RequestError as exc:
         raise LLMError(f"Gemini connection error: {exc}") from exc

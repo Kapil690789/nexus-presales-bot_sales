@@ -15,23 +15,38 @@ def fallback_message(config: TenantConfig, brief: ProjectBrief, estimate: dict |
     service_labels = [item.label for item in config.services.in_scope.values()] if config.services and config.services.in_scope else ["custom web apps", "mobile apps", "AI solutions"]
     services_str = ", ".join(service_labels[:4])
 
+    cleaned_q = (query or "").strip().lower()
+    is_ack = cleaned_q in {"ok", "okay", "cool", "got it", "sounds good", "great", "thanks", "thank you", "sure", "nice", "perfect", "done", "alright"}
+
     if llm_available() and query:
-        prompt = (
-            f"You are the senior pre-sales software consultant at {name}. "
-            f"The visitor asked: {wrap_visitor(query)}. "
-            f"We specialize in {services_str}, dedicated agile squads, and bespoke digital products. "
-            f"{UNTRUSTED_RULE} "
-            f"Write a warm, concise, professional reply (2-3 sentences max). "
-            f"Explain how {name} can help with custom software engineering, and invite them to share what kind of product they are looking to build or book a quick call. "
-            f"Never make up fake fixed prices or promises not grounded in our scope. "
-            f'Return JSON {{"message": "..."}}.'
-        )
+        if brief_ready(brief) and estimate:
+            goal_str = brief.goal or brief.service or "custom software product"
+            prompt = (
+                f"You are the senior pre-sales software consultant at {name}. "
+                f"The client has already scoped their project ('{goal_str}') and received an indicative estimate of "
+                f"{estimate['range_label']} over ~{estimate['timeline_weeks']} weeks. "
+                f"The client just said: {wrap_visitor(query)}. "
+                f"{UNTRUSTED_RULE} "
+                f"Write a warm, concise, professional reply (1-3 sentences max). "
+                f"Acknowledge their input, offer to answer any technical/stack questions or help them book a 30-minute discovery call with the engineering team. "
+                f"Do not redundantly paste the full estimate range unless explicitly asked. "
+                f'Return JSON {{"message": "..."}}.'
+            )
+        else:
+            prompt = (
+                f"You are the senior pre-sales software consultant at {name}. "
+                f"The visitor asked: {wrap_visitor(query)}. "
+                f"We specialize in {services_str}, dedicated agile squads, and bespoke digital products. "
+                f"{UNTRUSTED_RULE} "
+                f"Write a warm, concise, professional reply (2-3 sentences max). "
+                f"Explain how {name} can help with custom software engineering, and invite them to share what kind of product they are looking to build or book a quick call. "
+                f"Never make up fake fixed prices or promises not grounded in our scope. "
+                f'Return JSON {{"message": "..."}}.'
+            )
         try:
             data = complete_json("You are an expert enterprise pre-sales software consultant. Output JSON only.", prompt)
             msg = str(data.get("message") or "").strip()
             if msg:
-                if brief_ready(brief) and estimate:
-                    msg += f"\n\nBased on the details you've shared so far, an indicative range is **{estimate['range_label']}** (~{estimate['timeline_weeks']} weeks). A short discovery call with our team can confirm the exact scope."
                 return msg
         except LLMError as exc:
             log.info("LLM fallback synthesis: %s", exc)
@@ -41,6 +56,12 @@ def fallback_message(config: TenantConfig, brief: ProjectBrief, estimate: dict |
             f"I'm {name}'s assistant and pre-sales consultant. We specialize in custom web applications, "
             f"cross-platform mobile apps (iOS & Android), and AI solutions. "
             f"I'd love to learn more about what you're looking to build so we can tailor the right approach."
+        )
+
+    if is_ack:
+        return (
+            f"Glad that aligns! If you'd like to talk through the technical architecture, team setup, or confirm the timeline, "
+            f"feel free to schedule a short discovery call with our team anytime."
         )
 
     parts = []

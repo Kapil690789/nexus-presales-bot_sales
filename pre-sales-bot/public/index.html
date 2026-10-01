@@ -1,56 +1,44 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Northline | Digital Product Engineering & Pre-Sales Studio</title>
+  <title>Nexus — Digital Product Engineering Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg-base: #0B0F19;
-      --bg-surface: #111827;
-      --bg-card: #172033;
-      --bg-card-hover: #1E293B;
-      --border-color: rgba(255, 255, 255, 0.08);
-      --border-hover: rgba(59, 130, 246, 0.4);
-      --text-main: #F8FAFC;
-      --text-muted: #94A3B8;
-      --accent-blue: #3B82F6;
-      --accent-indigo: #6366F1;
-      --accent-emerald: #10B981;
-      --accent-cyan: #06B6D4;
-      --gradient-brand: linear-gradient(135deg, #3B82F6 0%, #6366F1 50%, #8B5CF6 100%);
-      --gradient-glow: radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.22), transparent 70%);
-      --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-    }
-
-    html.light {
-      --bg-base: #F8FAFC;
-      --bg-surface: #FFFFFF;
-      --bg-card: #FFFFFF;
-      --bg-card-hover: #F1F5F9;
-      --border-color: rgba(0, 0, 0, 0.08);
-      --border-hover: rgba(59, 130, 246, 0.4);
-      --text-main: #0F172A;
-      --text-muted: #64748B;
-      --shadow-card: 0 10px 30px -10px rgba(15, 23, 42, 0.08);
-      --gradient-glow: radial-gradient(circle at 50% -20%, rgba(59, 130, 246, 0.12), transparent 70%);
+      --bg: #050506;
+      --bg-surface: #0C0D0F;
+      --bg-card: #121316;
+      --bg-card-hover: #18191E;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-bright: rgba(255, 255, 255, 0.2);
+      --text: #F4F4F5;
+      --text-muted: #8E929E;
+      --text-dim: #52525B;
+      --accent: #FFFFFF;
+      --accent-glow: rgba(255, 255, 255, 0.15);
+      --emerald: #10B981;
+      --blue: #3B82F6;
+      --font-mono: 'JetBrains Mono', monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Plus Jakarta Sans', Inter, -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: var(--bg-base);
-      color: var(--text-main);
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
       line-height: 1.6;
       overflow-x: hidden;
-      background-image: var(--gradient-glow);
-      background-repeat: no-repeat;
       min-height: 100vh;
-      transition: background-color 250ms ease, color 250ms ease;
+      background-image: 
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120, 119, 198, 0.15), transparent 70%),
+        radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px;
+      background-attachment: fixed;
     }
 
     .container {
@@ -64,41 +52,37 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      backdrop-filter: blur(16px);
-      background: rgba(11, 15, 25, 0.8);
-      border-bottom: 1px solid var(--border-color);
-      transition: all 200ms ease;
-    }
-    html.light .nav {
-      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      background: rgba(5, 5, 6, 0.75);
+      border-bottom: 1px solid var(--border);
     }
     .nav-inner {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      height: 76px;
+      height: 72px;
     }
     .logo {
       display: flex;
       align-items: center;
       gap: 12px;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 800;
       letter-spacing: -0.02em;
-      color: var(--text-main);
+      color: #fff;
       text-decoration: none;
     }
-    .logo-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: var(--gradient-brand);
+    .logo-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #FFFFFF;
+      color: #000000;
       display: grid;
       place-items: center;
-      color: #fff;
       font-weight: 900;
-      font-size: 18px;
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+      font-size: 14px;
+      letter-spacing: -0.05em;
     }
     .nav-links {
       display: flex;
@@ -109,442 +93,399 @@
     .nav-links a {
       color: var(--text-muted);
       text-decoration: none;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
+      letter-spacing: -0.01em;
       transition: color 150ms ease;
     }
-    .nav-links a:hover { color: var(--text-main); }
-    .nav-actions {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .theme-toggle {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      font-size: 18px;
-      transition: all 150ms ease;
-    }
-    .theme-toggle:hover { color: var(--text-main); border-color: var(--border-hover); }
+    .nav-links a:hover { color: #FFFFFF; }
 
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 12px 24px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 700;
+      padding: 10px 20px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
       text-decoration: none;
       cursor: pointer;
       transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
       border: 1px solid transparent;
     }
-    .btn-primary {
-      background: var(--gradient-brand);
-      color: #FFFFFF;
-      box-shadow: 0 4px 20px rgba(59, 130, 246, 0.35);
+    .btn-solid {
+      background: #FFFFFF;
+      color: #000000;
+      box-shadow: 0 0 24px rgba(255, 255, 255, 0.18);
     }
-    .btn-primary:hover {
+    .btn-solid:hover {
+      background: #E4E4E7;
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(59, 130, 246, 0.45);
+      box-shadow: 0 0 32px rgba(255, 255, 255, 0.3);
     }
-    .btn-secondary {
-      background: var(--bg-card);
-      color: var(--text-main);
-      border-color: var(--border-color);
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      border-color: var(--border);
+      backdrop-filter: blur(8px);
     }
-    .btn-secondary:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--border-hover);
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: var(--border-bright);
       transform: translateY(-2px);
     }
 
     /* Hero */
     .hero {
-      padding: 90px 0 60px;
+      padding: 100px 0 70px;
       text-align: center;
       position: relative;
     }
-    .badge {
+    .pill {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 16px;
+      padding: 5px 14px;
       border-radius: 999px;
-      background: rgba(59, 130, 246, 0.12);
-      border: 1px solid rgba(59, 130, 246, 0.25);
-      color: var(--accent-blue);
-      font-size: 13px;
-      font-weight: 700;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
       letter-spacing: 0.02em;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
     }
-    .badge-dot {
-      width: 8px;
-      height: 8px;
+    .status-dot {
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
-      background: var(--accent-emerald);
-      animation: pulse 1.6s infinite ease-out;
-    }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
-      70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+      background: var(--emerald);
+      box-shadow: 0 0 10px var(--emerald);
     }
     .hero h1 {
-      font-size: clamp(2.5rem, 5vw, 4.2rem);
+      font-size: clamp(2.7rem, 6vw, 4.6rem);
       font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1.15;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
       margin-bottom: 24px;
+      color: #FFFFFF;
     }
-    .text-gradient {
-      background: var(--gradient-brand);
+    .hero h1 span {
+      background: linear-gradient(180deg, #FFFFFF 30%, #71717A 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     .hero p {
-      font-size: clamp(1.1rem, 2vw, 1.25rem);
+      font-size: clamp(1.05rem, 2vw, 1.2rem);
       color: var(--text-muted);
-      max-width: 720px;
-      margin: 0 auto 36px;
-      line-height: 1.65;
+      max-width: 680px;
+      margin: 0 auto 38px;
+      line-height: 1.6;
     }
-    .hero-actions {
+    .hero-ctas {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 16px;
+      gap: 14px;
       flex-wrap: wrap;
-      margin-bottom: 48px;
+      margin-bottom: 40px;
     }
 
-    /* Prompt Starters */
-    .prompt-starters {
+    /* Interactive Starter Chips */
+    .starter-chips {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
-      max-width: 840px;
-      margin: 0 auto 60px;
+      max-width: 820px;
+      margin: 0 auto 70px;
     }
-    .starter-pill {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 10px 16px;
+    .chip-btn {
+      background: rgba(18, 19, 22, 0.7);
+      border: 1px solid var(--border);
+      color: #D4D4D8;
+      padding: 8px 16px;
       border-radius: 999px;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
       transition: all 180ms ease;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    .starter-pill:hover {
-      background: var(--bg-card-hover);
-      border-color: var(--accent-blue);
-      color: var(--accent-blue);
+    .chip-btn:hover {
+      border-color: var(--border-bright);
+      background: #18191E;
+      color: #FFFFFF;
       transform: translateY(-2px);
     }
-
-    /* Metrics Bar */
-    .metrics {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 32px;
-      margin-bottom: 90px;
-      box-shadow: var(--shadow-card);
+    .chip-tag {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
     }
-    .metric-item { text-align: center; }
-    .metric-val {
-      font-size: 2.4rem;
+
+    /* Live Studio Terminal Mock */
+    .terminal-preview {
+      max-width: 860px;
+      margin: 0 auto 90px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
+      text-align: left;
+    }
+    .terminal-bar {
+      background: #08090A;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+    }
+    .terminal-dots {
+      display: flex;
+      gap: 6px;
+    }
+    .t-dot { width: 10px; height: 10px; border-radius: 50%; background: #27272A; }
+    .terminal-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .terminal-body {
+      padding: 24px;
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: #A1A1AA;
+      line-height: 1.7;
+    }
+    .t-user { color: #FFFFFF; }
+    .t-system { color: #60A5FA; }
+    .t-highlight { color: #34D399; }
+
+    /* Bento Grid */
+    .section-title {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+    .section-title h2 {
+      font-size: 2.2rem;
       font-weight: 800;
       letter-spacing: -0.03em;
-      color: var(--text-main);
-      margin-bottom: 4px;
+      margin-bottom: 10px;
+      color: #FFFFFF;
     }
-    .metric-label {
-      font-size: 13px;
-      font-weight: 600;
+    .section-title p {
       color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      font-size: 1rem;
     }
 
-    /* Section Headers */
-    .section-header {
-      text-align: center;
-      margin-bottom: 56px;
-    }
-    .section-header h2 {
-      font-size: 2.25rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      margin-bottom: 12px;
-    }
-    .section-header p {
-      color: var(--text-muted);
-      font-size: 1.1rem;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-
-    /* Services Grid */
-    .services-grid {
+    .bento-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
       margin-bottom: 100px;
     }
-    .service-card {
+    .bento-card {
       background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 32px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 30px;
       transition: all 220ms ease;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       position: relative;
-      overflow: hidden;
-      box-shadow: var(--shadow-card);
     }
-    .service-card:hover {
-      border-color: var(--border-hover);
+    .bento-card:hover {
+      border-color: var(--border-bright);
       background: var(--bg-card-hover);
-      transform: translateY(-4px);
+      transform: translateY(-3px);
     }
-    .service-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 14px;
-      background: rgba(59, 130, 246, 0.12);
-      color: var(--accent-blue);
+    .bento-card.col-8 { grid-column: span 8; }
+    .bento-card.col-4 { grid-column: span 4; }
+    .bento-card.col-6 { grid-column: span 6; }
+    .bento-card.col-12 { grid-column: span 12; }
+
+    .bento-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
       display: grid;
       place-items: center;
-      font-size: 24px;
-      margin-bottom: 20px;
+      font-size: 18px;
+      margin-bottom: 18px;
     }
-    .service-card h3 {
-      font-size: 1.35rem;
+    .bento-card h3 {
+      font-size: 1.25rem;
       font-weight: 700;
-      margin-bottom: 10px;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      color: #FFFFFF;
     }
-    .service-card p {
+    .bento-card p {
       color: var(--text-muted);
-      font-size: 14px;
+      font-size: 13.5px;
       line-height: 1.6;
       margin-bottom: 20px;
     }
-    .tech-tags {
+    .tags {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-bottom: 24px;
     }
-    .tech-tag {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 4px 8px;
+    .tag {
+      font-family: var(--font-mono);
       font-size: 11px;
-      font-weight: 600;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
       color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 6px;
     }
-    .card-action {
-      font-size: 13px;
+    .card-trigger {
+      margin-top: 18px;
+      font-size: 12.5px;
       font-weight: 700;
-      color: var(--accent-blue);
-      text-decoration: none;
+      color: #FFFFFF;
       display: flex;
       align-items: center;
       gap: 6px;
       cursor: pointer;
     }
-    .card-action:hover { text-decoration: underline; }
+    .card-trigger:hover { text-decoration: underline; }
 
-    /* Case Studies */
-    .cases-grid {
+    /* Case Studies Grid */
+    .cases-container {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-      gap: 28px;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
       margin-bottom: 100px;
     }
-    .case-card {
+    .case-box {
       background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 32px;
-      box-shadow: var(--shadow-card);
-      transition: all 200ms ease;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
     }
-    .case-card:hover { border-color: var(--border-hover); transform: translateY(-3px); }
-    .case-badge {
-      display: inline-block;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--accent-emerald);
+    .case-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--emerald);
       text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 12px;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
     }
-    .case-card h3 { font-size: 1.4rem; font-weight: 700; margin-bottom: 8px; }
-    .case-card p { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
-    .case-stat {
+    .case-box h3 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #FFFFFF;
+    }
+    .case-box p {
+      color: var(--text-muted);
+      font-size: 13.5px;
+      margin-bottom: 20px;
+    }
+    .case-highlight {
       background: var(--bg-card);
-      border-radius: 12px;
-      padding: 16px;
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
     }
-    .case-stat-val { font-size: 1.5rem; font-weight: 800; color: var(--text-main); }
-    .case-stat-desc { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    .c-num { font-size: 1.4rem; font-weight: 800; color: #FFFFFF; }
+    .c-lbl { font-size: 11.5px; color: var(--text-muted); }
 
     /* Pricing Section */
-    .pricing-grid {
+    .pricing-wrap {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 24px;
+      gap: 20px;
       margin-bottom: 100px;
     }
-    .pricing-card {
+    .price-box {
       background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 36px 30px;
-      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px 26px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      box-shadow: var(--shadow-card);
     }
-    .pricing-card.featured {
-      border-color: var(--accent-blue);
-      background: linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, var(--bg-card) 100%);
+    .price-box.highlight {
+      border-color: var(--border-bright);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, var(--bg-card) 100%);
     }
-    .featured-ribbon {
-      position: absolute;
-      top: -12px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--gradient-brand);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      padding: 4px 14px;
-      border-radius: 999px;
-      box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
-    }
-    .pricing-tier { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
-    .pricing-amount { font-size: 2.2rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px; }
-    .pricing-duration { font-size: 13px; font-weight: 600; color: var(--accent-blue); margin-bottom: 24px; }
-    .pricing-features { list-style: none; margin-bottom: 32px; }
-    .pricing-features li {
-      font-size: 14px;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .pricing-features li::before {
-      content: "✓";
-      color: var(--accent-emerald);
-      font-weight: 800;
-    }
+    .p-tier { font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .p-val { font-size: 2.2rem; font-weight: 800; color: #FFFFFF; letter-spacing: -0.03em; margin-bottom: 4px; }
+    .p-time { font-family: var(--font-mono); font-size: 12px; color: var(--emerald); margin-bottom: 24px; }
+    .p-list { list-style: none; margin-bottom: 30px; }
+    .p-list li { font-size: 13.5px; color: var(--text-muted); margin-bottom: 10px; display: flex; gap: 8px; }
+    .p-list li::before { content: "—"; color: var(--text-dim); }
 
     /* FAQ */
-    .faq-list {
-      max-width: 800px;
+    .faq-container {
+      max-width: 780px;
       margin: 0 auto 100px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 12px;
     }
-    .faq-item {
+    .faq-row {
       background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 22px 26px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 24px;
       cursor: pointer;
-      transition: all 180ms ease;
     }
-    .faq-item:hover { border-color: var(--border-hover); }
-    .faq-item summary {
-      font-size: 1.1rem;
+    .faq-row summary {
+      font-size: 1rem;
       font-weight: 700;
+      color: #FFFFFF;
       list-style: none;
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
     }
-    .faq-item summary::-webkit-details-marker { display: none; }
-    .faq-item summary::after {
-      content: "+";
-      font-size: 20px;
-      font-weight: 600;
-      color: var(--accent-blue);
-      transition: transform 180ms ease;
-    }
-    .faq-item[open] summary::after {
-      content: "−";
-      transform: rotate(180deg);
-    }
-    .faq-item p {
-      color: var(--text-muted);
-      font-size: 14px;
-      margin-top: 14px;
-      line-height: 1.6;
-    }
+    .faq-row summary::-webkit-details-marker { display: none; }
+    .faq-row summary::after { content: "+"; font-size: 18px; color: var(--text-dim); }
+    .faq-row[open] summary::after { content: "−"; }
+    .faq-row p { font-size: 13.5px; color: var(--text-muted); margin-top: 12px; line-height: 1.6; }
 
-    /* CTA Banner */
-    .cta-banner {
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(99, 102, 241, 0.15) 100%);
-      border: 1px solid rgba(59, 130, 246, 0.3);
-      border-radius: 24px;
+    /* Bottom Banner */
+    .bottom-cta {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-bright);
+      border-radius: 20px;
       padding: 60px 40px;
       text-align: center;
-      margin-bottom: 90px;
-      position: relative;
-      overflow: hidden;
+      margin-bottom: 80px;
     }
-    .cta-banner h2 { font-size: 2.2rem; font-weight: 800; margin-bottom: 12px; }
-    .cta-banner p { color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto 32px; }
+    .bottom-cta h2 { font-size: 2.2rem; font-weight: 800; color: #FFFFFF; margin-bottom: 12px; }
+    .bottom-cta p { color: var(--text-muted); font-size: 1.05rem; max-width: 580px; margin: 0 auto 28px; }
 
     /* Footer */
     footer {
-      border-top: 1px solid var(--border-color);
-      padding: 40px 0 60px;
+      border-top: 1px solid var(--border);
+      padding: 36px 0 50px;
       text-align: center;
-      color: var(--text-muted);
-      font-size: 13px;
+      color: var(--text-dim);
+      font-size: 12.5px;
     }
-    footer a { color: var(--text-muted); text-decoration: none; font-weight: 600; }
-    footer a:hover { color: var(--accent-blue); }
+    footer a { color: var(--text-muted); text-decoration: none; }
+    footer a:hover { color: #FFFFFF; }
 
-    @media (max-width: 768px) {
+    @media (max-width: 900px) {
+      .bento-card.col-8, .bento-card.col-4, .bento-card.col-6 { grid-column: span 12; }
       .nav-links { display: none; }
-      .metrics { grid-template-columns: 1fr 1fr; padding: 20px; }
-      .hero { padding: 60px 0 40px; }
     }
   </style>
 </head>
@@ -554,325 +495,294 @@
   <nav class="nav">
     <div class="container nav-inner">
       <a href="#" class="logo">
-        <div class="logo-icon">N</div>
-        <span>Northline</span>
+        <div class="logo-badge">N</div>
+        <span>Nexus</span>
       </a>
       <ul class="nav-links">
-        <li><a href="#services">Services</a></li>
+        <li><a href="#services">Architecture</a></li>
         <li><a href="#work">Case Studies</a></li>
-        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#pricing">Estimates</a></li>
         <li><a href="#faq">FAQ</a></li>
+        <li><a href="/studio.html" style="color:var(--text);border:1px solid rgba(255,255,255,0.15);padding:6px 14px;border-radius:999px;font-size:12px;letter-spacing:0.02em;">⚡ Studio</a></li>
       </ul>
-      <div class="nav-actions">
-        <button class="theme-toggle" id="themeToggle" title="Toggle theme">🌓</button>
-        <button class="btn btn-primary" onclick="openAdvisorStudio()">
-          <span>Talk to Advisor</span>
-          <span class="badge-dot" style="margin-left:4px;"></span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <a href="/studio.html" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:999px;border:1px solid rgba(255,255,255,0.2);font-size:12px;font-weight:600;color:rgba(255,255,255,0.7);text-decoration:none;transition:all 0.15s;" onmouseover="this.style.color='#fff';this.style.borderColor='rgba(255,255,255,0.5)'" onmouseout="this.style.color='rgba(255,255,255,0.7)';this.style.borderColor='rgba(255,255,255,0.2)'">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          Live Proposal
+        </a>
+        <button class="btn btn-solid" onclick="openStudioModal()">
+          <span>Launch AI Advisor</span>
+          <span class="status-dot" style="margin-left:4px;"></span>
         </button>
       </div>
     </div>
   </nav>
 
-  <!-- Hero Section -->
+  <!-- Hero -->
   <section class="hero">
     <div class="container">
-      <div class="badge">
-        <span class="badge-dot"></span>
-        <span>AI-POWERED PRE-SALES & ARCHITECTURE STUDIO</span>
+      <div class="pill">
+        <span class="status-dot"></span>
+        <span>PRODUCTION DIGITAL PRODUCT STUDIO</span>
       </div>
-      <h1>Engineering High-Impact <br><span class="text-gradient">Digital Products & Platforms.</span></h1>
-      <p>We partner with founders and engineering leaders to design, architect, and ship production-grade mobile apps, web applications, and AI workflows with deterministic precision.</p>
 
-      <div class="hero-actions">
-        <button class="btn btn-primary" onclick="openAdvisorStudio()">
-          <span>⚡ Start Interactive Project Discovery</span>
+      <h1>
+        Bespoke Software Systems.<br>
+        <span>Engineered with Precision.</span>
+      </h1>
+
+      <p>
+        We architect and ship production web platforms, iOS/Android mobile applications, and custom AI systems for venture-funded startups and enterprise teams.
+      </p>
+
+      <div class="hero-ctas">
+        <button class="btn btn-solid" style="padding: 13px 26px; font-size: 14px;" onclick="openStudioModal()">
+          <span>⚡ Scope Project with AI Advisor</span>
         </button>
-        <a href="#work" class="btn btn-secondary">Explore Selected Work</a>
+        <a href="#work" class="btn btn-ghost">View Case Studies</a>
       </div>
 
-      <!-- Quick Prompt Starters -->
-      <div class="prompt-starters">
-        <button class="starter-pill" onclick="triggerPrompt('We need a cross-platform mobile app for iOS and Android with AI features within 2 months.')">
+      <!-- Quick Discovery Chips -->
+      <div class="starter-chips">
+        <button class="chip-btn" onclick="sendDiscoveryPrompt('We urgently need a cross-platform mobile app for iOS and Android with AI chat, timeline is 2 months, budget $25k-$50k.')">
           📱 <span>iOS & Android Mobile App</span>
+          <span class="chip-tag">[Mobile]</span>
         </button>
-        <button class="starter-pill" onclick="triggerPrompt('We need a modern multi-tenant SaaS web platform with FastAPI and React.')">
-          🌐 <span>SaaS Web Application</span>
+        <button class="chip-btn" onclick="sendDiscoveryPrompt('We want to build a multi-tenant SaaS web platform with FastAPI and React.')">
+          🌐 <span>Full-Stack SaaS Platform</span>
+          <span class="chip-tag">[Web]</span>
         </button>
-        <button class="starter-pill" onclick="triggerPrompt('We want to integrate custom RAG embeddings and LLM chatbot workflows.')">
-          🤖 <span>Custom AI & LLM Systems</span>
+        <button class="chip-btn" onclick="sendDiscoveryPrompt('We need custom enterprise RAG semantic search and Gemini LLM agents.')">
+          🤖 <span>Enterprise AI & RAG</span>
+          <span class="chip-tag">[AI]</span>
         </button>
-        <button class="starter-pill" onclick="triggerPrompt('What are your indicative pricing tiers and sprint delivery timelines?')">
+        <button class="chip-btn" onclick="sendDiscoveryPrompt('What are your indicative pricing tiers and team squad delivery timelines?')">
           💰 <span>Pricing & Timeline Scope</span>
+          <span class="chip-tag">[Scope]</span>
         </button>
       </div>
 
-      <!-- Metrics -->
-      <div class="metrics">
-        <div class="metric-item">
-          <div class="metric-val text-gradient">14 Days</div>
-          <div class="metric-label">To Scoped MVP Prototype</div>
+      <!-- Live Terminal Mock -->
+      <div class="terminal-preview">
+        <div class="terminal-bar">
+          <div class="terminal-dots">
+            <div class="t-dot"></div>
+            <div class="t-dot"></div>
+            <div class="t-dot"></div>
+          </div>
+          <div class="terminal-title">nexus-presales-advisor v2.5.0 — active session</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--emerald);">● ONLINE</div>
         </div>
-        <div class="metric-item">
-          <div class="metric-val text-gradient">99.4%</div>
-          <div class="metric-label">On-Time Sprint Delivery</div>
-        </div>
-        <div class="metric-item">
-          <div class="metric-val text-gradient">$40M+</div>
-          <div class="metric-label">Client Value Scaled</div>
-        </div>
-        <div class="metric-item">
-          <div class="metric-val text-gradient">100%</div>
-          <div class="metric-label">IP & Codebase Ownership</div>
+        <div class="terminal-body">
+          <div><span class="t-user">> Visitor:</span> "We need a cross-platform mobile app for iOS & Android with AI chat within 2 months, budget $25k-$50k."</div>
+          <div style="margin-top:8px;"><span class="t-system">> Nexus Advisor:</span> "Extracted scope: Flutter cross-platform mobile app with Node.js/PostgreSQL backend and Gemini LLM integration."</div>
+          <div style="margin-top:6px; color:#A1A1AA;">> <span class="t-highlight">Indicative Range:</span> $32,000–$40,000 USD · MVP Timeline: 8-week accelerated sprint cadence.</div>
+          <div style="margin-top:8px; font-size:11px; color:#52525B;">[Click 'Launch AI Advisor' to start your interactive consultation]</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Services Section -->
+  <!-- Bento Architecture Grid -->
   <section id="services" class="container">
-    <div class="section-header">
-      <h2>Engineered for Scale & Speed</h2>
-      <p>Full-stack product squads dedicated to bringing complex ideas to life with modern architectures.</p>
+    <div class="section-title">
+      <h2>Engineered for Scale</h2>
+      <p>Bespoke software pods built on proven, modern architectural foundations.</p>
     </div>
 
-    <div class="services-grid">
-      <div class="service-card">
+    <div class="bento-grid">
+      <div class="bento-card col-8">
         <div>
-          <div class="service-icon">📱</div>
-          <h3>Cross-Platform Mobile Apps</h3>
-          <p>High-performance iOS & Android applications with shared Flutter or React Native codebases, offline sync, and native device capabilities.</p>
-          <div class="tech-tags">
-            <span class="tech-tag">Flutter</span>
-            <span class="tech-tag">React Native</span>
-            <span class="tech-tag">Swift</span>
-            <span class="tech-tag">Kotlin</span>
+          <div class="bento-icon">📱</div>
+          <h3>Cross-Platform Mobile Applications</h3>
+          <p>Native-performance mobile products built with Flutter or React Native. Shared codebase across iOS and Android with offline-first synchronization and real-time sockets.</p>
+          <div class="tags">
+            <span class="tag">Flutter</span>
+            <span class="tag">React Native</span>
+            <span class="tag">Swift</span>
+            <span class="tag">Kotlin</span>
+            <span class="tag">Offline Sync</span>
           </div>
         </div>
-        <div class="card-action" onclick="triggerPrompt('I want to scope a cross-platform mobile app for iOS and Android.')">
-          Scope Mobile App →
-        </div>
+        <div class="card-trigger" onclick="sendDiscoveryPrompt('I want to scope a cross-platform mobile app for iOS and Android.')">Scope Mobile Build →</div>
       </div>
 
-      <div class="service-card">
+      <div class="bento-card col-4">
         <div>
-          <div class="service-icon">🌐</div>
-          <h3>Bespoke Web Platforms</h3>
-          <p>Full-stack web applications, SaaS dashboards, and multi-tenant architectures engineered for high concurrency and sub-100ms response times.</p>
-          <div class="tech-tags">
-            <span class="tech-tag">React</span>
-            <span class="tech-tag">Next.js</span>
-            <span class="tech-tag">FastAPI</span>
-            <span class="tech-tag">PostgreSQL</span>
+          <div class="bento-icon">🤖</div>
+          <h3>AI & RAG Systems</h3>
+          <p>Enterprise RAG pipelines with Gemini embeddings, pgvector search, and autonomous multi-agent reasoning loops.</p>
+          <div class="tags">
+            <span class="tag">Gemini 2.5</span>
+            <span class="tag">pgvector</span>
+            <span class="tag">RAG</span>
           </div>
         </div>
-        <div class="card-action" onclick="triggerPrompt('I want to scope a custom SaaS web platform.')">
-          Scope Web Platform →
-        </div>
+        <div class="card-trigger" onclick="sendDiscoveryPrompt('We want to integrate custom AI reasoning and RAG workflows.')">Explore AI →</div>
       </div>
 
-      <div class="service-card">
+      <div class="bento-card col-4">
         <div>
-          <div class="service-icon">🤖</div>
-          <h3>AI & LLM Integrations</h3>
-          <p>Enterprise RAG pipelines, semantic search, multi-agent workflows, and custom LLM reasoning engines grounded in verified business data.</p>
-          <div class="tech-tags">
-            <span class="tech-tag">Gemini 2.5</span>
-            <span class="tech-tag">pgvector</span>
-            <span class="tech-tag">LangChain</span>
-            <span class="tech-tag">RAG Pipelines</span>
+          <div class="bento-icon">🌐</div>
+          <h3>Modern Web Platforms</h3>
+          <p>Sub-50ms API architectures using FastAPI, Next.js, and PostgreSQL for high concurrency.</p>
+          <div class="tags">
+            <span class="tag">Next.js</span>
+            <span class="tag">FastAPI</span>
+            <span class="tag">PostgreSQL</span>
           </div>
         </div>
-        <div class="card-action" onclick="triggerPrompt('We want to build an AI agent and RAG search solution.')">
-          Scope AI Integration →
-        </div>
+        <div class="card-trigger" onclick="sendDiscoveryPrompt('I want to scope a custom SaaS web platform.')">Scope Web →</div>
       </div>
 
-      <div class="service-card">
+      <div class="bento-card col-8">
         <div>
-          <div class="service-icon">🎨</div>
-          <h3>UI/UX & Design Systems</h3>
-          <p>Conversion-focused product design, interactive Figma prototypes, design sprints, and accessible design tokens built for rapid engineering handoff.</p>
-          <div class="tech-tags">
-            <span class="tech-tag">Figma</span>
-            <span class="tech-tag">Design Sprints</span>
-            <span class="tech-tag">Design Tokens</span>
-            <span class="tech-tag">WCAG AA</span>
+          <div class="bento-icon">⚡</div>
+          <h3>Dedicated Senior Engineering Pods</h3>
+          <p>Complete agile squads consisting of a named technical lead, senior full-stack engineers, QA automation, and product designer embedded directly into your delivery cadence.</p>
+          <div class="tags">
+            <span class="tag">Weekly Releases</span>
+            <span class="tag">SOC-2 Ready</span>
+            <span class="tag">100% IP Ownership</span>
+            <span class="tag">Direct Slack</span>
           </div>
         </div>
-        <div class="card-action" onclick="triggerPrompt('I need a complete UI/UX design sprint and interactive prototype.')">
-          Scope Design Sprint →
-        </div>
-      </div>
-
-      <div class="service-card">
-        <div>
-          <div class="service-icon">⚡</div>
-          <h3>Dedicated Engineering Pods</h3>
-          <p>Autonomous senior engineering squads with technical leads, senior developers, QA engineers, and delivery managers embedded with your team.</p>
-          <div class="tech-tags">
-            <span class="tech-tag">Full Squad</span>
-            <span class="tech-tag">Senior Leads</span>
-            <span class="tech-tag">QA Automation</span>
-            <span class="tech-tag">Weekly Cadence</span>
-          </div>
-        </div>
-        <div class="card-action" onclick="triggerPrompt('We need a dedicated agile engineering pod for our roadmap.')">
-          Hire an Agile Pod →
-        </div>
-      </div>
-
-      <div class="service-card">
-        <div>
-          <div class="service-icon">🛡️</div>
-          <h3>Enterprise Security & QA</h3>
-          <p>SOC-2 ready patterns, role-based access control, end-to-end automated test suites, and strict confidentiality protections on day one.</p>
-          <div class="tech-tags">
-            <span class="tech-tag">Zero Trust</span>
-            <span class="tech-tag">Pytest / Jest</span>
-            <span class="tech-tag">CI/CD Hardening</span>
-            <span class="tech-tag">NDA Enforced</span>
-          </div>
-        </div>
-        <div class="card-action" onclick="triggerPrompt('What security frameworks and NDA protocols do you follow?')">
-          Review Security Standards →
-        </div>
+        <div class="card-trigger" onclick="sendDiscoveryPrompt('We need a dedicated agile engineering pod for our roadmap.')">Consult Pods →</div>
       </div>
     </div>
   </section>
 
   <!-- Case Studies -->
   <section id="work" class="container">
-    <div class="section-header">
-      <h2>Proven Track Record</h2>
-      <p>Real-world products engineered and launched by Northline for leading industry clients.</p>
+    <div class="section-title">
+      <h2>Proven Case Studies</h2>
+      <p>Measurable outcomes from production deployments.</p>
     </div>
 
-    <div class="cases-grid">
-      <div class="case-card">
-        <span class="case-badge">Marketplace & Logistics</span>
-        <h3>Harvest — Farm-to-Buyer Platform</h3>
-        <p>Built a high-velocity two-sided MVP with real-time bidding, driver dispatch, and automated escrow payouts.</p>
-        <div class="case-stat">
-          <div class="case-stat-val text-gradient">1,200+ Listings</div>
-          <div class="case-stat-desc">Launched in 16 weeks · First 90 days adoption</div>
+    <div class="cases-container">
+      <div class="case-box">
+        <div class="case-meta">Logistics & Marketplace</div>
+        <h3>Harvest</h3>
+        <p>Built a two-sided agricultural marketplace with real-time bidding and automated escrow settlement.</p>
+        <div class="case-highlight">
+          <div class="c-num">1,200+ Listings</div>
+          <div class="c-lbl">Launched in 16 weeks · First 90 days adoption</div>
         </div>
       </div>
 
-      <div class="case-card">
-        <span class="case-badge">FinTech & Operations</span>
-        <h3>Ledgerly — Multi-Entity Finance Engine</h3>
-        <p>Automated multi-currency transaction reconciliation, banking API webhooks, and ledger compliance auditing.</p>
-        <div class="case-stat">
-          <div class="case-stat-val text-gradient">100% Automated</div>
-          <div class="case-stat-desc">Reconciliation across 14 payment rails</div>
+      <div class="case-box">
+        <div class="case-meta">FinTech Operations</div>
+        <h3>Ledgerly</h3>
+        <p>Automated multi-currency transaction reconciliation across 14 banking payment rails.</p>
+        <div class="case-highlight">
+          <div class="c-num">100% Automated</div>
+          <div class="c-lbl">Zero manual ledger reconciliation errors</div>
         </div>
       </div>
 
-      <div class="case-card">
-        <span class="case-badge">HealthTech & AI</span>
-        <h3>Zephyr — Clinical Companion</h3>
-        <p>Cross-platform patient adherence app with HIPAA-compliant notification orchestration and provider portal.</p>
-        <div class="case-stat">
-          <div class="case-stat-val text-gradient">18% Reduction</div>
-          <div class="case-stat-desc">In clinic appointment no-shows during pilot</div>
+      <div class="case-box">
+        <div class="case-meta">HealthTech & Adherence</div>
+        <h3>Zephyr</h3>
+        <p>Clinical patient adherence companion with HIPAA-compliant notification scheduling.</p>
+        <div class="case-highlight">
+          <div class="c-num">18% Reduction</div>
+          <div class="c-lbl">In patient no-shows during pilot run</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Pricing Tiers -->
+  <!-- Pricing Bands -->
   <section id="pricing" class="container">
-    <div class="section-header">
-      <h2>Transparent Indicative Pricing</h2>
-      <p>Clear, scope-driven pricing bands. Talk with our advisor for an instant architectural estimate.</p>
+    <div class="section-title">
+      <h2>Indicative Investment Bands</h2>
+      <p>Deterministic, scope-based estimation model.</p>
     </div>
 
-    <div class="pricing-grid">
-      <div class="pricing-card">
+    <div class="pricing-wrap">
+      <div class="price-box">
         <div>
-          <div class="pricing-tier">Rapid Discovery MVP</div>
-          <div class="pricing-amount">$15k–$25k</div>
-          <div class="pricing-duration">6–8 Weeks Timeline</div>
-          <ul class="pricing-features">
-            <li>Core user journey on 1 primary platform</li>
-            <li>UX/UI clickable Figma prototype</li>
-            <li>PostgreSQL database + API architecture</li>
+          <div class="p-tier">MVP Discovery</div>
+          <div class="p-val">$15k–$25k</div>
+          <div class="p-time">6–8 WEEKS TIMELINE</div>
+          <ul class="p-list">
+            <li>Core user journey on 1 agreed platform</li>
+            <li>Clickable Figma prototype & design tokens</li>
+            <li>FastAPI / PostgreSQL backend architecture</li>
             <li>1 named third-party integration</li>
-            <li>Full test suite + deployment pipeline</li>
+            <li>Automated test suite & CI/CD pipeline</li>
           </ul>
         </div>
-        <button class="btn btn-secondary" onclick="triggerPrompt('I want to scope a Rapid Discovery MVP ($15k-$25k).')">Scope MVP</button>
+        <button class="btn btn-ghost" onclick="sendDiscoveryPrompt('I want to scope an MVP Discovery sprint ($15k-$25k).')">Scope MVP</button>
       </div>
 
-      <div class="pricing-card featured">
-        <div class="featured-ribbon">Most Popular</div>
+      <div class="price-box highlight">
         <div>
-          <div class="pricing-tier">Full Growth Platform</div>
-          <div class="pricing-amount">$30k–$50k</div>
-          <div class="pricing-duration">10–14 Weeks Timeline</div>
-          <ul class="pricing-features">
+          <div class="p-tier">Growth Platform</div>
+          <div class="p-val">$30k–$50k</div>
+          <div class="p-time">10–14 WEEKS TIMELINE</div>
+          <ul class="p-list">
             <li>Cross-platform iOS, Android, and Web</li>
-            <li>Complete custom design system</li>
-            <li>AI workflows & semantic search integration</li>
-            <li>Payment gateway & CRM webhooks</li>
-            <li>Dedicated Squad: Lead, 2 Engineers, QA, PM</li>
+            <li>AI reasoning & semantic search integration</li>
+            <li>Payment gateway & webhook orchestration</li>
+            <li>Dedicated Squad: Tech Lead, 2 Devs, QA</li>
+            <li>Weekly staging releases & video demos</li>
           </ul>
         </div>
-        <button class="btn btn-primary" onclick="triggerPrompt('I want to scope a Full Growth Platform ($30k-$50k).')">Scope Growth Build</button>
+        <button class="btn btn-solid" onclick="sendDiscoveryPrompt('I want to scope a Growth Platform build ($30k-$50k).')">Scope Growth</button>
       </div>
 
-      <div class="pricing-card">
+      <div class="price-box">
         <div>
-          <div class="pricing-tier">Enterprise Architecture</div>
-          <div class="pricing-amount">$60k+</div>
-          <div class="pricing-duration">Custom Multi-Sprint Cadence</div>
-          <ul class="pricing-features">
-            <li>High-throughput distributed systems</li>
-            <li>SOC-2 / HIPAA compliance architecture</li>
-            <li>Custom multi-agent LLM systems</li>
-            <li>Dedicated pods & 24/7 SLA escalation</li>
-            <li>Continuous DevOps & cloud infrastructure</li>
+          <div class="p-tier">Enterprise Pod</div>
+          <div class="p-val">$60k+</div>
+          <div class="p-time">CUSTOM CADENCE</div>
+          <ul class="p-list">
+            <li>Multi-pod dedicated architecture</li>
+            <li>SOC-2 / HIPAA compliance hardening</li>
+            <li>Custom fine-tuned AI embedding models</li>
+            <li>24/7 SLA escalation support</li>
+            <li>DevOps, Kubernetes & Cloud setup</li>
           </ul>
         </div>
-        <button class="btn btn-secondary" onclick="triggerPrompt('We need an Enterprise Scale architecture consultation.')">Consult Enterprise</button>
+        <button class="btn btn-ghost" onclick="sendDiscoveryPrompt('We need an Enterprise Scale consultation.')">Consult Enterprise</button>
       </div>
     </div>
   </section>
 
-  <!-- FAQ Section -->
+  <!-- FAQ -->
   <section id="faq" class="container">
-    <div class="section-header">
+    <div class="section-title">
       <h2>Frequently Asked Questions</h2>
-      <p>Everything you need to know about partnering with Northline.</p>
     </div>
 
-    <div class="faq-list">
-      <details class="faq-item" open>
-        <summary>How accurate are the AI Advisor's indicative estimates?</summary>
-        <p>Our advisor uses deterministic complexity formulas derived from over 40+ completed software projects. It factors in your platforms, integrations, authentication, and team mix to produce high-confidence indicative bands, which our technical leads confirm in a short discovery call.</p>
+    <div class="faq-container">
+      <details class="faq-row" open>
+        <summary>How are your indicative estimates calculated?</summary>
+        <p>Our advisor analyzes your platforms, complexity multipliers, database requirements, and team mix using deterministic formulas derived from over 40+ completed builds. Our technical leads confirm the scope in a 20-minute call.</p>
       </details>
-      <details class="faq-item">
-        <summary>Who owns the intellectual property and source code?</summary>
-        <p>You own 100% of all intellectual property, source code, designs, and architectural assets upon payment. We do not use proprietary vendor lock-in frameworks.</p>
+      <details class="faq-row">
+        <summary>Do we own the intellectual property and source code?</summary>
+        <p>Yes. You receive 100% intellectual property and full codebase ownership upon sprint milestone completion. We do not use proprietary vendor lock-in frameworks.</p>
       </details>
-      <details class="faq-item">
-        <summary>Can we sign an NDA before sharing confidential specs?</summary>
+      <details class="faq-row">
+        <summary>Can we sign an NDA before scoping?</summary>
         <p>Yes. You can accept our standard mutual confidentiality terms directly inside the chat advisor or upload your custom NDA document for our legal team to countersign.</p>
       </details>
-      <details class="faq-item">
+      <details class="faq-row">
         <summary>What is your sprint delivery cadence?</summary>
         <p>We work in 2-week agile sprints with weekly staging releases, asynchronous video walkthroughs, and direct Slack communication with your named delivery lead.</p>
       </details>
     </div>
   </section>
 
-  <!-- CTA Banner -->
+  <!-- Bottom CTA -->
   <section class="container">
-    <div class="cta-banner">
-      <h2>Ready to Build Something Extraordinary?</h2>
-      <p>Chat with our AI Pre-Sales Consultant right now to get an instant scope, architectural blueprint, and timeline estimate.</p>
-      <button class="btn btn-primary" style="padding: 16px 36px; font-size: 16px;" onclick="openAdvisorStudio()">
-        <span>🚀 Launch Interactive Advisor Studio</span>
+    <div class="bottom-cta">
+      <h2>Start Your Project Scope</h2>
+      <p>Chat with our AI Pre-Sales Consultant right now to generate an architectural blueprint, indicative cost, and timeline.</p>
+      <button class="btn btn-solid" style="padding: 14px 32px; font-size: 15px;" onclick="openStudioModal()">
+        <span>🚀 Open Advisor Studio</span>
       </button>
     </div>
   </section>
@@ -880,35 +790,28 @@
   <!-- Footer -->
   <footer>
     <div class="container">
-      <p>© 2026 Northline Digital Product Studio. All rights reserved. • <a href="javascript:void(0)" onclick="openAdvisorStudio()">Open AI Advisor</a></p>
+      <p>© 2026 Nexus Digital Product Studio. All rights reserved. • <a href="javascript:void(0)" onclick="openStudioModal()">Open Pre-Sales Advisor</a></p>
     </div>
   </footer>
 
-  <!-- Helper Scripts to Hook into Widget -->
+  <!-- Scripts -->
   <script>
-    // Dark / Light Theme Toggle
-    const themeToggle = document.getElementById("themeToggle");
-    themeToggle.addEventListener("click", () => {
-      document.documentElement.classList.toggle("light");
-      document.documentElement.classList.toggle("dark");
-      themeToggle.textContent = document.documentElement.classList.contains("light") ? "🌙" : "🌓";
-    });
-
-    // Advisor Interaction Helpers
-    function openAdvisorStudio() {
-      if (window.NorthlineAdvisor) {
-        window.NorthlineAdvisor.open(true);
+    function openStudioModal() {
+      var advisor = window.NexusAdvisor || window.NorthlineAdvisor || window.Advisor;
+      if (advisor) {
+        advisor.open(true);
       }
     }
 
-    function triggerPrompt(text) {
-      if (window.NorthlineAdvisor) {
-        window.NorthlineAdvisor.send(text, true);
+    function sendDiscoveryPrompt(text) {
+      var advisor = window.NexusAdvisor || window.NorthlineAdvisor || window.Advisor;
+      if (advisor) {
+        advisor.send(text, true);
       }
     }
   </script>
 
-  <!-- Load Chatbot Widget -->
+  <!-- Embed Consultant Widget -->
   <script src="/widget/consultant.js" data-api="" data-tenant="demo" async></script>
 </body>
 </html>

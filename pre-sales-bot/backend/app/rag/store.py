@@ -37,7 +37,8 @@ class Hit:
     content: str
     score: float
     source: str
-    metadata: dict
+    source_id: str = ""
+    metadata: dict = field(default_factory=dict)
     nda_only: bool = False
 
 
@@ -306,6 +307,7 @@ def _hit(row: ChunkRow, score: float) -> Hit:
         content=row.content,
         score=score,
         source=row.source,
+        source_id=getattr(row, "source_id", "") or "",
         metadata=metadata if isinstance(metadata, dict) else {},
         nda_only=row.nda_only,
     )

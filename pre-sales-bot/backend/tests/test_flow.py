@@ -27,7 +27,7 @@ def test_health_and_widget(client):
     assert 'data-tenant="demo"' in page.text
     config = client.get("/api/v1/public-config", params={"tenant": "demo"})
     assert config.status_code == 200
-    assert config.json()["brand"]["logo_text"] == "Northline"
+    assert config.json()["brand"]["logo_text"] == "Nexus"
     assert client.get("/api/v1/public-config", params={"tenant": "missing"}).status_code == 404
 
 
@@ -130,6 +130,7 @@ def test_google_callback_reuses_pkce_verifier(client, auth, monkeypatch):
     done = client.get(
         "/admin/google/callback",
         params={"code": "abc", "state": "state-pkce"},
+        auth=auth,
         follow_redirects=False,
     )
     assert done.status_code == 303

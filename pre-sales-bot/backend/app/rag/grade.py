@@ -8,7 +8,9 @@ from backend.app.rag.store import Hit
 
 def classify(score: float, relevant: bool | None) -> str:
     platform = get_platform()
-    if score >= platform.show_min_score and relevant is not False:
+    if relevant is True and score >= platform.show_min_score:
+        return "show"
+    if relevant is None and score >= platform.faq_min_score:
         return "show"
     if score >= platform.weak_min_score:
         return "weak"
@@ -51,4 +53,4 @@ def grounded_answer(query: str, hits: list[Hit]) -> str:
                 return message
         except LLMError:
             pass
-    return "Here's what our project notes support.\n\n" + snippets
+    return "\n\n".join(hit.content.strip() for hit in hits[:2] if hit.content.strip())

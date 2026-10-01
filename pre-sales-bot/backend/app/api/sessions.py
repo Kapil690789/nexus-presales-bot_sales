@@ -87,6 +87,10 @@ def _add(db: Session, session_id: str, role: str, content: str, payload: dict | 
 
 
 def _public(session: SessionRow, message: MessageRow, result: dict, config: TenantConfig) -> dict:
+    try:
+        brief_dict = json.loads(session.brief_json or "{}")
+    except Exception:
+        brief_dict = {}
     return {
         "session_id": session.id,
         "message_id": message.id,
@@ -95,6 +99,7 @@ def _public(session: SessionRow, message: MessageRow, result: dict, config: Tena
         "chips": result["chips"],
         "cards": result["cards"],
         "route": result["route"],
+        "brief": brief_dict,
         "nda_accepted": session.nda_accepted,
         "nda_version": config.brand.nda_version,
         "score": (result.get("qualification") or {}).get("score"),
@@ -105,7 +110,11 @@ def _public(session: SessionRow, message: MessageRow, result: dict, config: Tena
 
 @router.post("/api/v1/sessions")
 def create_session(body: SessionIn, db: Session = Depends(get_db)) -> dict:
-    tenant, config = _pair(db, body.tenant.strip())
+    import re as _re
+    slug = body.tenant.strip()[:80]
+    if not _re.match(r"^[a-z0-9_-]+$", slug):
+        raise HTTPException(status_code=400, detail="Invalid tenant identifier")
+    tenant, config = _pair(db, slug)
     session = SessionRow(
         tenant_id=tenant.id,
         page_url=body.page_url[:500],

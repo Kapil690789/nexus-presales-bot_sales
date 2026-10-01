@@ -38,27 +38,132 @@ _EXTRACTOR_SYSTEM = (
 )
 
 
+def _heuristic_extract(text: str, pending_field: str | None = None, brief: ProjectBrief | None = None) -> dict[str, Any]:
+    import re
+    lowered = text.lower().strip()
+    res: dict[str, Any] = {}
+
+    # Check off-topic
+    if any(token in lowered for token in ("world cup", "fifa", "binary search", "recipe", "capital of", "president of", "tell me a joke", "write a poem", "write code for")):
+        res["is_off_topic"] = True
+        return res
+
+    # Check out of scope
+    if any(token in lowered for token in ("homework", "student project", "crypto", "web3", "shopify")):
+        res["service"] = "out_of_scope"
+        return res
+
+    # Check question
+    is_q_start = bool(re.match(r"^(how|what|who|why|when|where|can|do|does|is|are|have|tell me about)\b", lowered))
+    has_question_mark = "?" in lowered
+    is_brief_inquiry = any(k in lowered for k in ("we need", "i am", "founder", "budget is", "timeline is", "looking to build", "want to build", "building a", "need a"))
+
+    if (is_q_start or has_question_mark) and not is_brief_inquiry and len(text.split()) < 15:
+        res["is_question"] = True
+        return res
+
+    # Role
+    if any(title in lowered for title in ("founder", "co-founder", "ceo", "cto", "cpo", "coo", "executive", "owner", "president", "director")):
+        res["decision_role"] = "founder_or_exec"
+    elif any(title in lowered for title in ("vp", "head of", "lead", "product manager", "project manager", "engineering lead")):
+        res["decision_role"] = "product_or_ops_lead"
+    elif any(title in lowered for title in ("student", "intern", "college")):
+        res["decision_role"] = "intern_or_student"
+
+    # Company size
+    if any(term in lowered for term in ("startup", "early stage", "seed", "series a", "bootstrapped")):
+        res["company_size"] = "startup"
+    elif any(term in lowered for term in ("enterprise", "fortune", "corporation", "multinational")):
+        res["company_size"] = "enterprise"
+
+    # Platforms
+    platforms = []
+    if "ios" in lowered:
+        platforms.append("ios")
+    if "android" in lowered:
+        platforms.append("android")
+    if "web" in lowered or "saas" in lowered or "portal" in lowered:
+        platforms.append("web")
+    if platforms:
+        res["platforms"] = platforms
+
+    # Service
+    if "mobile" in lowered or "ios" in lowered or "android" in lowered or "cross-platform" in lowered:
+        res["service"] = "mobile_app"
+    elif "web" in lowered or "saas" in lowered or "portal" in lowered:
+        res["service"] = "web_app"
+    elif "ai" in lowered or "llm" in lowered or "agent" in lowered:
+        res["service"] = "ai_product"
+
+    # Timeline
+    if any(term in lowered for term in ("urgently", "asap", "immediate", "rush", "this month")):
+        res["timeline"] = "asap"
+    elif any(term in lowered for term in ("2 months", "1 month", "3 months", "2-3 months", "60 days", "8 weeks", "two months", "one month")):
+        res["timeline"] = "1_3_months"
+    elif any(term in lowered for term in ("4 months", "5 months", "6 months", "3-6 months", "half year")):
+        res["timeline"] = "3_6_months"
+    elif "flexible" in lowered:
+        res["timeline"] = "flexible"
+
+    # Budget — match $Nk, $N,NNN, and plain 5-6 digit amounts
+    budget_nums = [int(n) for n in re.findall(r"\$?(\d+)k\b", lowered)]
+    if not budget_nums:
+        # Match comma-formatted: $100,000 or 100,000
+        comma_nums = [int(n.replace(",", "")) for n in re.findall(r"\$?([\d,]{4,9})\b", lowered) if "," in n]
+        if comma_nums:
+            budget_nums = [n // 1000 for n in comma_nums]
+    if not budget_nums:
+        full_nums = [int(n.replace(",", "")) for n in re.findall(r"\$?(\d{4,6})\b", lowered)]
+        if full_nums:
+            budget_nums = [n // 1000 for n in full_nums]
+
+    if budget_nums:
+        max_b = max(budget_nums)
+        if max_b <= 15:
+            res["budget_band"] = "under_15k"
+        elif max_b <= 40:
+            res["budget_band"] = "15_40k"
+        elif max_b <= 80:
+            res["budget_band"] = "40_80k"
+        else:
+            res["budget_band"] = "80k_plus"
+
+    # Goal
+    if is_brief_inquiry or (pending_field == "goal" and not (is_q_start or has_question_mark)):
+        sentences = [s.strip() for s in text.replace("\n", ". ").split(".") if s.strip()]
+        for s in sentences:
+            if any(w in s.lower() for w in ("need", "build", "want", "app for", "platform for", "startup", "product")):
+                res["goal"] = s[:120].strip()
+                break
+        if "goal" not in res and sentences and not (is_q_start or has_question_mark):
+            res["goal"] = sentences[0][:120].strip()
+
+    return res
+
+
 def extract_slots(text: str, pending_field: str | None = None, brief: ProjectBrief | None = None) -> dict[str, Any]:
     cleaned = (text or "").strip()
-    if not cleaned or not llm_available():
+    if not cleaned:
         return {}
 
-    context = ""
-    if brief:
-        current_slots = {k: v for k, v in brief.model_dump().items() if v not in (None, "", [], False)}
-        if current_slots:
-            context = f"Known project details so far: {current_slots}\n"
-    if pending_field:
-        context += f"Currently asking user for: {pending_field}\n"
+    if llm_available():
+        context = ""
+        if brief:
+            current_slots = {k: v for k, v in brief.model_dump().items() if v not in (None, "", [], False)}
+            if current_slots:
+                context = f"Known project details so far: {current_slots}\n"
+        if pending_field:
+            context += f"Currently asking user for: {pending_field}\n"
 
-    user_prompt = f"{context}User message:\n{wrap_visitor(cleaned)}"
-    try:
-        data = complete_json(_EXTRACTOR_SYSTEM, user_prompt)
-        if isinstance(data, dict):
-            return data
-    except LLMError as exc:
-        log.info("Slot extraction fallback: %s", exc)
-    return {}
+        user_prompt = f"{context}User message:\n{wrap_visitor(cleaned)}"
+        try:
+            data = complete_json(_EXTRACTOR_SYSTEM, user_prompt)
+            if isinstance(data, dict) and data:
+                return data
+        except LLMError as exc:
+            log.info("Slot extraction fallback to heuristic: %s", exc)
+
+    return _heuristic_extract(cleaned, pending_field, brief)
 
 
 def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pending_field: str | None = None) -> bool:
