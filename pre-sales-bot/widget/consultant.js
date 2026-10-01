@@ -110,6 +110,15 @@
     ".ps-send{width:36px;height:36px;border:0;border-radius:50%;background:var(--ps-primary);color:#fff;display:grid;place-items:center;cursor:pointer;flex:0 0 36px;padding:0}",
     ".ps-send svg{width:16px;height:16px;display:block}",
     ".ps-send:disabled,.ps-compose input:disabled{opacity:.55;cursor:default}",
+    ".ps-thread::-webkit-scrollbar{width:5px}.ps-thread::-webkit-scrollbar-thumb{background:rgba(26,43,76,.15);border-radius:4px}.ps-thread::-webkit-scrollbar-thumb:hover{background:rgba(26,43,76,.3)}",
+    ".ps-msg code{background:rgba(0,0,0,.06);padding:2px 5px;border-radius:4px;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}",
+    ".ps-msg.assistant a{color:var(--ps-primary);font-weight:600;text-decoration:underline}",
+    ".ps-char-count{font-size:10px;color:var(--ps-muted);text-align:right;padding:0 8px 4px;margin-top:-4px;display:none}",
+    ".ps-char-count.visible{display:block}",
+    ".ps-char-count.warn{color:#e11d48;font-weight:600}",
+    ".ps-thumb-btn{border:0;background:transparent;color:var(--ps-muted);font:inherit;font-size:11px;font-weight:500;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background 150ms ease}",
+    ".ps-thumb-btn:hover{background:var(--ps-silver);color:var(--ps-text)}",
+    ".ps-thumb-btn.selected{color:var(--ps-success);font-weight:600;pointer-events:none}",
     "@media (max-width:520px){.ps-panel,.ps-panel.bottom-right,.ps-panel.bottom-left{width:100vw;height:100vh;right:0 !important;left:0 !important;bottom:0 !important;border-radius:0}.ps-launcher.bottom-right,.ps-launcher.bottom-left{right:16px;bottom:16px;left:auto}}",
     "@media (prefers-reduced-motion:reduce){.ps-launcher,.ps-panel.is-open,.ps-msg,.ps-card,.ps-chip,.ps-online-dot,.ps-shimmer-line{animation:none !important}}"
   ].join("");
@@ -236,8 +245,10 @@
   function renderMarkdown(text) {
     if (!text) return "";
     var safe = esc(text);
+    safe = safe.replace(/`([^`]+)`/g, "<code>$1</code>");
     safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    safe = safe.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
     return safe;
   }
 
@@ -253,6 +264,12 @@
     scrollThread();
     return node;
   }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && panel.classList.contains("is-open")) {
+      closePanel();
+    }
+  });
 
   function showTyping() {
     hideTyping();
