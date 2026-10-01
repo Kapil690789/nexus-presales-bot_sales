@@ -85,11 +85,43 @@ async def upload_document(
             excerpt=excerpt[:2000],
         )
     )
-    message = f"I read {filename}. Here is the part I can use: {excerpt[:500]}"
+    # Record user upload message in session history
+    _add(db, session.id, "user", f"📎 Uploaded document: {filename}", {"filename": filename, "kind": "upload"})
+
+    message = ""
+    from backend.app.core.guard import UNTRUSTED_RULE, wrap_visitor
+    from backend.app.core.llm import LLMError, complete_json, llm_available
+
+    if llm_available():
+        prompt = (
+            f"You are the senior pre-sales consultant at {config.brand.name}. "
+            f"The visitor uploaded a project document/spec named '{filename}'. "
+            f"Document excerpt:\n{wrap_visitor(excerpt[:2000])}\n\n"
+            f"{UNTRUSTED_RULE} "
+            f"Provide a concise, professional 2-3 sentence assessment of the uploaded spec. "
+            f"Acknowledge the key features or scope identified and invite them to generate an architectural estimate or book a discovery call. "
+            f'Return JSON {{"message": "..."}}.'
+        )
+        try:
+            res_data = complete_json("You are an expert enterprise pre-sales software consultant. Output JSON only.", prompt)
+            message = str(res_data.get("message") or "").strip()
+        except LLMError:
+            pass
+
+    if not message:
+        clean_excerpt = excerpt[:300].strip().replace("\n", " ")
+        message = f"I've reviewed **{filename}**. Key notes extracted:\n\n> \"{clean_excerpt}...\"\n\nWould you like me to generate an indicative architecture and timeline estimate for this?"
+
     chips = []
     if not session.nda_accepted:
-        message += f"\n\n{config.brand.nda_text}"
+        message += f"\n\n*{config.brand.nda_text}*"
         chips = [{"label": "Accept confidentiality", "field": "nda", "value": config.brand.nda_version}]
+    else:
+        chips = [
+            {"label": "Generate estimate", "field": "ask", "value": "Give me an estimate"},
+            {"label": "Book discovery call", "field": "booking_window", "value": "now"},
+        ]
+
     assistant = _add(db, session.id, "assistant", message, {"route": "rfp", "chips": chips, "chunk_ids": []})
     db.commit()
     return _public(

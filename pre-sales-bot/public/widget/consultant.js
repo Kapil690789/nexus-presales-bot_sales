@@ -24,7 +24,10 @@
 
   var ICONS = {
     chat: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v7A2.5 2.5 0 0 1 16.5 16H11l-4 3.2V16H7.5A2.5 2.5 0 0 1 5 13.5v-7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.5 9h7M8.5 12h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
-    close: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    expand: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    compress: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    restart: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.4L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.4L3 16M3 21v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     clip: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.2 7.2 8.4 14a3.1 3.1 0 0 0 4.4 4.4l7.1-7.2a5 5 0 0 0-7.1-7.1L6 11.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     send: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12 20 5l-6.2 14-2.1-5.2L5 12Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m11.7 13.8 8.3-8.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     avatar: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="80" height="80" fill="#1A2B4C"/><circle cx="40" cy="30" r="14" fill="#E2E8F0"/><path d="M16 72c4-16 16-24 24-24s20 8 24 24" fill="#E2E8F0"/><rect x="28" y="48" width="24" height="18" rx="6" fill="#1A2B4C"/></svg>'
@@ -52,17 +55,25 @@
     "@keyframes ps-launcher-in{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}",
     "@keyframes ps-msg-in{from{opacity:0}to{opacity:1}}",
     "@keyframes ps-chip-in{from{opacity:0}to{opacity:1}}",
-    ".ps-header{background:var(--ps-primary);color:#fff;padding:14px 14px 14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;position:relative;z-index:2}",
-    ".ps-avatar{width:40px;height:40px;border-radius:50%;border:2px solid #e2e8f0;overflow:hidden;flex-shrink:0;background:#24375a}",
+    ".ps-header{background:var(--ps-primary);color:#fff;padding:14px 14px 14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;position:relative;z-index:2}",
+    ".ps-avatar{width:38px;height:38px;border-radius:50%;border:2px solid #e2e8f0;overflow:hidden;flex-shrink:0;background:#24375a}",
     ".ps-avatar svg{display:block;width:100%;height:100%}",
-    ".ps-identity{flex:1;min-width:0}",
-    ".ps-identity strong{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em}",
-    ".ps-status{display:flex;align-items:center;gap:6px;margin:3px 0 0;font-size:12px;font-weight:500;color:rgba(255,255,255,.88)}",
+    ".ps-identity{flex:1;min-width:0;margin-left:2px}",
+    ".ps-identity strong{display:block;font-size:15px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+    ".ps-status{display:flex;align-items:center;gap:6px;margin:2px 0 0;font-size:12px;font-weight:500;color:rgba(255,255,255,.88)}",
     ".ps-online-dot{width:8px;height:8px;border-radius:50%;background:var(--ps-success);box-shadow:0 0 0 0 rgba(16,185,129,.55);animation:ps-pulse 1.6s ease-out infinite}",
     "@keyframes ps-pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.55)}70%{box-shadow:0 0 0 8px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}",
-    ".ps-close{background:transparent;color:inherit;border:0;cursor:pointer;width:32px;height:32px;display:grid;place-items:center;opacity:.9;flex-shrink:0;padding:0}",
-    ".ps-close svg{width:18px;height:18px;display:block}",
-    ".ps-close:hover{opacity:1}",
+    ".ps-header-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}",
+    ".ps-header-btn{background:transparent;color:inherit;border:0;cursor:pointer;width:30px;height:30px;display:grid;place-items:center;opacity:.85;border-radius:6px;padding:0;transition:background 150ms ease,opacity 150ms ease}",
+    ".ps-header-btn:hover{opacity:1;background:rgba(255,255,255,.18)}",
+    ".ps-header-btn svg{width:16px;height:16px;display:block}",
+    ".ps-close{background:transparent;color:inherit;border:0;cursor:pointer;width:30px;height:30px;display:grid;place-items:center;opacity:.85;border-radius:6px;padding:0;transition:background 150ms ease,opacity 150ms ease}",
+    ".ps-close:hover{opacity:1;background:rgba(255,255,255,.18)}",
+    ".ps-close svg{width:16px;height:16px;display:block}",
+    ".ps-panel.is-centered{width:min(760px,calc(100vw - 32px)) !important;height:min(680px,calc(100vh - 60px)) !important;top:50% !important;left:50% !important;right:auto !important;bottom:auto !important;transform:translate(-50%,-50%) !important;box-shadow:0 25px 60px -12px rgba(15,23,42,.45),0 0 0 100vmax rgba(15,23,42,.55) !important;border-radius:20px !important}",
+    ".ps-panel.is-centered .ps-thread{padding:20px 24px}",
+    ".ps-panel.is-centered .ps-msg{max-width:78%;font-size:15px}",
+    ".ps-panel.is-centered .ps-compose{padding:4px 16px 16px}",
     ".ps-thread{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;padding:16px 16px 8px;background:var(--ps-bg)}",
     ".ps-msg{width:fit-content;max-width:86%;margin:0 0 10px;padding:10px 12px;border-radius:14px;font-size:14px;line-height:1.45;white-space:pre-wrap;animation:ps-msg-in 220ms ease-out}",
     ".ps-msg.assistant{background:var(--ps-silver);color:var(--ps-text);margin-right:auto;border-radius:4px 14px 14px 14px}",
@@ -144,13 +155,32 @@
   status.appendChild(statusEl);
   identity.appendChild(titleEl);
   identity.appendChild(status);
+
+  var headerActions = el("div", "ps-header-actions");
+  var restartBtn = el("button", "ps-header-btn");
+  restartBtn.type = "button";
+  restartBtn.title = "Start new conversation";
+  restartBtn.setAttribute("aria-label", "Start new conversation");
+  restartBtn.innerHTML = ICONS.restart;
+
+  var expandBtn = el("button", "ps-header-btn");
+  expandBtn.type = "button";
+  expandBtn.title = "Center studio view";
+  expandBtn.setAttribute("aria-label", "Center studio view");
+  expandBtn.innerHTML = ICONS.expand;
+
   var close = el("button", "ps-close");
   close.type = "button";
   close.setAttribute("aria-label", "Close");
   close.innerHTML = ICONS.close;
+
+  headerActions.appendChild(restartBtn);
+  headerActions.appendChild(expandBtn);
+  headerActions.appendChild(close);
+
   header.appendChild(avatar);
   header.appendChild(identity);
-  header.appendChild(close);
+  header.appendChild(headerActions);
   var thread = el("div", "ps-thread");
   thread.id = "ps-log";
   var chipsBox = el("div", "ps-chips");
@@ -469,14 +499,40 @@
 
   file.onchange = function () {
     if (!file.files || !file.files[0] || !sessionId || !beginWait()) return;
+    var f = file.files[0];
     var data = new FormData();
-    data.append("file", file.files[0]);
+    data.append("file", f);
     file.value = "";
     setChips([]);
+    say("user", "📎 Uploaded document: " + f.name);
     fetch(api + "/api/v1/sessions/" + sessionId + "/documents", { method: "POST", body: data })
       .then(function (res) { return res.json().then(function (body) { if (!res.ok) throw body; return body; }); })
       .then(renderReply)
       .catch(fail);
+  };
+
+  var isExpanded = false;
+  expandBtn.onclick = function () {
+    isExpanded = !isExpanded;
+    if (isExpanded) {
+      panel.classList.add("is-centered");
+      expandBtn.innerHTML = ICONS.compress;
+      expandBtn.title = "Minimize to drawer";
+    } else {
+      panel.classList.remove("is-centered");
+      expandBtn.innerHTML = ICONS.expand;
+      expandBtn.title = "Center studio view";
+    }
+  };
+
+  restartBtn.onclick = function () {
+    if (confirm("Start a new conversation and clear current session?")) {
+      try { localStorage.removeItem("ps_sess_" + tenant); } catch (e) {}
+      sessionId = "";
+      thread.innerHTML = "";
+      setChips([]);
+      open();
+    }
   };
 
   close.onclick = closePanel;
@@ -484,6 +540,28 @@
     if (panel.classList.contains("is-open")) closePanel();
     else open();
   };
+
+  window.NorthlineAdvisor = {
+    open: function (centered) {
+      open();
+      if (centered && !isExpanded) {
+        expandBtn.click();
+      }
+    },
+    close: closePanel,
+    restart: function () {
+      restartBtn.click();
+    },
+    send: function (text, centered) {
+      open();
+      if (centered && !isExpanded) {
+        expandBtn.click();
+      }
+      input.value = text;
+      form.dispatchEvent(new Event("submit", { cancelable: true }));
+    }
+  };
+
   applyBrand();
   void ndaVersion;
 })();
