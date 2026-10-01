@@ -104,7 +104,8 @@ def upsert_documents(db: Session, tenant: TenantRow, documents: list[Document], 
         row = existing.get(doc.doc_id)
         keep_ids.add(doc.doc_id)
         public = _public_metadata(doc.metadata)
-        if row and row.content_hash == digest and row.embedding_model == model and row.embedding_json:
+        expected_dim = 3072 if "gemini" in model else 384
+        if row and row.content_hash == digest and row.embedding_model == model and row.embedding_json and (row.embedding_dim == expected_dim or expected_dim == 0):
             if _stored_metadata(row.metadata_json) == public:
                 unchanged += 1
             else:

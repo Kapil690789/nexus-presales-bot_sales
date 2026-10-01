@@ -10,6 +10,7 @@ from backend.app.agents.brief import ProjectBrief, brief_ready, next_discovery_f
 from backend.app.agents.extractor import apply_extracted_slots, extract_slots
 from backend.app.agents.fallback import fallback_message
 from backend.app.agents.suggestions import ensure_chips
+from backend.app.core.llm import LLMError, complete_json, llm_available
 from backend.app.core.platform import get_platform
 from backend.app.engines.architecture import recommend_architecture
 from backend.app.engines.calendar import confirm_slot, list_slots
@@ -128,7 +129,20 @@ def run_turn(
         pending = _pending(brief)
         # 1. Try LLM-assisted multi-slot extraction if not a simple FAQ question
         extracted = extract_slots(text, pending, brief)
-        if extracted and apply_extracted_slots(brief, extracted, pending):
+        if extracted.get("is_off_topic"):
+            return _finish(
+                session, brief, contact, summary,
+                message=(
+                    f"I'm {config.brand.name}'s project consultant, specializing in custom software scoping, "
+                    f"architecture, and estimation for web and mobile applications. "
+                    f"While I can't assist with general trivia or standalone coding questions, I'd love to help if you're exploring "
+                    f"building a digital product or application! What type of project are you considering?"
+                ),
+                stage=session.stage or "discovery",
+                route="off_topic",
+                chips=_next_chips(brief) or [BOOK_CHIP],
+            )
+        if extracted and not extracted.get("is_question") and apply_extracted_slots(brief, extracted, pending):
             _note_flags(brief)
             filled = True
         elif not OPEN.search(text) and pending and _apply_free_text(brief, pending, text):
@@ -172,7 +186,7 @@ def run_turn(
         route = "rag"
     else:
         estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
-        message = fallback_message(config, brief, estimate)
+        message = fallback_message(config, brief, estimate, query=queries[0])
         chunk_ids = []
         route = "fallback"
     extra = _continuation(brief)
@@ -238,12 +252,53 @@ def _book(db, tenant, config, session, brief, contact, summary, slot_iso: str) -
     )
 
 
+def _synthesize_estimate_message(config: TenantConfig, brief: ProjectBrief, estimate: dict) -> str:
+    brand_name = config.brand.name
+    fallback = (
+        f"A first-pass range for this is **{estimate['range_label']}** over about **{estimate['timeline_weeks']} weeks**.\n"
+        f"*{config.brand.disclaimer}*"
+    )
+    if not llm_available():
+        return fallback
+
+    role = f"as a {brief.decision_role}" if brief.decision_role else ""
+    goal = brief.goal or brief.service or "custom software project"
+    platforms = ", ".join(brief.platforms) if brief.platforms else "agreed platforms"
+    timeline = f"targeted for {brief.timeline}" if brief.timeline else ""
+
+    prompt = (
+        f"You are the senior enterprise pre-sales software consultant at {brand_name}. "
+        f"We are scoping: Goal: '{goal}', Platforms: '{platforms}', Role: '{role}', Timeline: '{timeline}', Budget: '{brief.budget_band}'. "
+        f"The calculated indicative engineering estimate is {estimate['range_label']} over ~{estimate['timeline_weeks']} weeks. "
+        f"Write a concise, polished executive summary (2-3 sentences max) tailored to the visitor's goal and role. "
+        f"Acknowledge their objective, highlight how an MVP release is structured, and clearly state the indicative range {estimate['range_label']} and {estimate['timeline_weeks']} weeks timeline. "
+        f"Include a note that this is an indicative estimate, not a fixed quote. "
+        f'Return JSON {{"message": "..."}}.'
+    )
+    try:
+        data = complete_json("You are an expert enterprise pre-sales software consultant. Output JSON only.", prompt)
+        msg = str(data.get("message") or "").strip()
+        if msg:
+            return msg
+    except LLMError:
+        pass
+    return fallback
+
+
 def _after_brief(session, config, brief, contact, summary) -> dict:
     qual = qualify(brief, config.qualification, config.services, has_email=bool(contact.get("email")))
     if qual["band"] == "disqualify":
+        if brief.out_of_scope:
+            msg = (
+                f"{config.brand.name} specializes in bespoke web platforms, cross-platform mobile apps (iOS & Android), "
+                f"AI integrations, and dedicated engineering pods. We don't take on this category of work, "
+                f"but if you have a custom software product or platform in mind, we'd be delighted to explore it."
+            )
+        else:
+            msg = f"{qual['reasons'][0]} If your project scope evolves or you'd like to consult with our technical leadership, feel free to schedule a short call."
         return _finish(
             session, brief, contact, summary,
-            message=qual["reasons"][0],
+            message=msg,
             stage="disqualified",
             route="discovery",
             chips=[BOOK_CHIP],
@@ -267,10 +322,7 @@ def _estimate(session, config, brief, contact, summary, qual) -> dict:
     architecture = recommend_architecture(brief, config.services)
     mvp = recommend_mvp(brief)
     cases = match_portfolio(brief, config.portfolio)
-    message = (
-        f"A first-pass range for this is {estimate['range_label']} over about {estimate['timeline_weeks']} weeks. "
-        f"{config.brand.disclaimer}"
-    )
+    message = _synthesize_estimate_message(config, brief, estimate)
     chips = [BOOK_CHIP, PORTFOLIO_CHIP]
     if not brief.company_size:
         message += "\n\n" + DISCOVERY_PROMPTS["company_size"]

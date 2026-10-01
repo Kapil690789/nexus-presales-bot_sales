@@ -26,13 +26,15 @@ _EXTRACTOR_SYSTEM = (
     '  "decision_role": null | "founder_or_exec" | "product_or_ops_lead" | "manager" | "intern_or_student",\n'
     '  "company_size": null | "startup" | "smb" | "mid_market" | "enterprise",\n'
     '  "is_question": true | false,\n'
+    '  "is_off_topic": true | false,\n'
     '  "uncertain": true | false\n'
     "}\n"
     "Rules:\n"
     "1. Only set fields that are explicitly mentioned or clearly implied in the message.\n"
-    "2. If the user asks a question (e.g. 'How much does it cost?', 'What is your stack?'), set is_question to true.\n"
-    "3. If the user says 'not sure', 'suggest something', 'no idea', set uncertain to true.\n"
-    "4. If the requested work is clearly homework, crypto, shopify, web3, set service to 'out_of_scope'.\n"
+    "2. If the user asks a question about services, pricing, stack, or project process, set is_question to true.\n"
+    "3. If the user message is general trivia (e.g. world cup, history), non-software chat, or requests for standalone code scripts/algorithms, set is_off_topic to true.\n"
+    "4. If the user says 'not sure', 'suggest something', 'no idea', set uncertain to true.\n"
+    "5. If the requested work is specifically for homework, crypto, shopify, or web3, set service to 'out_of_scope'.\n"
 )
 
 

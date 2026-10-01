@@ -80,3 +80,59 @@ def test_session_expiry_endpoint(client):
     resp = client.post(f"/api/v1/sessions/{expired_id}/messages", json={"content": "Hello"})
     assert resp.status_code == 410
     assert "expired" in resp.json().get("detail", "").lower()
+
+
+def test_off_topic_deflection_flow():
+    with SessionLocal() as db:
+        tenant_row = TenantRow(slug="demo", name="Northline")
+        config = load_tenant("demo")
+        session = SessionRow(tenant_id=tenant_row.id, stage="discovery")
+
+        result = run_turn(
+            db=db,
+            tenant=tenant_row,
+            config=config,
+            session=session,
+            history=[],
+            user_text="Who won the FIFA World Cup in 2022?",
+            chip=None,
+        )
+        assert result["route"] in ("off_topic", "fallback", "faq")
+        assert "software" in result["message"].lower() or "project" in result["message"].lower() or "custom" in result["message"].lower()
+        assert not any(err in result["message"].lower() for err in ["traceback", "syntaxerror", "exception"])
+
+
+def test_sarah_fintech_flow(monkeypatch):
+    with SessionLocal() as db:
+        tenant_row = TenantRow(slug="demo", name="Northline")
+        config = load_tenant("demo")
+        session = SessionRow(tenant_id=tenant_row.id, stage="discovery")
+
+        fake_extracted = {
+            "service": "mobile_app",
+            "platforms": ["ios", "android"],
+            "goal": "Fintech app with AI chat",
+            "budget_band": "15_40k",
+            "timeline": "1_3_months",
+            "decision_role": "founder_or_exec",
+            "is_question": False,
+            "is_off_topic": False,
+            "uncertain": False,
+        }
+        monkeypatch.setattr("backend.app.agents.router.extract_slots", lambda text, pending, brief: fake_extracted)
+
+        result = run_turn(
+            db=db,
+            tenant=tenant_row,
+            config=config,
+            session=session,
+            history=[],
+            user_text="Hi, I am Sarah, Founder at a Fintech startup. We urgently need a cross-platform mobile app for iOS & Android with AI chat, timeline is 2 months, and our budget is around $25k to $50k. Can we schedule a discussion?",
+            chip=None,
+        )
+
+        assert result["route"] == "estimate"
+        assert result["stage"] == "advising"
+        assert result.get("estimate") is not None
+        assert "cards" in result
+        assert any(c["type"] == "estimate" for c in result["cards"])

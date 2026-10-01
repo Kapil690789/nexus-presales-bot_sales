@@ -1,12 +1,12 @@
-embedding_model: BAAI/bge-small-en-v1.5
-embedding_dim: 384
+embedding_model: gemini-embedding-001
+embedding_dim: 3072
 chunk_tokens: 500
 chunk_overlap_tokens: 80
 semantic_break_similarity: 0.5
 max_chunks_per_doc: 2
 top_k: 4
-faq_min_score: 0.82
-show_min_score: 0.55
+faq_min_score: 0.62
+show_min_score: 0.50
 weak_min_score: 0.35
 memory_turns: 8
 summary_every: 4

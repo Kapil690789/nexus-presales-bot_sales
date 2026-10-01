@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import math
 import os
 import re
 from functools import lru_cache
 from typing import NamedTuple
+
+log = logging.getLogger(__name__)
 
 from backend.app.core.platform import get_platform
 from backend.app.core.settings import ROOT, get_settings
@@ -98,19 +101,21 @@ def _gemini_embed(texts: list[str], model_id: str = "gemini-embedding-001") -> l
 
     target_model = model_id or "gemini-embedding-001"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:batchEmbedContents?key={key}"
-    batch_size = 50
+    batch_size = 40
     all_vectors: list[list[float]] = []
 
     try:
-        with httpx.Client(timeout=30.0) as client:
+        with httpx.Client(timeout=45.0) as client:
             for i in range(0, len(texts), batch_size):
+                if i > 0:
+                    time.sleep(1.2)  # Avoid bursting Gemini API rate limits
                 chunk = texts[i : i + batch_size]
                 requests = [
                     {"model": f"models/{target_model}", "content": {"parts": [{"text": t or " "}]}}
                     for t in chunk
                 ]
                 success = False
-                for attempt in range(3):
+                for attempt in range(5):
                     resp = client.post(url, json={"requests": requests})
                     if resp.status_code == 200:
                         data = resp.json()
@@ -121,15 +126,19 @@ def _gemini_embed(texts: list[str], model_id: str = "gemini-embedding-001") -> l
                         success = True
                         break
                     elif resp.status_code == 429:
-                        time.sleep(2.5 * (attempt + 1))
+                        backoff = [3, 6, 12, 20, 30][min(attempt, 4)]
+                        log.warning("Gemini embedding rate limit hit (429), backing off for %ds (attempt %d/5)", backoff, attempt + 1)
+                        time.sleep(backoff)
                     else:
+                        log.warning("Gemini embedding failed with status %d: %s", resp.status_code, resp.text[:200])
                         break
                 if not success:
+                    log.error("Failed to fetch Gemini embeddings for batch of %d items", len(chunk))
                     return [_hash_embed(text) for text in texts]
         if len(all_vectors) == len(texts):
             return all_vectors
-    except Exception:
-        pass
+    except Exception as exc:
+        log.exception("Exception in _gemini_embed: %s", exc)
     return [_hash_embed(text) for text in texts]
 
 
