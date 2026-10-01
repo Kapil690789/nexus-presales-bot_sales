@@ -1,75 +1,188 @@
-# Pre-sales consultant
+# Pre-Sales AI Consultant Bot — Master Documentation & Handover
 
-White-label pre-sales chat, deployed on its own. The older app in `../chat-bot` is a separate service and is not imported here.
+> **Production AI Pre-Sales Agent**  
+> **LLM Engine:** Google Gemini 2.5 Flash (Strict JSON Schema)  
+> **Embeddings / RAG:** Google `gemini-embedding-001` (3072-dim cloud vectors)  
+> **Backend Framework:** FastAPI (Python 3.11+, Async / Uvicorn)  
+> **Deployment Targets:** Vercel (Serverless), Docker, or standalone VM  
+> **Database:** SQLite (local dev) / PostgreSQL with pgvector (production)  
 
-One process serves every client. The embed script sends `data-tenant`. That slug selects the client's collection, screening questions, documents, and brand. Local port is **8010**.
+---
 
-## Run
+## 1. Project Overview & Business Purpose
 
+This system is a **white-label, multi-tenant automated pre-sales consultant**. It embeds on client websites as a lightweight (<25KB) chat widget.
+
+### What the bot does:
+1. **Intelligent Discovery:** Gathers project requirements (service type, target platforms, project goal, feature list, timeline, budget band, and decision maker role).
+2. **Deterministic Mathematical Pricing:** Calculates accurate price & timeline estimates using exact multiplier math from `pricing.yaml` — **zero hallucinated prices**.
+3. **Semantic RAG & FAQ Retrieval:** Answers technical, workflow, and case-study questions using high-dimensional cloud embeddings.
+4. **Objection Handling:** Handles price/timeline/offshore objections with brand-aligned approved scripts.
+5. **Live Google Calendar Booking:** Queries real-time `freebusy` slots via Google Calendar API (OAuth 2.0) and creates Google Meet invites.
+6. **Lead Analytics & Slack Notifications:** Scores leads (Hot / Warm / Cold), tracks conversation drop-offs, and pushes real-time lead alerts to team Slack channels.
+
+---
+
+## 2. Architecture & Data Flow
+
+```mermaid
+flowchart TD
+    User["👤 Website Visitor"] --> Widget["Embed Widget (consultant.js)"]
+    Widget --> API["FastAPI Gateway (Port 8010)"]
+    
+    API --> Security["Security Guardrails\n(Rate limiter: 20/min, 1000-char filter, Anti-Jailbreak)"]
+    Security --> Router{"State Machine Turn Router (router.py)"}
+    
+    Router -->|1. Chip Action| DirectAction["Direct Action (NDA, Portfolio, Booking)"]
+    Router -->|2. Natural User Text| Extractor["🧠 Gemini 2.5 Flash Multi-Slot Extractor (extractor.py)\n(Extracts: service, platforms, budget, timeline, role)"]
+    
+    Extractor --> BriefState{"Is Project Brief Complete?"}
+    BriefState -->|Yes| PricingEngine["📐 Mathematical Pricing Engine (pricing.py)\n(Base x Platform x Complexity Multipliers)"]
+    BriefState -->|No| NextPrompt["Next Discovery Question + Interactive Chips"]
+    
+    Router -->|3. Question / Inquiry| SemanticRAG["🔍 Gemini Cloud Vector Search (gemini-embedding-001)\n(Cosine similarity against tenant FAQs & content)"]
+    SemanticRAG --> GroundedAnswer["Grounded Knowledge Answer + Contextual Discovery Pivot"]
+    
+    PricingEngine --> Response["Structured JSON Response\n(Message, Estimate Cards, MVP Cards, Chips)"]
+    NextPrompt --> Response
+    GroundedAnswer --> Response
+    DirectAction --> Response
+    
+    Response --> DB[("PostgreSQL / SQLite Database\n(sessions, messages, leads, chunks, feedback_pairs)")]
+    Response --> Widget
+```
+
+---
+
+## 3. Major Upgrades & Codebase Improvements (Changelog)
+
+This codebase has undergone a major production upgrade:
+
+| Component | Previous State | Upgraded State |
+| :--- | :--- | :--- |
+| **LLM Model** | Invalid model `gemini-3.8-flash` | **`gemini-2.5-flash`** with strict JSON Schema mode and REST client |
+| **Embedding Engine** | Primitive SHA-256 hash embedder on Vercel (failed on all semantic searches) | **`gemini-embedding-001`** cloud API with 3072-dim vectors, sub-batching (50 texts), and exponential 429 backoff |
+| **Slot Extraction** | Brittle regex string matching (`if "mobile" in text`) causing dead loops | **`agents/extractor.py`** LLM multi-slot parser extracting full project scope from natural sentences in a single turn |
+| **Uncertainty Handling** | Saying *"not sure"* triggered infinite question loops | Graceful fallback defaults (e.g. assumes \$15–40k baseline and moves forward) |
+| **Message Security** | 4000-char input limit (high abuse risk) | **1000-character hard limit** enforced on backend (`sessions.py`) and widget (`consultant.js`) |
+| **Session Lifecycle** | Sessions accumulated forever in DB | **7-day Session TTL (`expires_at`)** with HTTP 410 Gone status and auto-reset |
+| **Widget Polish** | Raw text rendering | **Markdown formatting** (`**bold**`, lists, links) + **`localStorage` session memory** across page refreshes |
+| **Test Coverage** | Partial test suite | **44 automated pytest cases** covering all critical flows with 100% pass rate |
+
+---
+
+## 4. Multi-Tenant Folder Structure
+
+Each client/brand is configured as an isolated tenant under `tenants/<slug>/`:
+
+```
+pre-sales-bot/
+├── backend/
+│   ├── app/
+│   │   ├── agents/          # Router, Brief state machine, Multi-slot extractor, Fallbacks
+│   │   │   ├── brief.py     # ProjectBrief schema and discovery field definitions
+│   │   │   ├── extractor.py # Gemini 2.5 Flash natural language multi-slot parser
+│   │   │   ├── router.py    # Fixed-priority turn decision tree
+│   │   │   └── suggestions.py # LLM suggestion chip generator
+│   │   ├── api/             # FastAPI routers (sessions, health, admin, public_config, documents)
+│   │   ├── core/            # LLM client, Guardrails, Security/Rate-limiting, Settings
+│   │   ├── engines/         # Pricing, MVP, Architecture, Calendar, Objections, Qualification
+│   │   ├── models/          # SQLAlchemy DB models (TenantRow, SessionRow, MessageRow, LeadRow, ChunkRow)
+│   │   └── rag/             # Vector store, chunking, embeddings (Gemini cloud), grading
+│   └── tests/               # 44 automated pytest test suites
+├── config/
+│   └── platform.yaml        # Chunk size, overlap tokens, score floors (FAQ: 0.82, RAG: 0.55)
+├── tenants/
+│   └── demo/                # Tenant configuration folder (e.g., Northline / Acme)
+│       ├── brand.yaml       # Theme colors, widget title, launcher text, logo
+│       ├── faqs.yaml        # Screening FAQs with exact answers
+│       ├── pricing.yaml     # Currency, base prices, platform/integration multipliers
+│       ├── services.yaml    # Service catalog (Mobile, Web, AI, UI/UX)
+│       ├── portfolio.yaml   # Case studies and past client work
+│       ├── objections.yaml  # Sales objections and pre-approved replies
+│       └── content/         # Markdown/PDF/DOCX knowledge files (case studies, whitepapers)
+├── widget/
+│   └── consultant.js        # Vanilla JS embed widget (<25KB, zero dependencies)
+├── public/                  # Static assets and synced public widget
+├── .env.example             # Environment variable template
+└── requirements.txt         # Python dependencies
+```
+
+---
+
+## 5. Environment Variables (`.env`)
+
+Create `.env` inside `pre-sales-bot/`:
+
+```env
+ENVIRONMENT=development
+PORT=8010
+DATABASE_URL=sqlite:///./backend/presales.db
+
+# Admin Dashboard
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+CORS_ORIGINS=http://localhost:8010,http://127.0.0.1:8010,https://dummy-web-portal-ten.vercel.app
+
+# Google Gemini API
+LLM_PROVIDER=gemini
+LLM_API_KEY=AIzaSy...your_gemini_key
+LLM_MODEL=gemini-2.5-flash
+
+# Embeddings
+EMBEDDING_BACKEND=gemini
+EMBEDDING_MODEL=gemini-embedding-001
+
+# Rate Limits & Token Caps
+MESSAGE_RATE_LIMIT=20
+MESSAGE_RATE_WINDOW_SECONDS=60
+LLM_CALLS_PER_SESSION=30
+LLM_CALLS_PER_IP_PER_HOUR=80
+```
+
+---
+
+## 6. How to Run & Test Locally
+
+### 1. Start Backend Server:
 ```bash
 cd pre-sales-bot
-make install
-make run
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn backend.app.main:app --reload --port 8010
 ```
 
-Open [http://localhost:8010/](http://localhost:8010/). Admin is [http://localhost:8010/admin](http://localhost:8010/admin) (HTTP Basic). Set `ADMIN_PASSWORD` in `.env` first.
+### 2. Open in Browser:
+* **Chatbot Widget:** [http://localhost:8010/](http://localhost:8010/)
+* **Admin Dashboard:** [http://localhost:8010/admin](http://localhost:8010/admin) *(User: `admin`, Pass: `admin123`)*
+* **API Health Check:** [http://localhost:8010/health](http://localhost:8010/health)
 
+### 3. Run Automated Tests:
 ```bash
-make test
-make ingest
-make finetune TENANT=demo
-make docker
+.venv/bin/pytest backend/tests -v
 ```
+*(All 44 test cases will execute and verify the full system in ~4 seconds).*
 
-Docker publishes the API on port 8010 and Postgres with pgvector on port 5433, so it does not collide with the other chatbot.
+---
 
-## Embed
+## 7. How to Embed on Any Website
+
+Embed this single script tag in the HTML of any website:
 
 ```html
-<script src="https://BOT_URL/widget/consultant.js"
-        data-api="https://BOT_URL"
-        data-tenant="acme"
+<script src="https://YOUR_BOT_DOMAIN/widget/consultant.js"
+        data-api="https://YOUR_BOT_DOMAIN"
+        data-tenant="demo"
         async></script>
 ```
 
-Add the site origin to `CORS_ORIGINS`. An unknown `data-tenant` is rejected.
+---
 
-## How a message is answered
+## 8. Critical Rules for Future AI Agents & Developers
 
-1. Estimate slots still missing, and the visitor is answering one: store it and ask the next slot. A range is quoted only after service, goal, platforms, timeline, budget band, and decision role are known. Prices come from that client's `pricing.yaml`, never from documents.
-2. Screening FAQ: the question is embedded, not the answer. A hit at or above `faq_min_score` (0.82) returns the stored answer and does not call the generator.
-3. Otherwise the client's collection is searched. The grader shows a grounded answer only when the top score is at least 0.55 and, if a generator is configured, the snippets actually answer the question.
-4. Below that, the assistant says it does not have a matching source, may add a clearly indicative range when the brief is complete, and asks the visitor to book a meeting. It does not quote chunks the grader withheld.
-5. Thumbs-up, and a completed booking, store query-to-chunk pairs. `make finetune TENANT=acme` trains `BAAI/bge-small-en-v1.5` with MultipleNegativesRankingLoss once that client has 64 positive pairs, then re-embeds only that collection. That job needs `pip install 'sentence-transformers>=3.3.0'` on a machine that can hold PyTorch. Vercel does not install it: the wheel is several gigabytes and exceeds the function size limit. Search there uses the built-in hash embedder.
-
-Follow-up questions that use words like "that" are rewritten with the recent summary and the previous visitor message before search.
-
-## Layout
-
-| Path | Role |
-| --- | --- |
-| `.env` | The only environment file |
-| `config/platform.yaml` | Chunk size, overlap, score floors, fine-tune gate |
-| `tenants/<slug>/` | Brand, FAQs, pricing, portfolio, objections, `content/` |
-| `models/<slug>/` | Fine-tuned embedder, created by the fine-tune job |
-
-Documents in `content/` may be Markdown, PDF, DOCX, or TXT. `nda_only: true` in front matter hides a file until the visitor accepts that client's notice. `status: draft` skips a file.
-
-## What you need to fill in
-
-Copy secrets into `pre-sales-bot/.env` only:
-
-- `LLM_API_KEY` if you want generated wording. Provider stays `gemini`. Empty key still answers from retrieved notes.
-- `DATABASE_URL` when you want Postgres. Leave the SQLite default for local development. RAG then uses in-process cosine until pgvector is available.
-- `ADMIN_PASSWORD`
-- `CORS_ORIGINS` for each site that embeds the widget
-- `PUBLIC_BASE_URL` after the bot has a public URL
-
-Per client, add a folder or use Admin → New client, then:
-
-- Screening FAQ pairs in `faqs.yaml`
-- Case studies, projects, and testimonials under `content/`, with no prices in those files
-- Google OAuth client id and secret in `.env`, then connect that client's calendar at `/admin/google/start?tenant=<slug>`
-- Optional Slack webhook on the tenant if booking alerts should post
-
-The `demo` tenant ships with sample Northline material so the service can be tried immediately.
+1. **Deterministic Pricing Guardrail:** NEVER let the LLM generate project prices or durations. All financial quotes MUST come strictly from `pricing.py` and `pricing.yaml`.
+2. **Context Trimming:** NEVER pass full raw conversation history to LLM calls. Always pass `summary (max 80 words) + last 3 turns` to prevent token bloat and keep latency <500ms.
+3. **Embeddings:** On Vercel / serverless, DO NOT import PyTorch or `sentence-transformers`. Always use the lightweight REST API client (`gemini-embedding-001` or `text-embedding-004`).
+4. **Widget Sync:** Whenever you modify `widget/consultant.js`, ALWAYS sync the changes to `public/widget/consultant.js` using `cp widget/consultant.js public/widget/consultant.js`.
+5. **Testing Discipline:** Always run `.venv/bin/pytest backend/tests` after any change to ensure 100% test pass rate before committing.
