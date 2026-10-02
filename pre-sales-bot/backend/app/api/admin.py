@@ -32,6 +32,8 @@ def _render(request: Request, name: str, **context) -> HTMLResponse:
 
 @router.get("/admin", response_class=HTMLResponse)
 def admin_home(request: Request, db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    from backend.app.core.usage import get_usage_summary
+
     tenants = []
     for slug in list_tenant_slugs():
         row = ensure_tenant_row(db, slug)
@@ -39,7 +41,15 @@ def admin_home(request: Request, db: Session = Depends(get_db), _: str = Depends
         tenants.append({"slug": slug, "name": row.name, "chunks": count, "model": row.embedding_model or "base"})
     sessions = db.scalars(select(SessionRow).order_by(SessionRow.created_at.desc()).limit(30)).all()
     labels = {row.id: row.slug for row in db.scalars(select(TenantRow)).all()}
-    return _render(request, "index.html", tenants=tenants, sessions=sessions, labels=labels)
+    usage = get_usage_summary(db=db)
+    return _render(request, "index.html", tenants=tenants, sessions=sessions, labels=labels, usage=usage)
+
+
+@router.get("/admin/api/usage")
+def admin_usage_api(db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    from backend.app.core.usage import get_usage_summary
+
+    return get_usage_summary(db=db)
 
 
 @router.post("/admin/tenants")

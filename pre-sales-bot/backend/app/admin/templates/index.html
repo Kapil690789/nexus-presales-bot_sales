@@ -1,6 +1,72 @@
 {% extends "base.html" %}
 {% block title %}Clients{% endblock %}
 {% block body %}
+<div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 1.25rem; margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h2 style="margin: 0; color: #0f172a; font-size: 1.3rem;">⚡ LLM Token & Cost Usage Tracker</h2>
+    <span style="background: #e0f2fe; color: #0284c7; font-size: 0.75rem; font-weight: bold; padding: 4px 10px; border-radius: 999px;">Admin Only</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.85rem;">
+      <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Total Spent</div>
+      <div style="font-size: 1.4rem; font-weight: bold; color: #dc2626; margin-top: 4px;">₹{{ usage.cost_inr }}</div>
+      <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">${{ usage.cost_usd }} USD</div>
+    </div>
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.85rem;">
+      <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Balance Remaining (of ₹{{ usage.initial_budget_inr }})</div>
+      <div style="font-size: 1.4rem; font-weight: bold; color: #16a34a; margin-top: 4px;">₹{{ usage.balance_remaining_inr }}</div>
+      <div style="font-size: 0.75rem; color: #16a34a; margin-top: 2px;">{{ usage.percentage_used }}% consumed</div>
+    </div>
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.85rem;">
+      <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Total Tokens Consumed</div>
+      <div style="font-size: 1.4rem; font-weight: bold; color: #0f172a; margin-top: 4px;">{{ usage.total_tokens_formatted }}</div>
+      <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">In: {{ usage.prompt_tokens_formatted }} | Out: {{ usage.completion_tokens_formatted }}</div>
+    </div>
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.85rem;">
+      <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Capacity Remaining</div>
+      <div style="font-size: 1.4rem; font-weight: bold; color: #2563eb; margin-top: 4px;">~{{ usage.sessions_remaining }} chats</div>
+      <div style="font-size: 0.75rem; color: #2563eb; margin-top: 2px;">~{{ usage.estimated_days_remaining }} days @ 30 chats/day</div>
+    </div>
+  </div>
+
+  {% if usage.by_model %}
+  <h3 style="font-size: 0.95rem; margin: 1rem 0 0.5rem 0; color: #334155;">Model Breakdown</h3>
+  <table style="font-size: 0.85rem; margin-bottom: 1rem; background: white;">
+    <tr><th>Model</th><th>Calls</th><th>Tokens</th><th>Cost (INR)</th></tr>
+    {% for model_name, info in usage.by_model.items() %}
+    <tr>
+      <td><code>{{ model_name }}</code></td>
+      <td>{{ info.calls }}</td>
+      <td>{{ info.tokens }}</td>
+      <td>₹{{ info.cost_inr }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  {% if usage.recent_calls %}
+  <h3 style="font-size: 0.95rem; margin: 1rem 0 0.5rem 0; color: #334155;">Recent Model Calls</h3>
+  <table style="font-size: 0.8rem; background: white;">
+    <tr><th>Time (UTC)</th><th>Model</th><th>Type</th><th>Tokens</th><th>Cost (INR)</th><th>Session</th></tr>
+    {% for call in usage.recent_calls %}
+    <tr>
+      <td>{{ call.created_at }}</td>
+      <td><code>{{ call.model }}</code></td>
+      <td>{{ call.call_type }}</td>
+      <td>{{ call.tokens }}</td>
+      <td>{{ call.cost_inr }}</td>
+      <td>{{ call.session_id }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #64748b; line-height: 1.4;">
+    💡 <em>Gemini 2.5 Flash rates (@ ₹95/USD): Input ₹7.13 / 1M tokens ($0.075), Output ₹28.50 / 1M tokens ($0.30). Average customer session uses ~5,000 tokens (≈ ₹0.055). A ₹500 balance supports over 8,500 full visitor sessions.</em>
+  </div>
+</div>
+
 <h1>Pre-sales clients</h1>
 <table>
   <tr><th>Client</th><th>Slug</th><th>Chunks</th><th>Embedding</th></tr>

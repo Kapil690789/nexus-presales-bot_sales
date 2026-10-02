@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.api import admin, documents, health, public_config, sessions
-from backend.app.core.security import assert_admin_configured
+from backend.app.core.security import assert_admin_configured, is_admin_misconfigured
 from backend.app.core.settings import ROOT, get_settings, uploads_root
 from backend.app.models.db import SessionLocal, init_db
 from backend.app.rag.embeddings import embedding_backend
@@ -40,13 +40,25 @@ async def lifespan(_application: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    try:
-        assert_admin_configured(settings)
-    except RuntimeError:
-        log.warning(
-            "Admin password is missing or a default value. The app will still serve. Set a unique ADMIN_PASSWORD."
+    admin_misconfigured = is_admin_misconfigured(settings)
+    if admin_misconfigured:
+        log.error(
+            "Production environment has missing or default admin password. Admin router disabled."
         )
+    else:
+        try:
+            assert_admin_configured(settings)
+        except RuntimeError:
+            log.warning(
+                "Admin password is missing or a default value. The app will still serve. Set a unique ADMIN_PASSWORD."
+            )
     application = FastAPI(title="Pre-Sales Consultant", version="1.0.0", lifespan=lifespan)
+    if "*" in settings.cors_origin_list:
+        if settings.environment.strip().lower() == "production":
+            raise ValueError(
+                "Wildcard CORS origin '*' with allow_credentials=True is unsafe and not allowed in production."
+            )
+        log.warning("Wildcard CORS origin '*' with allow_credentials=True is insecure.")
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
@@ -58,7 +70,8 @@ def create_app() -> FastAPI:
     application.include_router(public_config.router)
     application.include_router(sessions.router)
     application.include_router(documents.router)
-    application.include_router(admin.router)
+    if not admin_misconfigured:
+        application.include_router(admin.router)
     # Vercel serves public/ from the CDN, including public/widget/consultant.js.
     # Mounting those directories here keeps them inside the function because of CORS.
     if not os.environ.get("VERCEL"):

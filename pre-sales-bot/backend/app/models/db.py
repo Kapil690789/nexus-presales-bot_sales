@@ -176,6 +176,7 @@ def init_db() -> None:
         {
             "embedding_json": "TEXT DEFAULT ''",
             "embedding_dim": "INTEGER DEFAULT 0",
+            "embedding_version": "VARCHAR(100) DEFAULT ''",
             "content_hash": "VARCHAR(64) DEFAULT ''",
         },
     )

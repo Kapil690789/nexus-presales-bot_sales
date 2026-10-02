@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.models.db import Base
@@ -129,6 +129,7 @@ class ChunkRow(Base):
     content_hash: Mapped[str] = mapped_column(String(64), default="")
     embedding_model: Mapped[str] = mapped_column(String(200), default="")
     embedding_dim: Mapped[int] = mapped_column(Integer, default=0)
+    embedding_version: Mapped[str] = mapped_column(String(100), default="")
     embedding_json: Mapped[str] = mapped_column(Text, default="")
     nda_only: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
@@ -148,3 +149,31 @@ class FeedbackPairRow(Base):
     label: Mapped[str] = mapped_column(String(20), default="positive")
     source: Mapped[str] = mapped_column(String(20), default="thumb")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class TokenUsageRow(Base):
+    __tablename__ = "token_usage"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    session_id: Mapped[str] = mapped_column(String(36), index=True, default="")
+    tenant_id: Mapped[str] = mapped_column(String(36), index=True, default="")
+    provider: Mapped[str] = mapped_column(String(40), default="gemini")
+    model: Mapped[str] = mapped_column(String(100), default="")
+    call_type: Mapped[str] = mapped_column(String(40), default="llm")
+    prompt_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    completion_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    total_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
+    cost_inr: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class SystemEventRow(Base):
+    __tablename__ = "system_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
+    kind: Mapped[str] = mapped_column(String(40), index=True)
+    reason: Mapped[str] = mapped_column(String(200), default="")
+    stage: Mapped[str] = mapped_column(String(50), default="")
+    error_class: Mapped[str] = mapped_column(String(100), default="")

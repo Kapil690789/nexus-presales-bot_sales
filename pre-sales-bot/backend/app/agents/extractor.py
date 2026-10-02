@@ -25,6 +25,7 @@ _EXTRACTOR_SYSTEM = (
     '  "budget_band": null | "exploring" | "under_15k" | "15_40k" | "40_80k" | "80k_plus",\n'
     '  "decision_role": null | "founder_or_exec" | "product_or_ops_lead" | "manager" | "intern_or_student",\n'
     '  "company_size": null | "startup" | "smb" | "mid_market" | "enterprise",\n'
+    '  "ai_features": [] | ["Feature 1", "Feature 2"],\n'
     '  "is_question": true | false,\n'
     '  "is_off_topic": true | false,\n'
     '  "uncertain": true | false\n'
@@ -35,6 +36,7 @@ _EXTRACTOR_SYSTEM = (
     "3. If the user message is general trivia (e.g. world cup, history), non-software chat, or requests for standalone code scripts/algorithms, set is_off_topic to true.\n"
     "4. If the user says 'not sure', 'suggest something', 'no idea', set uncertain to true.\n"
     "5. If the requested work is specifically for homework, crypto, shopify, or web3, set service to 'out_of_scope'.\n"
+    "6. If the user mentions AI, LLM, or chatbot capabilities alongside a mobile or web app, include them in ai_features and keep service as mobile_app or web_app.\n"
 )
 
 
@@ -68,7 +70,9 @@ def _heuristic_extract(text: str, pending_field: str | None = None, brief: Proje
     elif any(title in lowered for title in ("vp", "head of", "lead", "product manager", "project manager", "engineering lead")):
         res["decision_role"] = "product_or_ops_lead"
     elif any(title in lowered for title in ("student", "intern", "college")):
-        res["decision_role"] = "intern_or_student"
+        third_person = bool(re.search(r"\b(my\s+cousin|his|her|their|friend|my\s+friend|our\s+intern|my\s+brother|my\s+sister)\b.{0,30}\b(student|intern|college)\b", lowered))
+        if not third_person:
+            res["decision_role"] = "intern_or_student"
 
     # Company size
     if any(term in lowered for term in ("startup", "early stage", "seed", "series a", "bootstrapped")):
@@ -87,13 +91,22 @@ def _heuristic_extract(text: str, pending_field: str | None = None, brief: Proje
     if platforms:
         res["platforms"] = platforms
 
+    # AI detection regex with word boundary
+    has_ai = bool(re.search(r"\b(ai|llm|gpt|chatgpt|openai|chatbot|chat bot|machine learning|nlp)\b", lowered))
+
     # Service
     if "mobile" in lowered or "ios" in lowered or "android" in lowered or "cross-platform" in lowered:
         res["service"] = "mobile_app"
     elif "web" in lowered or "saas" in lowered or "portal" in lowered:
         res["service"] = "web_app"
-    elif "ai" in lowered or "llm" in lowered or "agent" in lowered:
+    elif has_ai:
         res["service"] = "ai_product"
+
+    # If AI is mentioned but the resolved service is not ai_product, set ai_features
+    if has_ai:
+        resolved_service = res.get("service") or (brief.service if brief else None)
+        if resolved_service and resolved_service != "ai_product":
+            res["ai_features"] = ["AI chat"] if "chat" in lowered else ["AI features"]
 
     # Timeline
     if any(term in lowered for term in ("urgently", "asap", "immediate", "rush", "this month")):
@@ -161,7 +174,19 @@ def extract_slots(text: str, pending_field: str | None = None, brief: ProjectBri
             if isinstance(data, dict) and data:
                 return data
         except LLMError as exc:
-            log.info("Slot extraction fallback to heuristic: %s", exc)
+            error_cls = type(exc).__name__
+            log.warning("Slot extraction fallback to heuristic: %s", error_cls)
+            try:
+                from backend.app.core.llm import record_system_event
+
+                record_system_event(
+                    kind="llm_failure",
+                    reason=f"{error_cls} during extraction",
+                    stage="extractor",
+                    error_class=error_cls,
+                )
+            except Exception:
+                pass
 
     return _heuristic_extract(cleaned, pending_field, brief)
 
@@ -198,6 +223,15 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
         brief.features_confirmed = True
         applied_any = True
 
+    # 5b. AI features
+    if extracted.get("ai_features"):
+        existing = set(brief.ai_features or [])
+        new_items = [str(f).strip() for f in extracted["ai_features"] if str(f).strip()]
+        for item in new_items:
+            if item not in existing:
+                brief.ai_features.append(item)
+                applied_any = True
+
     # 6. Feature detail
     if extracted.get("feature_detail") and not brief.feature_detail:
         brief.feature_detail = str(extracted["feature_detail"]).strip()
@@ -225,8 +259,14 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
 
     # 11. Decision role
     if extracted.get("decision_role") and not brief.decision_role:
-        brief.decision_role = str(extracted["decision_role"]).strip()
-        applied_any = True
+        role_val = str(extracted["decision_role"]).strip()
+        if role_val == "intern_or_student":
+            brief.role_unconfirmed = True
+            applied_any = True
+        else:
+            brief.decision_role = role_val
+            brief.role_unconfirmed = False
+            applied_any = True
 
     # 12. Company size
     if extracted.get("company_size") and not brief.company_size:

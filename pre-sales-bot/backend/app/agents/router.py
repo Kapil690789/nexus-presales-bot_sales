@@ -12,6 +12,7 @@ from backend.app.agents.extractor import apply_extracted_slots, extract_slots
 from backend.app.agents.fallback import fallback_message
 from backend.app.agents.suggestions import ensure_chips
 from backend.app.core.llm import LLMError, complete_json, llm_available
+from backend.app.core.guard import sanitize_price_leaks
 from backend.app.core.platform import get_platform
 from backend.app.engines.architecture import recommend_architecture
 from backend.app.engines.calendar import confirm_slot, list_slots
@@ -127,32 +128,46 @@ def run_turn(
         _note_flags(brief)
         filled = True
     elif text:
-        pending = _pending(brief)
-        # 1. Try LLM-assisted multi-slot extraction if not a simple FAQ question
-        extracted = extract_slots(text, pending, brief)
-        if extracted.get("is_off_topic"):
-            return _finish(
-                session, brief, contact, summary,
-                message=(
-                    f"I'm {config.brand.name}'s project consultant, specializing in custom software scoping, "
-                    f"architecture, and estimation for web and mobile applications. "
-                    f"While I can't assist with general trivia or standalone coding questions, I'd love to help if you're exploring "
-                    f"building a digital product or application! What type of project are you considering?"
-                ),
-                stage=session.stage or "discovery",
-                route="off_topic",
-                chips=_next_chips(brief) or [BOOK_CHIP],
-            )
-        if extracted and not extracted.get("is_question") and apply_extracted_slots(brief, extracted, pending):
-            _note_flags(brief)
-            filled = True
-        elif not OPEN.search(text) and pending and _apply_free_text(brief, pending, text):
-            # 2. Fallback to deterministic regex matching
-            _note_flags(brief)
-            filled = True
+        if brief.role_unconfirmed:
+            lowered = text.lower()
+            if any(w in lowered for w in ("study", "practice", "college", "homework", "student", "class", "course", "academic")):
+                brief.decision_role = "intern_or_student"
+                brief.role_unconfirmed = False
+                filled = True
+            elif any(w in lowered for w in ("live", "company", "client", "business", "work", "commercial", "startup", "founder", "team", "production")):
+                brief.decision_role = "founder_or_exec"
+                brief.role_unconfirmed = False
+                filled = True
+        if not filled:
+            pending = _pending(brief)
+            # 1. Try LLM-assisted multi-slot extraction if not a simple FAQ question
+            extracted = extract_slots(text, pending, brief)
+            if extracted.get("is_off_topic"):
+                return _finish(
+                    session, brief, contact, summary,
+                    message=(
+                        f"I'm {config.brand.name}'s project consultant, specializing in custom software scoping, "
+                        f"architecture, and estimation for web and mobile applications. "
+                        f"While I can't assist with general trivia or standalone coding questions, I'd love to help if you're exploring "
+                        f"building a digital product or application! What type of project are you considering?"
+                    ),
+                    stage=session.stage or "discovery",
+                    route="off_topic",
+                    chips=_next_chips(brief) or [BOOK_CHIP],
+                )
+            if extracted and not extracted.get("is_question") and apply_extracted_slots(brief, extracted, pending):
+                _note_flags(brief)
+                filled = True
+            elif not OPEN.search(text) and pending and _apply_free_text(brief, pending, text):
+                # 2. Fallback to deterministic regex matching
+                _note_flags(brief)
+                filled = True
+            elif re.search(r"\b(student|intern)\b", text.lower()) and not brief.decision_role:
+                brief.role_unconfirmed = True
+                filled = True
 
     if filled or (field and field not in ACTION):
-        return _after_brief(session, config, brief, contact, summary, user_text=text)
+        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history)
 
     semantic_objection = _objection(db, tenant, config, text, session.nda_accepted) if (text and not field) else None
     if semantic_objection:
@@ -164,13 +179,14 @@ def run_turn(
             chips=_next_chips(brief) or [BOOK_CHIP],
         )
 
-    queries = lookup_queries(text, summary, previous[-3:]) or [text]
+    raw_queries = lookup_queries(text, summary, previous[-3:]) or [text]
+    queries = [rewrite_query_with_brief(q, brief) for q in raw_queries]
     filters = query_filters(text, service=brief.service, industry=brief.industry)
     faq_hits = _merge(db, tenant, queries, "faq", session.nda_accepted, filters)
     if faq_hits and faq_hits[0].score >= get_platform().faq_min_score:
         hit = faq_hits[0]
         message = hit.content
-        extra = _continuation(brief)
+        extra = _continuation(brief, history)
         if extra:
             message = f"{message}\n\n{extra[0]}"
             chips = list(extra[1])
@@ -197,12 +213,19 @@ def run_turn(
         route = "rag"
     else:
         estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
-        message = fallback_message(config, brief, estimate, query=queries[0])
+        platform = get_platform()
+        is_weak = decision == "weak" or (platform.weak_min_score <= score < platform.show_min_score)
+        weak_notes = hits[:3] if is_weak and hits else None
+        message = fallback_message(config, brief, estimate, query=queries[0], notes=weak_notes)
         chunk_ids = []
         route = "fallback"
-    extra = _continuation(brief)
+    extra = _continuation(brief, history)
     if extra:
-        if not message.strip().endswith("?") and not any(phrase in message.lower() for phrase in ["looking to build", "what kind of product", "what are you looking", "what should this"]):
+        field_target = next_discovery_field(brief) or ""
+        repeat = brief.field_attempts.get(field_target, 0) > 1
+        if repeat:
+            message = f"{message}\n\n{extra[0]}"
+        elif not message.strip().endswith("?") and not any(phrase in message.lower() for phrase in ["looking to build", "what kind of product", "what are you looking", "what should this"]):
             message = f"{message}\n\n{extra[0]}"
         chips = list(extra[1])
     elif brief_ready(brief):
@@ -297,8 +320,37 @@ def _synthesize_estimate_message(config: TenantConfig, brief: ProjectBrief, esti
     return fallback
 
 
-def _after_brief(session, config, brief, contact, summary, user_text: str = "") -> dict:
+def _field_asked_count(history: list[dict], field: str | None) -> int:
+    if not history or not field:
+        return 0
+    from backend.app.screening.slots import DISCOVERY_PROMPTS, REPHRASED_PROMPTS
+
+    prompt_snippet = DISCOVERY_PROMPTS.get(field, "").lower()[:25]
+    rephrased_snippet = REPHRASED_PROMPTS.get(field, "").lower()[:25]
+    count = 0
+    for item in history:
+        if item.get("role") != "assistant":
+            continue
+        content = item.get("content", "").lower()
+        if (prompt_snippet and prompt_snippet in content) or (rephrased_snippet and rephrased_snippet in content):
+            count += 1
+    return count
+
+
+def _after_brief(session, config, brief, contact, summary, user_text: str = "", history: list[dict] | None = None) -> dict:
     qual = qualify(brief, config.qualification, config.services, has_email=bool(contact.get("email")))
+    if brief.role_unconfirmed:
+        return _finish(
+            session, brief, contact, summary,
+            message="Could you confirm your role and whether you're building a live project for a company, or is this primarily for study or practice?",
+            stage="discovery",
+            route="discovery",
+            chips=[
+                {"label": "Live project at a company", "field": "confirm_role", "value": "company_project"},
+                {"label": "Study or practice", "field": "confirm_role", "value": "study_or_practice"},
+            ],
+            qualification=qual,
+        )
     if qual["band"] == "disqualify":
         if brief.out_of_scope:
             msg = (
@@ -319,8 +371,12 @@ def _after_brief(session, config, brief, contact, summary, user_text: str = "") 
     if brief_ready(brief):
         return _estimate(session, config, brief, contact, summary, qual)
     field = next_discovery_field(brief)
-    prompt_msg = synthesize_discovery_prompt(config, brief, field, user_text=user_text)
-    chips = ensure_chips(brief, prompt_msg)
+    attempts = brief.field_attempts.get(field or "", 0)
+    repeat = attempts >= 1
+    if field:
+        brief.field_attempts[field] = attempts + 1
+    prompt_msg = prompt_for(brief, field, repeat=repeat) if repeat else synthesize_discovery_prompt(config, brief, field, user_text=user_text)
+    chips = chips_for_field(field, brief, repeat=repeat) or ensure_chips(brief, prompt_msg)
     return _finish(
         session, brief, contact, summary,
         message=prompt_msg,
@@ -378,13 +434,16 @@ def _estimate(session, config, brief, contact, summary, qual) -> dict:
     )
 
 
-def _continuation(brief: ProjectBrief) -> tuple[str, list[dict]] | None:
+def _continuation(brief: ProjectBrief, history: list[dict] | None = None) -> tuple[str, list[dict]] | None:
     if brief_ready(brief):
         return None
     field = next_discovery_field(brief)
     if not field or field == "company_size":
         return None
-    return prompt_for(brief, field), chips_for_field(field, brief)
+    attempts = brief.field_attempts.get(field, 0)
+    repeat = attempts >= 1
+    brief.field_attempts[field] = attempts + 1
+    return prompt_for(brief, field, repeat=repeat), chips_for_field(field, brief, repeat=repeat)
 
 
 def _next_chips(brief: ProjectBrief) -> list[dict]:
@@ -443,7 +502,11 @@ def _apply_free_text(brief: ProjectBrief, field: str, text: str) -> bool:
         mapped = _role(cleaned)
         if not mapped:
             return False
+        if mapped == "intern_or_student":
+            brief.role_unconfirmed = True
+            return True
         brief.decision_role = mapped
+        brief.role_unconfirmed = False
         return True
     if field == "company_size":
         mapped = _size(cleaned)
@@ -530,6 +593,8 @@ def _budget(text: str) -> str | None:
 def _role(text: str) -> str | None:
     lowered = text.lower()
     if "intern" in lowered or "student" in lowered:
+        if re.search(r"\b(my\s+cousin|his|her|their|friend|my\s+friend|our\s+intern|my\s+brother|my\s+sister)\b.{0,30}\b(student|intern|college)\b", lowered):
+            return None
         return "intern_or_student"
     if "founder" in lowered or "ceo" in lowered or "exec" in lowered:
         return "founder_or_exec"
@@ -600,6 +665,28 @@ def _merge(db, tenant, queries: list[str], kind: str, nda_accepted: bool, filter
     return sorted(merged.values(), key=lambda item: item.score, reverse=True)
 
 
+def rewrite_query_with_brief(query: str, brief: ProjectBrief | None) -> str:
+    if not brief or not query:
+        return query or ""
+    cleaned = query.strip()
+    words = cleaned.split()
+    known_tech = {"web", "mobile", "ios", "android", "ai", "flutter", "react", "python", "ledgerly", "harvest", "atlas", "zephyr"}
+    has_specific_tech = any(w.strip("?,.!").lower() in known_tech for w in words)
+    if not has_specific_tech and len(words) <= 6:
+        enrichment = []
+        if brief.service:
+            service_label = brief.service.replace("_", " ")
+            if service_label not in cleaned.lower():
+                enrichment.append(service_label)
+        if brief.platforms:
+            for p in brief.platforms:
+                if str(p).lower() not in cleaned.lower():
+                    enrichment.append(str(p))
+        if enrichment:
+            return f"{cleaned} {' '.join(enrichment)}".strip()
+    return cleaned
+
+
 def _handoff(config, brief, contact, qual, estimate, booked) -> str:
     lines = [
         f"# Discovery summary — {config.brand.name}",
@@ -652,8 +739,16 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
             str(payload.get("message") or ""),
             list(payload.get("passages") or []),
         )
+    raw_message = str(payload.get("message") or "")
+    estimate_ctx = payload.get("estimate")
+    if not estimate_ctx and session.estimate_json:
+        try:
+            estimate_ctx = json.loads(session.estimate_json)
+        except Exception:
+            estimate_ctx = None
+    sanitized_message = sanitize_price_leaks(raw_message, estimate_ctx)
     result = {
-        "message": payload.get("message") or "",
+        "message": sanitized_message,
         "stage": payload.get("stage") or "discovery",
         "chips": chips,
         "cards": payload.get("cards") or [],
