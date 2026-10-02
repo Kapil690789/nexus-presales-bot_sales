@@ -312,7 +312,10 @@ def test_quota_during_discovery_does_not_offer_booking(client, monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["route"] == "discovery"
-    assert "What should this first version actually do for people?" in body["message"]
+    assert (
+        "What should this first version actually do for people?" in body["message"]
+        or "mobile app" in body["message"].lower()
+    )
     assert not any(chip["field"] == "booking_window" for chip in body["chips"])
 
 

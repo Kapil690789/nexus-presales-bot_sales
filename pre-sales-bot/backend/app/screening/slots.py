@@ -48,6 +48,8 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None) -> list[dict]
             {"label": "AI product", "field": "service", "value": "ai_product"},
             {"label": "UI/UX", "field": "service", "value": "ui_ux"},
         ]
+    if field == "goal":
+        return []
     if field == "features":
         chips = [
             {"label": "Login & accounts", "field": "features", "value": ["Login & accounts"]},

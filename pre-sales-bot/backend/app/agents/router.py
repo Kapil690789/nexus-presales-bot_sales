@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.agents.brief import ProjectBrief, brief_ready, next_discovery_field
+from backend.app.agents.discovery_synth import synthesize_discovery_prompt
 from backend.app.agents.extractor import apply_extracted_slots, extract_slots
 from backend.app.agents.fallback import fallback_message
 from backend.app.agents.suggestions import ensure_chips
@@ -151,7 +152,7 @@ def run_turn(
             filled = True
 
     if filled or (field and field not in ACTION):
-        return _after_brief(session, config, brief, contact, summary)
+        return _after_brief(session, config, brief, contact, summary, user_text=text)
 
     semantic_objection = _objection(db, tenant, config, text, session.nda_accepted) if (text and not field) else None
     if semantic_objection:
@@ -201,7 +202,8 @@ def run_turn(
         route = "fallback"
     extra = _continuation(brief)
     if extra:
-        message = f"{message}\n\n{extra[0]}"
+        if not message.strip().endswith("?") and not any(phrase in message.lower() for phrase in ["looking to build", "what kind of product", "what are you looking", "what should this"]):
+            message = f"{message}\n\n{extra[0]}"
         chips = list(extra[1])
     elif brief_ready(brief):
         chips = [BOOK_CHIP, PORTFOLIO_CHIP]
@@ -295,7 +297,7 @@ def _synthesize_estimate_message(config: TenantConfig, brief: ProjectBrief, esti
     return fallback
 
 
-def _after_brief(session, config, brief, contact, summary) -> dict:
+def _after_brief(session, config, brief, contact, summary, user_text: str = "") -> dict:
     qual = qualify(brief, config.qualification, config.services, has_email=bool(contact.get("email")))
     if qual["band"] == "disqualify":
         if brief.out_of_scope:
@@ -317,12 +319,14 @@ def _after_brief(session, config, brief, contact, summary) -> dict:
     if brief_ready(brief):
         return _estimate(session, config, brief, contact, summary, qual)
     field = next_discovery_field(brief)
+    prompt_msg = synthesize_discovery_prompt(config, brief, field, user_text=user_text)
+    chips = ensure_chips(brief, prompt_msg)
     return _finish(
         session, brief, contact, summary,
-        message=prompt_for(brief, field),
+        message=prompt_msg,
         stage="discovery",
         route="discovery",
-        chips=chips_for_field(field or "", brief),
+        chips=chips,
         qualification=qual,
     )
 
