@@ -55,10 +55,12 @@ class ProjectBrief(BaseModel):
     timeline: str | None = None
     budget_band: str | None = None
     decision_role: str | None = None
+    role_unconfirmed: bool = False
     industry: str | None = None
     constraints: list[str] = Field(default_factory=list)
     company_size: str | None = None
     out_of_scope: str | None = None
+    field_attempts: dict[str, int] = Field(default_factory=dict)
 
     def apply_chip(self, field: str, value: Any) -> None:
         if not field or field in {
@@ -69,6 +71,27 @@ class ProjectBrief(BaseModel):
             "nda",
             "close_out",
         }:
+            return
+        if field == "confirm_role":
+            self.role_unconfirmed = False
+            if value in ("study_or_practice", "intern_or_student"):
+                self.decision_role = "intern_or_student"
+            else:
+                self.decision_role = "founder_or_exec"
+            return
+        if value in ("not_sure", "not_specified", "skipped") and field in {
+            "timeline", "budget_band", "decision_role", "company_size", "users", "platforms"
+        }:
+            defaults = {
+                "timeline": "flexible",
+                "budget_band": "exploring",
+                "decision_role": "founder_or_exec",
+                "company_size": "startup",
+                "users": "business",
+                "platforms": ["web"],
+            }
+            if field in defaults and not getattr(self, field):
+                setattr(self, field, defaults[field])
             return
         if field == "features_done":
             self.features_confirmed = True

@@ -65,6 +65,7 @@ def test_vercel_always_uses_hash_embedder(monkeypatch):
 
 def test_production_default_password_still_serves_public_routes(monkeypatch):
     monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@host:5432/presales")
     monkeypatch.setenv("ADMIN_PASSWORD", "admin123")
     monkeypatch.setenv("ADMIN_PASSWORD_HASH", "")
     from fastapi.testclient import TestClient
@@ -76,10 +77,11 @@ def test_production_default_password_still_serves_public_routes(monkeypatch):
     with TestClient(create_app()) as production:
         health = production.get("/health")
         assert health.status_code == 200
+        assert health.json()["admin"] == "disabled_misconfigured"
         widget = production.get("/widget/consultant.js")
         assert widget.status_code == 200
         assert "dataset.tenant" in widget.text
-        assert production.get("/admin").status_code == 401
+        assert production.get("/admin").status_code == 404
 
 
 def test_admin_auth_and_library(client, auth):

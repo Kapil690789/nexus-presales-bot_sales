@@ -16,7 +16,7 @@ class CalendarDefaults(BaseModel):
 
 class PlatformConfig(BaseModel):
     embedding_model: str = "BAAI/bge-small-en-v1.5"
-    embedding_dim: int = 384
+    embedding_dim: int = 768
     chunk_tokens: int = 500
     chunk_overlap_tokens: int = 80
     semantic_break_similarity: float = 0.5

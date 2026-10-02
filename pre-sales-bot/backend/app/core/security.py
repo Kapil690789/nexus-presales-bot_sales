@@ -50,15 +50,23 @@ def password_matches(password: str, settings: Settings | None = None) -> bool:
     return _digest_equal(password, expected)
 
 
-def assert_admin_configured(settings: Settings | None = None) -> None:
+def is_admin_misconfigured(settings: Settings | None = None) -> bool:
     settings = settings or get_settings()
     if settings.environment.strip().lower() != "production":
-        return
+        return False
+    if settings.admin_password_hash.strip():
+        return False
+    password = settings.admin_password.strip()
+    return not password or password.lower() in DEFAULT_ADMIN_PASSWORDS
+
+
+def assert_admin_configured(settings: Settings | None = None) -> None:
+    settings = settings or get_settings()
     if settings.admin_password_hash.strip():
         return
     password = settings.admin_password.strip()
     if not password or password.lower() in DEFAULT_ADMIN_PASSWORDS:
-        raise RuntimeError("Set a non-default ADMIN_PASSWORD or ADMIN_PASSWORD_HASH in production.")
+        raise RuntimeError("Set a non-default ADMIN_PASSWORD or ADMIN_PASSWORD_HASH.")
 
 
 def require_admin(

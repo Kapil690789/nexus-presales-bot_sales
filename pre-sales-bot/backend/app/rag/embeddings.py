@@ -5,8 +5,9 @@ import logging
 import math
 import os
 import re
+import threading
 from functools import lru_cache
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 log = logging.getLogger(__name__)
 
@@ -28,10 +29,82 @@ STOPWORDS = frozenset(
 )
 
 
+class EmbeddingError(RuntimeError):
+    def __init__(self, message: str, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
+
+def _l2_normalize(vec: list[float]) -> list[float]:
+    norm = math.sqrt(sum(v * v for v in vec))
+    if norm == 0.0:
+        return vec
+    return [v / norm for v in vec]
+
+
+def active_embedding_version(model: str | None = None, dim: int | None = None) -> str:
+    backend = embedding_backend()
+    if backend == "hash":
+        return f"{HASH_MODEL}@384:v1"
+    m = model or get_settings().embedding_model.strip() or "gemini-embedding-001"
+    d = dim or get_settings().embedding_dim or get_platform().embedding_dim or 768
+    return f"{m}@{d}:v1"
+
+
 class EmbeddingBatch(NamedTuple):
     model: str
     dim: int
     vectors: list[list[float]]
+
+
+class EmbeddingTracker:
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.failures = 0
+        self.last_error = ""
+
+    def record_failure(self, exc: Exception) -> None:
+        with self._lock:
+            self.failures += 1
+            status = getattr(exc, "status_code", None)
+            cls_name = type(exc).__name__
+            if status:
+                self.last_error = f"{cls_name}({status})"
+            else:
+                self.last_error = cls_name
+
+    def get_health(self) -> dict[str, Any]:
+        with self._lock:
+            backend = embedding_backend()
+            model = get_settings().embedding_model.strip() if backend == "gemini" else (HASH_MODEL if backend == "hash" else BASE_MODEL)
+            degraded = self.failures > 0
+            return {
+                "backend": backend,
+                "model": model,
+                "degraded": degraded,
+                "failures": self.failures,
+                "last_error": self.last_error,
+            }
+
+    def reset(self) -> None:
+        with self._lock:
+            self.failures = 0
+            self.last_error = ""
+
+
+_embedding_tracker = EmbeddingTracker()
+
+
+def record_query_failure(exc: Exception) -> None:
+    _embedding_tracker.record_failure(exc)
+
+
+def get_embedding_health() -> dict[str, Any]:
+    return _embedding_tracker.get_health()
+
+
+def reset_embedding_health() -> None:
+    _embedding_tracker.reset()
 
 
 def embedding_backend() -> str:
@@ -74,16 +147,24 @@ def model_source(model_id: str) -> str:
     return model_id if model_id != HASH_MODEL else BASE_MODEL
 
 
-def embed_texts(texts: list[str], model_id: str | None = None) -> EmbeddingBatch:
+def embed_query(query: str, model_id: str | None = None) -> EmbeddingBatch:
+    return embed_texts([query], model_id=model_id, mode="query")
+
+
+def embed_texts(texts: list[str], model_id: str | None = None, mode: str = "ingest") -> EmbeddingBatch:
     backend = embedding_backend()
     model = model_id or (HASH_MODEL if backend == "hash" else model_id_for(None))
     if backend == "gemini" or (model and "gemini" in model):
-        vectors = _gemini_embed(texts, model)
-        dim = len(vectors[0]) if vectors else 3072
+        try:
+            vectors = _gemini_embed(texts, model, mode=mode)
+        except TypeError:
+            vectors = _gemini_embed(texts, model)
+        dim = len(vectors[0]) if vectors else (get_platform().embedding_dim if "gemini" in model else 0)
         return EmbeddingBatch(model, dim, vectors)
     if backend == "hash" or model == HASH_MODEL:
         vectors = [_hash_embed(text) for text in texts]
-        return EmbeddingBatch(HASH_MODEL, len(vectors[0]) if vectors else 384, vectors)
+        dim = len(vectors[0]) if vectors else 384
+        return EmbeddingBatch(HASH_MODEL, dim, vectors)
     encoder = _sentence_model(model_source(model))
     raw = encoder.encode(list(texts), normalize_embeddings=True)
     vectors = [list(map(float, row)) for row in raw]
@@ -91,55 +172,154 @@ def embed_texts(texts: list[str], model_id: str | None = None) -> EmbeddingBatch
     return EmbeddingBatch(model, dim, vectors)
 
 
-def _gemini_embed(texts: list[str], model_id: str = "gemini-embedding-001") -> list[list[float]]:
-    import httpx
+def _gemini_embed(
+    texts: list[str],
+    model_id: str = "gemini-embedding-001",
+    mode: str = "ingest",
+) -> list[list[float]]:
     import time
 
+    import httpx
+
     key = get_settings().llm_api_key.strip()
-    if not key or not texts:
-        return [_hash_embed(text) for text in texts]
+    if not key:
+        raise EmbeddingError("LLM_API_KEY is not set")
+    if not texts:
+        return []
 
     target_model = model_id or "gemini-embedding-001"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:batchEmbedContents?key={key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:batchEmbedContents"
+    headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
+
+    if mode == "query":
+        request_timeout = 5.0
+        max_retries = 1
+        wall_budget = 8.0
+        max_sleep = 2.0
+    else:
+        request_timeout = 45.0
+        max_retries = 4
+        wall_budget = 120.0
+        max_sleep = 30.0
+
+    task_type = "RETRIEVAL_QUERY" if mode == "query" else "RETRIEVAL_DOCUMENT"
+    settings = get_settings()
+    target_dim = settings.embedding_dim or get_platform().embedding_dim or 768
+
+    start_time = time.monotonic()
     batch_size = 40
     all_vectors: list[list[float]] = []
 
     try:
-        with httpx.Client(timeout=45.0) as client:
+        with httpx.Client(timeout=request_timeout) as client:
             for i in range(0, len(texts), batch_size):
-                if i > 0:
-                    time.sleep(1.2)  # Avoid bursting Gemini API rate limits
+                if i > 0 and mode == "ingest":
+                    time.sleep(1.2)
                 chunk = texts[i : i + batch_size]
                 requests = [
-                    {"model": f"models/{target_model}", "content": {"parts": [{"text": t or " "}]}}
+                    {
+                        "model": f"models/{target_model}",
+                        "content": {"parts": [{"text": t or " "}]},
+                        "taskType": task_type,
+                        "outputDimensionality": target_dim,
+                    }
                     for t in chunk
                 ]
                 success = False
-                for attempt in range(5):
-                    resp = client.post(url, json={"requests": requests})
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        raw_embeddings = data.get("embeddings", [])
-                        for item in raw_embeddings:
-                            values = [float(v) for v in item.get("values", [])]
-                            all_vectors.append(values)
-                        success = True
-                        break
-                    elif resp.status_code == 429:
-                        backoff = [3, 6, 12, 20, 30][min(attempt, 4)]
-                        log.warning("Gemini embedding rate limit hit (429), backing off for %ds (attempt %d/5)", backoff, attempt + 1)
-                        time.sleep(backoff)
-                    else:
-                        log.warning("Gemini embedding failed with status %d: %s", resp.status_code, resp.text[:200])
-                        break
+                last_status: int | None = None
+
+                for attempt in range(max_retries + 1):
+                    elapsed = time.monotonic() - start_time
+                    if elapsed >= wall_budget:
+                        raise EmbeddingError(
+                            f"Gemini embedding exceeded time budget ({elapsed:.1f}s >= {wall_budget}s)",
+                            status_code=408,
+                        )
+
+                    try:
+                        resp = client.post(url, headers=headers, json={"requests": requests})
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            raw_embeddings = data.get("embeddings", [])
+                            for item in raw_embeddings:
+                                values = [float(v) for v in item.get("values", [])]
+                                all_vectors.append(_l2_normalize(values))
+                            success = True
+                            try:
+                                from backend.app.core.usage import record_usage
+
+                                est_tokens = sum(max(1, len(t) // 4) for t in chunk)
+                                record_usage(
+                                    provider="gemini",
+                                    model=target_model,
+                                    call_type="embedding",
+                                    prompt_tokens=est_tokens,
+                                    completion_tokens=0,
+                                )
+                            except Exception:
+                                pass
+                            break
+
+                        last_status = resp.status_code
+                        if resp.status_code in (429, 500, 502, 503, 504) and attempt < max_retries:
+                            if mode == "query":
+                                sleep_time = min(max_sleep, 1.5)
+                            else:
+                                backoffs = [3.0, 6.0, 12.0, 20.0, 30.0]
+                                sleep_time = backoffs[min(attempt, len(backoffs) - 1)]
+
+                            if (time.monotonic() - start_time) + sleep_time >= wall_budget:
+                                raise EmbeddingError(
+                                    f"Gemini embedding budget exceeded before retry ({last_status})",
+                                    status_code=last_status,
+                                )
+
+                            log.warning(
+                                "Gemini embedding rate limit/error (%d), backing off %.1fs (attempt %d/%d)",
+                                resp.status_code,
+                                sleep_time,
+                                attempt + 1,
+                                max_retries + 1,
+                            )
+                            time.sleep(sleep_time)
+                            continue
+                        else:
+                            log.warning("Gemini embedding failed with status %d", resp.status_code)
+                            raise EmbeddingError(
+                                f"Gemini embedding API error {resp.status_code}",
+                                status_code=resp.status_code,
+                            )
+                    except httpx.RequestError as exc:
+                        if attempt < max_retries:
+                            sleep_time = 1.0 if mode == "query" else 2.0
+                            if (time.monotonic() - start_time) + sleep_time >= wall_budget:
+                                raise EmbeddingError(
+                                    f"Gemini embedding connection error timed out: {type(exc).__name__}",
+                                    status_code=504,
+                                ) from exc
+                            time.sleep(sleep_time)
+                            continue
+                        raise EmbeddingError(
+                            f"Gemini embedding connection error: {type(exc).__name__}",
+                            status_code=504,
+                        ) from exc
+
                 if not success:
-                    log.error("Failed to fetch Gemini embeddings for batch of %d items", len(chunk))
-                    return [_hash_embed(text) for text in texts]
-        if len(all_vectors) == len(texts):
-            return all_vectors
+                    raise EmbeddingError(
+                        f"Failed to fetch Gemini embeddings for batch of {len(chunk)} items (status {last_status})",
+                        status_code=last_status,
+                    )
+
+        if len(all_vectors) != len(texts):
+            raise EmbeddingError(
+                f"Gemini embedding vector count mismatch: expected {len(texts)}, got {len(all_vectors)}"
+            )
+        return all_vectors
+    except EmbeddingError:
+        raise
     except Exception as exc:
-        log.exception("Exception in _gemini_embed: %s", exc)
-    return [_hash_embed(text) for text in texts]
+        log.exception("Exception in _gemini_embed: %s", type(exc).__name__)
+        raise EmbeddingError(f"Gemini embedding unexpected failure: {type(exc).__name__}") from exc
 
 
 def _hash_embed(text: str, dim: int = 384) -> list[float]:

@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     llm_base_url: str = ""
     embedding_backend: str = "gemini"
     embedding_model: str = "gemini-embedding-001"
+    embedding_dim: int = 768
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8010/admin/google/callback"
@@ -77,6 +78,10 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def apply_database_url(self):
         self.database_url = normalize_database_url(self.database_url)
+        if self.environment.strip().lower() == "production" and self.database_url.lower().startswith("sqlite"):
+            raise ValueError(
+                "SQLite database_url is not allowed in production environment. Configure a Postgres DATABASE_URL."
+            )
         return self
 
     @property

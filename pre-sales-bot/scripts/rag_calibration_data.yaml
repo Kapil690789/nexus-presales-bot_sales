@@ -1,0 +1,238 @@
+# RAG Calibration Evaluation Dataset
+# Contains 25 labelled queries: standard, paraphrased, Hinglish, and clearly irrelevant queries.
+
+queries:
+  # --- Standard Queries (Relevant) ---
+  - id: q01
+    type: standard
+    query: "Have you built any telemedicine or healthcare clinic platforms?"
+    relevant_doc_ids:
+      - "content:case-studies/zephyr-clinic.md#0"
+      - "portfolio:zephyr"
+    irrelevant_doc_ids:
+      - "content:case-studies/printondemand-studio.md#0"
+      - "content:case-studies/aviation-logbook.md#0"
+
+  - id: q02
+    type: standard
+    query: "We need an ecommerce mobile app with live catalog sync and cart."
+    relevant_doc_ids:
+      - "content:case-studies/lumina-retail.md#0"
+      - "content:case-studies/omnishop-redesign.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/zephyr-clinic.md#0"
+      - "content:case-studies/cyberguard-dashboard.md#0"
+
+  - id: q03
+    type: standard
+    query: "Do you have case studies on fleet logistics tracking and route dispatch?"
+    relevant_doc_ids:
+      - "content:case-studies/veloce-logistics.md#0"
+      - "content:case-studies/fleetmanager-telematics.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/museum-ar-guide.md#0"
+      - "content:case-studies/music-audio-plugin.md#0"
+
+  - id: q04
+    type: standard
+    query: "Can you build a cybersecurity incident response dashboard with SOC alerts?"
+    relevant_doc_ids:
+      - "content:case-studies/cyberguard-dashboard.md#0"
+      - "content:case-studies/enterprise-iam.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/fashion-trend-tool.md#0"
+      - "content:case-studies/agrosmart-iot.md#0"
+
+  - id: q05
+    type: standard
+    query: "Automated payment workflows and accounting reconciliation software."
+    relevant_doc_ids:
+      - "content:case-studies/payflow-automation.md#0"
+      - "content:case-studies/fintech-risk-scoring.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/museum-ar-guide.md#0"
+      - "content:case-studies/eduspark-classroom.md#0"
+
+  - id: q06
+    type: standard
+    query: "IoT sensor telemetry monitoring for agricultural farms and soil moisture."
+    relevant_doc_ids:
+      - "content:case-studies/agrosmart-iot.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/payflow-automation.md#0"
+      - "content:case-studies/news-paywall.md#0"
+
+  - id: q07
+    type: standard
+    query: "Interactive augmented reality museum visitor guide for exhibitions."
+    relevant_doc_ids:
+      - "content:case-studies/museum-ar-guide.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/veloce-logistics.md#0"
+      - "content:case-studies/enterprise-iam.md#0"
+
+  - id: q08
+    type: standard
+    query: "Virtual classroom platform with real-time student quiz engagement."
+    relevant_doc_ids:
+      - "content:case-studies/eduspark-classroom.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/aviation-logbook.md#0"
+      - "content:case-studies/cryptoswap-liquidity.md#0"
+
+  - id: q09
+    type: standard
+    query: "Who owns the intellectual property and source code after delivery?"
+    relevant_doc_ids:
+      - "faq:ip_ownership"
+    irrelevant_doc_ids:
+      - "content:case-studies/veloce-logistics.md#0"
+      - "content:case-studies/museum-ar-guide.md#0"
+
+  - id: q10
+    type: standard
+    query: "Do you offer hourly billing or fixed-scope sprints?"
+    relevant_doc_ids:
+      - "faq:hourly_billing"
+    irrelevant_doc_ids:
+      - "content:case-studies/zephyr-clinic.md#0"
+      - "content:case-studies/cyberguard-dashboard.md#0"
+
+  # --- Paraphrased Queries (5 queries) ---
+  - id: q11_para
+    type: paraphrased
+    query: "Show me clinical booking tools you designed for medical doctors."
+    relevant_doc_ids:
+      - "content:case-studies/zephyr-clinic.md#0"
+      - "content:case-studies/medisync-portal.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/printondemand-studio.md#0"
+      - "content:case-studies/smartwarehouse-agv.md#0"
+
+  - id: q12_para
+    type: paraphrased
+    query: "Modernize a retail storefront with iOS and Android mobile checkout."
+    relevant_doc_ids:
+      - "content:case-studies/lumina-retail.md#0"
+      - "content:case-studies/omnishop-redesign.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/aviation-logbook.md#0"
+      - "content:case-studies/ecoenergy-grid.md#0"
+
+  - id: q13_para
+    type: paraphrased
+    query: "Real-time dispatch system for delivery vehicles and truck drivers."
+    relevant_doc_ids:
+      - "content:case-studies/veloce-logistics.md#0"
+      - "content:case-studies/foodexpress-dispatcher.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/eduspark-classroom.md#0"
+      - "content:case-studies/museum-ar-guide.md#0"
+
+  - id: q14_para
+    type: paraphrased
+    query: "Security operations center monitoring tool for threat detection."
+    relevant_doc_ids:
+      - "content:case-studies/cyberguard-dashboard.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/fashion-trend-tool.md#0"
+      - "content:case-studies/agrosmart-iot.md#0"
+
+  - id: q15_para
+    type: paraphrased
+    query: "Once the software is built, will our company hold full legal ownership of the codebase?"
+    relevant_doc_ids:
+      - "faq:ip_ownership"
+    irrelevant_doc_ids:
+      - "content:case-studies/veloce-logistics.md#0"
+      - "content:case-studies/smartwarehouse-agv.md#0"
+
+  # --- Hinglish Queries (5 queries) ---
+  - id: q16_hinglish
+    type: hinglish
+    query: "kya aapne pehle kisi hospital ya healthcare clinic ke liye software banaya hai?"
+    relevant_doc_ids:
+      - "content:case-studies/zephyr-clinic.md#0"
+      - "content:case-studies/medisync-portal.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/aviation-logbook.md#0"
+      - "content:case-studies/smartwarehouse-agv.md#0"
+
+  - id: q17_hinglish
+    type: hinglish
+    query: "mujhe online shopping store ka mobile app redesign karwana hai kya experience hai?"
+    relevant_doc_ids:
+      - "content:case-studies/lumina-retail.md#0"
+      - "content:case-studies/omnishop-redesign.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/ecoenergy-grid.md#0"
+      - "content:case-studies/cyberguard-dashboard.md#0"
+
+  - id: q18_hinglish
+    type: hinglish
+    query: "truck fleet aur delivery dispatch tracking me aapka koi purana project hai?"
+    relevant_doc_ids:
+      - "content:case-studies/veloce-logistics.md#0"
+      - "content:case-studies/fleetmanager-telematics.md#0"
+    irrelevant_doc_ids:
+      - "content:case-studies/museum-ar-guide.md#0"
+      - "content:case-studies/eduspark-classroom.md#0"
+
+  - id: q19_hinglish
+    type: hinglish
+    query: "project deliver hone ke baad code aur IP kiske paas rahegi humari ya agency ki?"
+    relevant_doc_ids:
+      - "faq:ip_ownership"
+    irrelevant_doc_ids:
+      - "content:case-studies/printondemand-studio.md#0"
+      - "content:case-studies/agrosmart-iot.md#0"
+
+  - id: q20_hinglish
+    type: hinglish
+    query: "kya aap hourly basis pe bill karte ho ya fixed price milestones pe?"
+    relevant_doc_ids:
+      - "faq:hourly_billing"
+    irrelevant_doc_ids:
+      - "content:case-studies/zephyr-clinic.md#0"
+      - "content:case-studies/medisync-portal.md#0"
+
+  # --- Irrelevant / Out-of-domain Queries (5 queries) ---
+  - id: q21_irrel
+    type: irrelevant
+    query: "What is the traditional recipe for authentic Italian carbonara pasta?"
+    relevant_doc_ids: []
+    irrelevant_doc_ids:
+      - "content:case-studies/zephyr-clinic.md#0"
+      - "content:case-studies/lumina-retail.md#0"
+
+  - id: q22_irrel
+    type: irrelevant
+    query: "Who won the FIFA football world cup tournament final in 1998?"
+    relevant_doc_ids: []
+    irrelevant_doc_ids:
+      - "content:case-studies/veloce-logistics.md#0"
+      - "content:case-studies/cyberguard-dashboard.md#0"
+
+  - id: q23_irrel
+    type: irrelevant
+    query: "Can you explain how quantum superposition and entanglement qubits operate?"
+    relevant_doc_ids: []
+    irrelevant_doc_ids:
+      - "content:case-studies/payflow-automation.md#0"
+      - "content:case-studies/agrosmart-iot.md#0"
+
+  - id: q24_irrel
+    type: irrelevant
+    query: "How do I fix a punctured tire and replace the inner tube on a road bicycle?"
+    relevant_doc_ids: []
+    irrelevant_doc_ids:
+      - "content:case-studies/eduspark-classroom.md#0"
+      - "content:case-studies/museum-ar-guide.md#0"
+
+  - id: q25_irrel
+    type: irrelevant
+    query: "What is the capital city of Australia and what is its population?"
+    relevant_doc_ids: []
+    irrelevant_doc_ids:
+      - "faq:ip_ownership"
+      - "faq:hourly_billing"

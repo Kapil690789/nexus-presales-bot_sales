@@ -76,6 +76,7 @@ def documents_for(config: TenantConfig) -> list[Document]:
                     "platforms": list(case.platforms),
                     "stacks": list(case.stacks),
                     "tags": list(case.tags),
+                    "is_sample": config.slug == "demo",
                 },
             )
         )
@@ -93,6 +94,13 @@ def documents_for(config: TenantConfig) -> list[Document]:
             )
         )
     folder = tenant_dir(config.slug) / "content"
+    if config.slug != "demo":
+        try:
+            demo_folder = tenant_dir("demo") / "content"
+            if folder.resolve() == demo_folder.resolve():
+                raise RuntimeError(f"Non-demo tenant '{config.slug}' cannot ingest demo tenant content.")
+        except LookupError:
+            pass
     if folder.is_dir():
         for path in sorted(folder.rglob("*")):
             if not path.is_file():
@@ -107,6 +115,7 @@ def documents_for(config: TenantConfig) -> list[Document]:
                     platform.chunk_tokens,
                     platform.chunk_overlap_tokens,
                     platform.semantic_break_similarity,
+                    semantic_chunking=getattr(config, "semantic_chunking", False),
                 )
             )
     return documents
@@ -119,6 +128,7 @@ def _file_documents(
     chunk_tokens: int,
     overlap: int,
     break_similarity: float,
+    semantic_chunking: bool = False,
 ) -> list[Document]:
     relative = path.relative_to(root).as_posix()
     if path.suffix.lower() in {".md", ".txt"}:
@@ -137,6 +147,7 @@ def _file_documents(
         chunk_tokens=chunk_tokens,
         overlap_tokens=overlap,
         break_similarity=break_similarity,
+        semantic_chunking=semantic_chunking,
     )
     documents: list[Document] = []
     for index, (_heading, piece) in enumerate(chunks):
@@ -174,6 +185,7 @@ def _content_metadata(slug: str, relative: str, meta: dict, case_id: str) -> dic
         "service": str(meta.get("service") or ""),
         "role": str(meta.get("role") or ""),
         "tags": tags,
+        "is_sample": slug == "demo",
     }
 
 

@@ -91,6 +91,21 @@ def _openai(system: str, user: str, api_key: str, model: str, base_url: str) -> 
     if not base_url.strip():
         create_kwargs["response_format"] = {"type": "json_object"}
     response = client.chat.completions.create(**create_kwargs)
+    try:
+        from backend.app.core.usage import record_usage
+
+        usage = getattr(response, "usage", None)
+        prompt_tokens = getattr(usage, "prompt_tokens", 0) if usage else max(1, len(system + user) // 4)
+        completion_tokens = getattr(usage, "completion_tokens", 0) if usage else 0
+        record_usage(
+            provider="openai",
+            model=model or "gpt-4.1-mini",
+            call_type="llm",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+    except Exception:
+        pass
     return _parse_json(response.choices[0].message.content or "{}")
 
 
@@ -106,6 +121,21 @@ def _anthropic(system: str, user: str, api_key: str, model: str) -> dict[str, An
         messages=[{"role": "user", "content": user}],
     )
     text = "".join(block.text for block in response.content if getattr(block, "text", None))
+    try:
+        from backend.app.core.usage import record_usage
+
+        usage = getattr(response, "usage", None)
+        prompt_tokens = getattr(usage, "input_tokens", 0) if usage else max(1, len(system + user) // 4)
+        completion_tokens = getattr(usage, "output_tokens", 0) if usage else max(1, len(text) // 4)
+        record_usage(
+            provider="anthropic",
+            model=model or "claude-sonnet-4-20250514",
+            call_type="llm",
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+    except Exception:
+        pass
     return _parse_json(text)
 
 
@@ -138,6 +168,24 @@ def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
                         raise LLMError("Gemini returned no candidates")
                     parts = candidates[0].get("content", {}).get("parts", [])
                     text = parts[0].get("text", "") if parts else ""
+                    try:
+                        from backend.app.core.usage import record_usage
+
+                        usage = data.get("usageMetadata", {})
+                        prompt_tokens = usage.get("promptTokenCount", 0)
+                        completion_tokens = usage.get("candidatesTokenCount", 0)
+                        if prompt_tokens == 0 and completion_tokens == 0:
+                            prompt_tokens = max(1, len(system + user) // 4)
+                            completion_tokens = max(1, len(text) // 4)
+                        record_usage(
+                            provider="gemini",
+                            model=target_model,
+                            call_type="llm",
+                            prompt_tokens=prompt_tokens,
+                            completion_tokens=completion_tokens,
+                        )
+                    except Exception:
+                        pass
                     return _parse_json(text or "{}")
                 if resp.status_code == 429:
                     if backoff is None:
@@ -153,3 +201,101 @@ def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
                 raise LLMError(f"Gemini API error {resp.status_code}: {resp.text[:200]}")
     except httpx.RequestError as exc:
         raise LLMError(f"Gemini connection error: {exc}") from exc
+
+
+def record_system_event(
+    kind: str,
+    reason: str,
+    stage: str,
+    error_class: str,
+) -> None:
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import delete
+    from backend.app.models.db import SessionLocal
+    from backend.app.models.entities import SystemEventRow
+
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=7)
+    try:
+        with SessionLocal() as db:
+            try:
+                db.execute(delete(SystemEventRow).where(SystemEventRow.created_at < cutoff))
+            except Exception:
+                pass
+            event = SystemEventRow(
+                created_at=now,
+                kind=kind[:40],
+                reason=reason[:200],
+                stage=stage[:50],
+                error_class=error_class[:100],
+            )
+            db.add(event)
+            db.commit()
+    except Exception:
+        log.warning("Failed to record system event: %s", error_class)
+
+
+def get_llm_health(db: Any = None) -> dict[str, Any]:
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import select
+    from backend.app.models.db import SessionLocal
+    from backend.app.models.entities import SystemEventRow
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+
+    def _query(session):
+        events = session.scalars(
+            select(SystemEventRow)
+            .where(SystemEventRow.kind == "llm_failure", SystemEventRow.created_at >= cutoff)
+            .order_by(SystemEventRow.created_at.desc())
+        ).all()
+        failures_1h = len(events)
+        last_error = events[0].error_class if events else ""
+        return {
+            "failures_1h": failures_1h,
+            "last_error_class": last_error,
+            "degraded": failures_1h > 0,
+        }
+
+    if db is not None:
+        try:
+            return _query(db)
+        except Exception:
+            return {"failures_1h": 0, "last_error_class": "", "degraded": False}
+
+    try:
+        with SessionLocal() as session:
+            return _query(session)
+    except Exception:
+        return {"failures_1h": 0, "last_error_class": "", "degraded": False}
+
+
+def _hook_embedding_failures() -> None:
+    try:
+        import sys
+        import backend.app.rag.embeddings as emb_mod
+
+        orig = getattr(emb_mod, "record_query_failure", None)
+        if orig and not getattr(orig, "_system_events_hooked", False):
+            def wrapped(exc: Exception):
+                orig(exc)
+                try:
+                    cls_name = type(exc).__name__
+                    record_system_event(
+                        kind="embedding_failure",
+                        reason=f"{cls_name} during embedding",
+                        stage="embeddings",
+                        error_class=cls_name,
+                    )
+                except Exception:
+                    pass
+
+            wrapped._system_events_hooked = True
+            emb_mod.record_query_failure = wrapped
+            if "backend.app.rag.store" in sys.modules:
+                sys.modules["backend.app.rag.store"].record_query_failure = wrapped
+    except Exception:
+        pass
+
+
+_hook_embedding_failures()

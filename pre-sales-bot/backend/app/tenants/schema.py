@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class BrandConfig(BaseModel):
@@ -23,6 +23,8 @@ class BrandConfig(BaseModel):
     disclaimer: str = "Indicative range only, not a fixed quote."
     nda_text: str = "Some project stories are confidential."
     nda_version: str = "2026-01"
+    currency: str = "USD"
+    timezone: str = "UTC"
 
 
 class FaqItem(BaseModel):
@@ -47,6 +49,8 @@ class ServicesConfig(BaseModel):
 
 
 class PricingConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     currency: str = "USD"
     low_side_factor: float = 0.8
     range_factor: float = 1.25
@@ -57,6 +61,48 @@ class PricingConfig(BaseModel):
     team_mix: dict[str, list[str]] = Field(default_factory=dict)
     inclusions: list[str] = Field(default_factory=list)
     exclusions: list[str] = Field(default_factory=list)
+
+    @field_validator("low_side_factor")
+    @classmethod
+    def validate_low_side(cls, v: float) -> float:
+        if v <= 0 or v > 1.0:
+            raise ValueError(f"low_side_factor must be between 0 and 1.0 (got {v})")
+        return v
+
+    @field_validator("range_factor")
+    @classmethod
+    def validate_range_factor(cls, v: float) -> float:
+        if v < 1.0:
+            raise ValueError(f"range_factor must be >= 1.0 (got {v})")
+        return v
+
+    @field_validator("bases")
+    @classmethod
+    def validate_bases(cls, v: dict[str, float]) -> dict[str, float]:
+        for k, val in v.items():
+            if val <= 0:
+                raise ValueError(f"Base price for '{k}' must be > 0 (got {val})")
+        return v
+
+    @field_validator("multipliers")
+    @classmethod
+    def validate_multipliers(cls, v: dict[str, dict]) -> dict[str, dict]:
+        for group, items in v.items():
+            if isinstance(items, dict):
+                for item_k, factor in items.items():
+                    if float(factor) <= 0:
+                        raise ValueError(f"Multiplier '{group}.{item_k}' must be > 0 (got {factor})")
+        return v
+
+    @model_validator(mode="after")
+    def validate_service_consistency(self) -> PricingConfig:
+        if self.bases and self.team_mix:
+            base_services = set(self.bases.keys())
+            team_services = set(self.team_mix.keys())
+            missing_team = base_services - team_services
+            if missing_team:
+                raise ValueError(f"Services defined in bases but missing team_mix: {missing_team}")
+        return self
 
 
 class QualificationConfig(BaseModel):
@@ -107,6 +153,7 @@ class TenantConfig(BaseModel):
     qualification: QualificationConfig = Field(default_factory=QualificationConfig)
     portfolio: PortfolioConfig = Field(default_factory=PortfolioConfig)
     objections: ObjectionsConfig = Field(default_factory=ObjectionsConfig)
+    semantic_chunking: bool = False
 
     @property
     def slug(self) -> str:

@@ -1,5 +1,5 @@
 embedding_model: gemini-embedding-001
-embedding_dim: 3072
+embedding_dim: 768
 chunk_tokens: 500
 chunk_overlap_tokens: 80
 semantic_break_similarity: 0.5
