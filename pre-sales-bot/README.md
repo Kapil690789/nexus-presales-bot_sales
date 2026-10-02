@@ -1,30 +1,31 @@
 # Nexus Pre-Sales AI Consultant Bot — Master Documentation & Handover
 
-> **Production AI Pre-Sales Agent & Web Portal**  
+> **Production AI Pre-Sales Agent & Live Proposal Studio**  
 > **Brand Identity:** **Nexus** — Digital Product Engineering Studio  
-> **LLM Engine:** Google Gemini 2.5 Flash (Strict JSON Schema Mode)  
+> **LLM Engine:** Google Gemini 3.8 Flash (Strict JSON Schema Mode)  
 > **Embeddings / RAG:** Google `gemini-embedding-001` (3072-dim cloud vectors) + Local Cosine Search  
 > **UI Aesthetic:** Ultra-Modern Obsidian Pitch-Black (`#050506`, Linear/Raycast/Vercel inspired)  
-> **Backend Framework:** FastAPI (Python 3.11+, Async / Uvicorn)  
-> **Deployment Targets:** Vercel (Serverless), Docker, or Standalone VM  
-> **Database:** SQLite (local dev) / PostgreSQL with pgvector (production)  
+> **Backend Framework:** FastAPI (Python 3.13 / Async / Uvicorn)  
+> **Deployment Target:** Vercel Serverless (`pre-sales-bot`), Docker, or Standalone VM  
+> **Database:** SQLite (local / serverless `/tmp`) or PostgreSQL with pgvector  
 > **Automated Test Suite:** 103 / 103 Passing (`pytest backend/tests`)
 
 ---
 
 ## 1. Project Overview & Business Purpose
 
-This system is an **enterprise-grade, white-label automated pre-sales consultant & interactive studio**. It embeds on modern websites as a lightweight (<25KB) vanilla JS widget or opens as a centered studio modal (`window.NexusAdvisor`).
+This system is an **enterprise-grade, white-label automated pre-sales consultant & interactive studio**. It embeds on modern websites as a lightweight (<25KB) vanilla JS widget, opens as a centered studio modal (`window.NexusAdvisor`), or runs as a full-screen **Live Proposal Studio (`/studio.html`)**.
 
-### What the bot does:
-1. **Intelligent Conversational Discovery:** Extracts complete project scope in single or multi-turn natural language (service type, platforms, project goal, feature list, timeline, budget band, and decision-maker role).
-2. **Deterministic Mathematical Pricing:** Calculates accurate price & timeline estimates using exact multiplier math from `pricing.yaml` — **zero hallucinated prices**.
-3. **Executive Scope & Architecture Cards:** Automatically renders interactive cards for Indicative Range ($), Architecture Stack (e.g., Flutter + Node.js/PostgreSQL), MVP feature breakdown, and similar portfolio case studies.
-4. **Semantic RAG & Knowledge Search:** Answers technical questions and project case studies using 3072-dimensional vector search with strict confidence thresholds to prevent raw document dumps on slang/casual text.
-5. **Interactive Objection Handling:** Handles price/timeline/offshore objections with pre-approved consultant scripts.
-6. **Live Google Calendar Booking:** Queries real-time `freebusy` slots via Google Calendar API (OAuth 2.0) and generates calendar invites.
-7. **Document / RFP Specification Ingestion:** Visitors can upload `.pdf`, `.docx`, `.txt`, or `.md` briefs (📎 icon); the bot displays immediate bubble feedback and auto-factors the specs into discovery.
-8. **Security & Anti-Jailbreak Guardrails:** Rejects prompt injections, rate-limits abuse, and bounds inputs to 1000 characters.
+### What the platform does:
+1. **Live Proposal Studio (`/studio.html`):** Real-time dual-pane workspace where conversational discovery on the right continuously builds and formats a C-level technical proposal document on the left, ready for instant PDF export.
+2. **Intelligent Consultative Discovery:** Uses Gemini 3.8 Flash (`discovery_synth.py`) to acknowledge user requirements with domain expertise before asking the next scoping question.
+3. **Deterministic Mathematical Pricing:** Calculates accurate price & timeline estimates using exact multiplier math from `pricing.yaml` — **zero hallucinated prices**.
+4. **Executive Scope & Architecture Cards:** Automatically renders interactive cards for Indicative Range ($), Architecture Stack (e.g., Flutter + Node.js/PostgreSQL), MVP feature breakdown, and similar portfolio case studies.
+5. **Semantic RAG & Knowledge Search:** Answers technical questions and project case studies using 3072-dimensional vector search with strict confidence thresholds.
+6. **Interactive Objection Handling:** Handles price/timeline/offshore objections with pre-approved consultant scripts.
+7. **Live Google Calendar Booking:** Queries real-time `freebusy` slots via Google Calendar API (OAuth 2.0) and generates calendar invites.
+8. **Document / RFP Specification Ingestion:** Visitors can upload `.pdf`, `.docx`, `.txt`, or `.md` briefs (📎 icon); the bot displays immediate bubble feedback and auto-factors the specs into discovery.
+9. **Security & Anti-Jailbreak Guardrails:** Rejects prompt injections, rate-limits abuse, and bounds inputs to 1000 characters.
 
 ---
 
