@@ -93,10 +93,21 @@ class EmbeddingTracker:
 
 
 _embedding_tracker = EmbeddingTracker()
+_failure_listeners: list[Any] = []
+
+
+def set_failure_listener(fn: Any) -> None:
+    if fn not in _failure_listeners:
+        _failure_listeners.append(fn)
 
 
 def record_query_failure(exc: Exception) -> None:
     _embedding_tracker.record_failure(exc)
+    for listener in list(_failure_listeners):
+        try:
+            listener(exc)
+        except Exception as exc_listener:
+            log.warning("Embedding failure listener failed: %s", type(exc_listener).__name__)
 
 
 def get_embedding_health() -> dict[str, Any]:
@@ -248,13 +259,20 @@ def _gemini_embed(
                             try:
                                 from backend.app.core.usage import record_usage
 
-                                est_tokens = sum(max(1, len(t) // 4) for t in chunk)
+                                usage = data.get("usageMetadata") or {}
+                                if "promptTokenCount" in usage and usage["promptTokenCount"] > 0:
+                                    prompt_tokens = usage["promptTokenCount"]
+                                    is_estimated = False
+                                else:
+                                    prompt_tokens = sum(max(1, len(t) // 4) for t in chunk)
+                                    is_estimated = True
                                 record_usage(
                                     provider="gemini",
                                     model=target_model,
                                     call_type="embedding",
-                                    prompt_tokens=est_tokens,
+                                    prompt_tokens=prompt_tokens,
                                     completion_tokens=0,
+                                    estimated=is_estimated,
                                 )
                             except Exception:
                                 pass

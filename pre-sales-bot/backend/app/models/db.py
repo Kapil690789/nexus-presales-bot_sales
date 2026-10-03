@@ -74,7 +74,7 @@ def SessionLocal():
 
 
 def ensure_ready() -> None:
-    """On Vercel, create tables and index the corpus on the first database request."""
+    """On Vercel, create tables and optionally run ephemeral lazy ingest on first database request."""
     global _ready
     if not os.environ.get("VERCEL") or _ready:
         return
@@ -82,17 +82,21 @@ def ensure_ready() -> None:
         if _ready:
             return
         try:
-            from backend.app.core.settings import uploads_root
-            from backend.app.rag.ingest import ingest_all
+            from backend.app.core.settings import get_settings, uploads_root
 
             uploads_root().mkdir(parents=True, exist_ok=True)
             init_db()
-            with SessionLocal() as db:
-                ingest_all(db)
+            settings = get_settings()
+            if settings.allow_ephemeral_db:
+                from backend.app.rag.ingest import ingest_all
+
+                with SessionLocal() as db:
+                    ingest_all(db, max_seconds=20.0)
         except Exception:
-            log.exception("Startup index failed")
+            log.exception("Startup initialization failed")
         finally:
             _ready = True
+
 
 
 def get_db():
@@ -180,4 +184,5 @@ def init_db() -> None:
             "content_hash": "VARCHAR(64) DEFAULT ''",
         },
     )
+    _ensure_columns("token_usage", {"estimated": "BOOLEAN DEFAULT FALSE"})
     _pgvector_setup()

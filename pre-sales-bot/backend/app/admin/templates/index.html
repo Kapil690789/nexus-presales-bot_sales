@@ -13,11 +13,13 @@
       <div style="font-size: 1.4rem; font-weight: bold; color: #dc2626; margin-top: 4px;">₹{{ usage.cost_inr }}</div>
       <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">${{ usage.cost_usd }} USD</div>
     </div>
+    {% if usage.initial_budget_inr is not none %}
     <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.85rem;">
       <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Balance Remaining (of ₹{{ usage.initial_budget_inr }})</div>
       <div style="font-size: 1.4rem; font-weight: bold; color: #16a34a; margin-top: 4px;">₹{{ usage.balance_remaining_inr }}</div>
       <div style="font-size: 0.75rem; color: #16a34a; margin-top: 2px;">{{ usage.percentage_used }}% consumed</div>
     </div>
+    {% endif %}
     <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.85rem;">
       <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Total Tokens Consumed</div>
       <div style="font-size: 1.4rem; font-weight: bold; color: #0f172a; margin-top: 4px;">{{ usage.total_tokens_formatted }}</div>
@@ -25,8 +27,13 @@
     </div>
     <div style="background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.85rem;">
       <div style="font-size: 0.75rem; color: #64748b; text-transform: uppercase;">Capacity Remaining</div>
+      {% if usage.projections_available and usage.sessions_remaining is not none %}
       <div style="font-size: 1.4rem; font-weight: bold; color: #2563eb; margin-top: 4px;">~{{ usage.sessions_remaining }} chats</div>
-      <div style="font-size: 0.75rem; color: #2563eb; margin-top: 2px;">~{{ usage.estimated_days_remaining }} days @ 30 chats/day</div>
+      <div style="font-size: 0.75rem; color: #2563eb; margin-top: 2px;">~{{ usage.estimated_days_remaining }} days @ 30 chats/day (n={{ usage.sample_size }})</div>
+      {% else %}
+      <div style="font-size: 0.95rem; font-weight: bold; color: #64748b; margin-top: 6px;">Not enough data yet (n &lt; 20)</div>
+      <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 2px;">Measured sample: n={{ usage.sample_size }}</div>
+      {% endif %}
     </div>
   </div>
 
@@ -39,7 +46,7 @@
       <td><code>{{ model_name }}</code></td>
       <td>{{ info.calls }}</td>
       <td>{{ info.tokens }}</td>
-      <td>₹{{ info.cost_inr }}</td>
+      <td>{% if info.cost_inr is not none %}₹{{ info.cost_inr }}{% else %}<span style="color: #94a3b8; font-style: italic;">rate unknown</span>{% endif %}</td>
     </tr>
     {% endfor %}
   </table>
@@ -54,7 +61,7 @@
       <td>{{ call.created_at }}</td>
       <td><code>{{ call.model }}</code></td>
       <td>{{ call.call_type }}</td>
-      <td>{{ call.tokens }}</td>
+      <td>{{ call.tokens }}{% if call.estimated %} <span style="font-size: 0.7rem; color: #d97706; font-weight: 500;">[estimated]</span>{% endif %}</td>
       <td>{{ call.cost_inr }}</td>
       <td>{{ call.session_id }}</td>
     </tr>
@@ -63,7 +70,7 @@
   {% endif %}
 
   <div style="margin-top: 0.75rem; font-size: 0.75rem; color: #64748b; line-height: 1.4;">
-    💡 <em>Gemini 2.5 Flash rates (@ ₹95/USD): Input ₹7.13 / 1M tokens ($0.075), Output ₹28.50 / 1M tokens ($0.30). Average customer session uses ~5,000 tokens (≈ ₹0.055). A ₹500 balance supports over 8,500 full visitor sessions.</em>
+    💡 <em>Token pricing loaded from <code>config/model_rates.yaml</code> (configured exchange rate: ₹{{ usage.usd_to_inr if usage.usd_to_inr else "95.0" }}/USD as-of 2026-10). Projections computed strictly from measured per-session data once n &ge; 20.</em>
   </div>
 </div>
 

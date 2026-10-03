@@ -574,13 +574,14 @@ class TestV1MislabeledVectors:
 
     def test_v1_health_shows_degraded_after_failure(self, client):
         """
-        GET /health returns 'embeddings' dict. After an embedding failure,
+        GET /admin/api/health returns 'embeddings' dict. After an embedding failure,
         degraded is True, failures >= 1, and last_error contains no URL or key.
+        Public /health reports status degraded without exposing internals.
         """
         from backend.app.rag.embeddings import EmbeddingError, record_query_failure, reset_embedding_health
 
         reset_embedding_health()
-        res_before = client.get("/health").json()
+        res_before = client.get("/admin/api/health", auth=("admin", "test-admin")).json()
         assert "embeddings" in res_before
         assert res_before["embeddings"]["degraded"] is False
         assert res_before["embeddings"]["failures"] == 0
@@ -588,7 +589,10 @@ class TestV1MislabeledVectors:
         # Simulate failure
         record_query_failure(EmbeddingError("Gemini 429 quota exhausted", status_code=429))
 
-        res_after = client.get("/health").json()
+        pub_after = client.get("/health").json()
+        assert pub_after == {"status": "degraded"}
+
+        res_after = client.get("/admin/api/health", auth=("admin", "test-admin")).json()
         emb_health = res_after["embeddings"]
         assert emb_health["degraded"] is True
         assert emb_health["failures"] >= 1
@@ -991,12 +995,16 @@ class TestH3LlmFailureVisibility:
 
         res = client.get("/health")
         assert res.status_code == 200
-        data = res.json()
+        assert res.json() == {"status": "degraded"}
+
+        admin_res = client.get("/admin/api/health", auth=("admin", "test-admin"))
+        assert admin_res.status_code == 200
+        data = admin_res.json()
         assert (
             "llm_failures" in data
             or data.get("llm_degraded") is True
             or data.get("status") == "degraded"
-        ), f"/health did not report LLM failure counter or degraded state: {data}"
+        ), f"/admin/api/health did not report LLM failure counter or degraded state: {data}"
         assert "llm" in data
         assert "failures_1h" in data["llm"]
         assert "last_error_class" in data["llm"]
@@ -1196,8 +1204,9 @@ class TestH5ProductionSqliteRefusal:
         assert dev.database_url == DEFAULT_SQLITE_URL
 
         monkeypatch.setenv("VERCEL", "1")
-        vercel_dev = Settings(environment="development", database_url=DEFAULT_SQLITE_URL)
+        vercel_dev = Settings(environment="development", database_url=DEFAULT_SQLITE_URL, allow_ephemeral_db=True)
         assert vercel_dev.database_url == VERCEL_SQLITE_URL
+
 
     def test_h5_desired_production_refuses_sqlite(self):
         """
@@ -1231,7 +1240,7 @@ class TestPhase3AdminSecurityAndCredentialScrubbing:
             assert resp.status_code == 404
             health_resp = client.get("/health")
             assert health_resp.status_code == 200
-            assert health_resp.json()["admin"] == "disabled_misconfigured"
+            assert health_resp.json()["status"] in ("ok", "degraded")
 
     def test_production_configured_password_mounts_admin(self, monkeypatch):
         from fastapi.testclient import TestClient
@@ -1250,7 +1259,10 @@ class TestPhase3AdminSecurityAndCredentialScrubbing:
             assert resp.status_code == 401
             health_resp = client.get("/health")
             assert health_resp.status_code == 200
-            assert health_resp.json()["admin"] == "enabled"
+            assert health_resp.json()["status"] in ("ok", "degraded")
+            admin_health = client.get("/admin/api/health", auth=("admin", "strong_custom_password_xyz_987"))
+            assert admin_health.status_code == 200
+            assert admin_health.json()["admin"] == "enabled"
 
     def test_credential_scrubbing_readme_and_env_example(self):
         """Verify README.md and .env.example contain no admin123 or AIza keys."""
@@ -1604,7 +1616,10 @@ class TestPhase1BEmbeddingsAndCalibration:
         with TestClient(create_app()) as client:
             resp = client.get("/health")
             assert resp.status_code == 200
-            data = resp.json()
+            assert resp.json()["status"] in ("ok", "degraded")
+            admin_resp = client.get("/admin/api/health", auth=("admin", "test-admin"))
+            assert admin_resp.status_code == 200
+            data = admin_resp.json()
             assert "stale_chunks" in data
             assert data["stale_chunks"] >= 1
             assert data["embeddings"]["stale_chunks"] >= 1

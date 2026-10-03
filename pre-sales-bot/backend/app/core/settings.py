@@ -70,18 +70,28 @@ class Settings(BaseSettings):
     google_refresh_token: str = ""
     slack_webhook_url: str = ""
     public_base_url: str = ""
+    allow_ephemeral_db: bool = False
+    usd_to_inr: float = 95.0
+    usage_budget_inr: float | None = None
     message_rate_limit: int = 20
     message_rate_window_seconds: int = 60
     llm_calls_per_session: int = 30
     llm_calls_per_ip_per_hour: int = 80
 
+
+    @property
+    def is_production_like(self) -> bool:
+        return self.environment.strip().lower() == "production" or bool(os.environ.get("VERCEL"))
+
     @model_validator(mode="after")
     def apply_database_url(self):
         self.database_url = normalize_database_url(self.database_url)
-        if self.environment.strip().lower() == "production" and self.database_url.lower().startswith("sqlite"):
-            raise ValueError(
-                "SQLite database_url is not allowed in production environment. Configure a Postgres DATABASE_URL."
-            )
+        if self.is_production_like and self.database_url.lower().startswith("sqlite"):
+            if not self.allow_ephemeral_db:
+                raise ValueError(
+                    "SQLite database_url is not allowed in production environment. Configure a Postgres DATABASE_URL."
+                )
+            _log_ephemeral_db_warning_once()
         return self
 
     @property
@@ -90,6 +100,21 @@ class Settings(BaseSettings):
         return parts or ["http://localhost:8010"]
 
 
+_ephemeral_db_logged = False
+
+
+def _log_ephemeral_db_warning_once() -> None:
+    global _ephemeral_db_logged
+    if not _ephemeral_db_logged:
+        import logging
+
+        logging.getLogger("backend.app.core.settings").error(
+            "EPHEMERAL DATABASE: sessions, bookings and handoffs will be lost"
+        )
+        _ephemeral_db_logged = True
+
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+

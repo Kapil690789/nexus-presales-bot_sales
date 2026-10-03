@@ -1,0 +1,103 @@
+# Model token pricing rates (USD per 1,000,000 tokens)
+# Keyed by exact model id.
+# Rates support effective dates (effective_from: YYYY-MM-DD).
+models:
+  gemini-3.8-flash:
+    - input_per_1m: 0.75
+      output_per_1m: 3.75
+      effective_from: "2026-01-01"
+      source: "Google AI Developer Pricing (introductory through 2026-12-31)"
+      as_of: "2026-10-01"
+      verified: true
+    - input_per_1m: 1.50
+      output_per_1m: 7.50
+      effective_from: "2027-01-01"
+      source: "Google AI Developer Pricing (standard from 2027-01-01)"
+      as_of: "2026-10-01"
+      verified: true
+
+  gemini-3.7-flash:
+    - input_per_1m: 0.75
+      output_per_1m: 3.75
+      effective_from: "2026-01-01"
+      source: "Google AI Developer Pricing (introductory through 2026-12-31)"
+      as_of: "2026-10-01"
+      verified: true
+    - input_per_1m: 1.50
+      output_per_1m: 7.50
+      effective_from: "2027-01-01"
+      source: "Google AI Developer Pricing (standard from 2027-01-01)"
+      as_of: "2026-10-01"
+      verified: true
+
+  gemini-2.5-flash:
+    - input_per_1m: 0.075
+      output_per_1m: 0.30
+      effective_from: "2024-05-01"
+      source: "Google AI Developer Pricing (legacy flash tier)"
+      as_of: "2026-10-01"
+      verified: false
+
+  gemini-embedding-001:
+    - input_per_1m: 0.02
+      output_per_1m: 0.0
+      effective_from: "2024-05-01"
+      source: "Google AI Developer Pricing (standard embedding rate)"
+      as_of: "2026-10-01"
+      verified: false
+
+  gemini-1.5-flash:
+    - input_per_1m: 0.075
+      output_per_1m: 0.30
+      effective_from: "2024-05-01"
+      source: "Google AI Developer Pricing"
+      as_of: "2024-05-01"
+      verified: true
+
+  gemini-1.5-pro:
+    - input_per_1m: 1.25
+      output_per_1m: 5.00
+      effective_from: "2024-05-01"
+      source: "Google AI Developer Pricing"
+      as_of: "2024-05-01"
+      verified: true
+
+  text-embedding-004:
+    - input_per_1m: 0.02
+      output_per_1m: 0.0
+      effective_from: "2024-05-01"
+      source: "Google AI Developer Pricing"
+      as_of: "2024-05-01"
+      verified: true
+
+  gpt-4o-mini:
+    - input_per_1m: 0.15
+      output_per_1m: 0.60
+      effective_from: "2024-07-18"
+      source: "OpenAI Pricing"
+      as_of: "2024-07-18"
+      verified: true
+
+  gpt-4o:
+    - input_per_1m: 2.50
+      output_per_1m: 10.00
+      effective_from: "2024-05-13"
+      source: "OpenAI Pricing"
+      as_of: "2024-05-13"
+      verified: true
+
+  claude-3-5-sonnet:
+    - input_per_1m: 3.00
+      output_per_1m: 15.00
+      effective_from: "2024-06-20"
+      source: "Anthropic Pricing"
+      as_of: "2024-06-20"
+      verified: true
+
+  claude-3-5-haiku:
+    - input_per_1m: 0.80
+      output_per_1m: 4.00
+      effective_from: "2024-10-22"
+      source: "Anthropic Pricing"
+      as_of: "2024-10-22"
+      verified: true

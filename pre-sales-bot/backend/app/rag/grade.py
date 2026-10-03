@@ -21,8 +21,14 @@ def grade(query: str, hits: list[Hit]) -> tuple[str, float]:
     if not hits:
         return "low", 0.0
     top = hits[0].score
-    relevant: bool | None = None
     platform = get_platform()
+    is_lexical_only = any(getattr(hit, "lexical_only", False) for hit in hits)
+    if is_lexical_only:
+        if top >= platform.weak_min_score:
+            return "weak", top
+        return "low", top
+
+    relevant: bool | None = None
     if top >= platform.show_min_score and llm_available():
         snippets = "\n\n".join(f"{hit.title}: {hit.content[:500]}" for hit in hits[:3])
         try:

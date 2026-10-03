@@ -35,7 +35,7 @@ def _parse_json(text: str) -> dict[str, Any]:
     return data
 
 
-def complete_json(system: str, user: str) -> dict[str, Any]:
+def complete_json(system: str, user: str, mode: str = "request") -> dict[str, Any]:
     from backend.app.core.security import allow_llm_call
 
     settings = get_settings()
@@ -48,7 +48,7 @@ def complete_json(system: str, user: str) -> dict[str, Any]:
         if provider == "anthropic":
             return _anthropic(system, user, settings.llm_api_key, settings.llm_model)
         if provider == "gemini":
-            return _gemini(system, user, settings.llm_api_key, settings.llm_model)
+            return _gemini(system, user, settings.llm_api_key, settings.llm_model, mode=mode)
         return _openai(system, user, settings.llm_api_key, settings.llm_model, settings.llm_base_url)
     except LLMError:
         raise
@@ -139,7 +139,7 @@ def _anthropic(system: str, user: str, api_key: str, model: str) -> dict[str, An
     return _parse_json(text)
 
 
-def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
+def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "request") -> dict[str, Any]:
     import time
 
     import httpx
@@ -156,10 +156,25 @@ def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
     if system.strip():
         payload["systemInstruction"] = {"parts": [{"text": system.strip()}]}
 
-    backoffs = [3, 6, 12, 20]
+    if mode == "request":
+        per_call_timeout = 15.0
+        max_retries = 1
+        wall_budget = 12.0
+        backoffs = [3.0]
+    else:
+        per_call_timeout = 15.0
+        max_retries = 4
+        wall_budget = 60.0
+        backoffs = [3.0, 6.0, 12.0, 20.0]
+
+    start_time = time.monotonic()
     try:
-        with httpx.Client(timeout=15.0) as client:
-            for attempt, backoff in enumerate(backoffs + [None]):
+        with httpx.Client(timeout=per_call_timeout) as client:
+            for attempt in range(max_retries + 1):
+                elapsed = time.monotonic() - start_time
+                if elapsed >= wall_budget:
+                    raise LLMError(f"Gemini LLM exceeded time budget ({elapsed:.1f}s >= {wall_budget}s)")
+
                 resp = client.post(url, json=payload)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -173,7 +188,9 @@ def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
 
                         usage = data.get("usageMetadata", {})
                         prompt_tokens = usage.get("promptTokenCount", 0)
-                        completion_tokens = usage.get("candidatesTokenCount", 0)
+                        candidates_tokens = usage.get("candidatesTokenCount", 0)
+                        thoughts_tokens = usage.get("thoughtsTokenCount", 0)
+                        completion_tokens = candidates_tokens + thoughts_tokens
                         if prompt_tokens == 0 and completion_tokens == 0:
                             prompt_tokens = max(1, len(system + user) // 4)
                             completion_tokens = max(1, len(text) // 4)
@@ -187,17 +204,22 @@ def _gemini(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
                     except Exception:
                         pass
                     return _parse_json(text or "{}")
+
                 if resp.status_code == 429:
-                    if backoff is None:
-                        raise LLMError(f"Gemini quota exceeded after {len(backoffs)} retries: {resp.text[:200]}")
+                    if attempt >= max_retries:
+                        raise LLMError(f"Gemini quota exceeded after {max_retries} retries: {resp.text[:200]}")
+                    backoff = backoffs[min(attempt, len(backoffs) - 1)]
+                    if (time.monotonic() - start_time) + backoff >= wall_budget:
+                        raise LLMError(f"Gemini LLM budget exceeded before retry ({resp.status_code})")
                     log.warning(
-                        "Gemini LLM rate limit hit (429), backing off for %ds (attempt %d/%d)",
+                        "Gemini LLM rate limit hit (429), backing off for %.1fs (attempt %d/%d)",
                         backoff,
                         attempt + 1,
-                        len(backoffs),
+                        max_retries,
                     )
                     time.sleep(backoff)
                     continue
+
                 raise LLMError(f"Gemini API error {resp.status_code}: {resp.text[:200]}")
     except httpx.RequestError as exc:
         raise LLMError(f"Gemini connection error: {exc}") from exc
@@ -270,32 +292,26 @@ def get_llm_health(db: Any = None) -> dict[str, Any]:
         return {"failures_1h": 0, "last_error_class": "", "degraded": False}
 
 
-def _hook_embedding_failures() -> None:
+def handle_embedding_failure(exc: Exception) -> None:
     try:
-        import sys
-        import backend.app.rag.embeddings as emb_mod
-
-        orig = getattr(emb_mod, "record_query_failure", None)
-        if orig and not getattr(orig, "_system_events_hooked", False):
-            def wrapped(exc: Exception):
-                orig(exc)
-                try:
-                    cls_name = type(exc).__name__
-                    record_system_event(
-                        kind="embedding_failure",
-                        reason=f"{cls_name} during embedding",
-                        stage="embeddings",
-                        error_class=cls_name,
-                    )
-                except Exception:
-                    pass
-
-            wrapped._system_events_hooked = True
-            emb_mod.record_query_failure = wrapped
-            if "backend.app.rag.store" in sys.modules:
-                sys.modules["backend.app.rag.store"].record_query_failure = wrapped
+        cls_name = type(exc).__name__
+        record_system_event(
+            kind="embedding_failure",
+            reason=f"{cls_name} during embedding",
+            stage="embeddings",
+            error_class=cls_name,
+        )
     except Exception:
         pass
 
 
-_hook_embedding_failures()
+def register_embedding_failure_listener() -> None:
+    try:
+        from backend.app.rag.embeddings import set_failure_listener
+
+        set_failure_listener(handle_embedding_failure)
+    except Exception:
+        pass
+
+
+register_embedding_failure_listener()
