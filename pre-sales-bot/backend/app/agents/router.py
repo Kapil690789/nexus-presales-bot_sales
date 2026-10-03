@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+log = logging.getLogger(__name__)
 
 from backend.app.agents.brief import ProjectBrief, brief_ready, next_discovery_field
 from backend.app.agents.discovery_synth import synthesize_discovery_prompt
@@ -33,7 +36,7 @@ from backend.app.tenants.schema import TenantConfig
 
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 OPEN = re.compile(r"\?|^(what|how|who|why|when|where|can|do|does|is|are|have)\b", re.IGNORECASE)
-BOOK = re.compile(r"\b(book|schedule)\b.{0,40}\b(call|meeting|consultation|time)\b", re.IGNORECASE)
+BOOK = re.compile(r"\b(book|schedule|reschedule)\b.{0,40}\b(call|meeting|consultation|time)\b|\breschedule\b", re.IGNORECASE)
 OUT_OF_SCOPE = ("shopify", "crypto", "web3", "homework", "student project")
 ACTION = {"show_portfolio", "booking_window", "booking_slot", "nda", "close_out"}
 
@@ -58,7 +61,7 @@ def run_turn(
         value = None
     found = EMAIL.search(text)
     if found:
-        contact["email"] = found.group(0)
+        contact["email"] = found.group(0).rstrip(".")
     user_texts = [item["content"] for item in history if item.get("role") == "user" and item.get("content")]
     if text:
         user_texts.append(text)
@@ -91,6 +94,130 @@ def run_turn(
             cards=[{"type": "booking", "title": "Pick a time", "live": live, "slots": slots}],
         )
 
+    # Email capture (booking confirmation or lead capture)
+    if found:
+        email = contact["email"]
+        if session.booking_json:
+            try:
+                booked = json.loads(session.booking_json)
+            except Exception:
+                booked = {}
+            slot_iso = booked.get("slot_iso") or ""
+            if slot_iso:
+                try:
+                    updated_booked = confirm_slot(
+                        tenant,
+                        slot_iso,
+                        f"Discovery call — {config.brand.name}",
+                        email,
+                    )
+                    if updated_booked:
+                        booked.update(updated_booked)
+                except Exception as exc:
+                    log.warning("Failed to update slot with email: %s", exc)
+            booked["attendee"] = email
+            session.booking_json = json.dumps(booked)
+
+            qual = qualify(brief, config.qualification, config.services, has_email=True)
+            estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
+            handoff = _handoff(config, brief, contact, qual, estimate, booked)
+            session.handoff_summary = handoff
+            _lead(db, tenant, session, email, qual, estimate, handoff)
+            notify_slack(
+                db,
+                session.id,
+                tenant,
+                f"Booking invitation dispatched for {config.brand.name}: {booked.get('label') or slot_iso} -> {email}",
+            )
+            slot_label = booked.get("label") or slot_iso or "your scheduled discovery session"
+            reply = f"Thank you! Your calendar invitation for **{slot_label}** has been dispatched to **{email}**."
+            if booked.get("meet_url"):
+                reply += f" Google Meet link: {booked['meet_url']}."
+            reply += " Our solutions engineering team is looking forward to the discussion!"
+
+            post_chips = [
+                {"label": "What is on the agenda?", "field": "ask", "value": "What is on the agenda for our discovery call?"},
+                {"label": "Can I invite a colleague?", "field": "ask", "value": "Can I invite a colleague to the call?"},
+                {"label": "Can I reschedule the time?", "field": "booking_window", "value": "reschedule"},
+            ]
+            return _finish(
+                session, brief, contact, summary,
+                message=reply,
+                stage="handoff",
+                route="booking",
+                chips=post_chips,
+                cards=[{"type": "booking", "title": "Confirmed", **booked}],
+                qualification=qual,
+                estimate=estimate,
+                booking=booked,
+                handoff_summary=handoff,
+            )
+
+        if session.stage in ("handoff", "booking") or brief_ready(brief):
+            qual = qualify(brief, config.qualification, config.services, has_email=True)
+            estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
+            handoff = _handoff(config, brief, contact, qual, estimate, None)
+            session.handoff_summary = handoff
+            _lead(db, tenant, session, email, qual, estimate, handoff)
+            notify_slack(
+                db,
+                session.id,
+                tenant,
+                f"Lead email captured for {config.brand.name}: {email}",
+            )
+            slots, live = list_slots(tenant)
+            reply = f"Thank you! I've recorded your email ({email}) for the proposal. Here are a few times for a short discovery call with our team:"
+            return _finish(
+                session, brief, contact, summary,
+                message=reply,
+                stage="booking",
+                route="booking",
+                chips=[{"label": slot["label"], "field": "booking_slot", "value": slot["slot_iso"]} for slot in slots],
+                cards=[{"type": "booking", "title": "Pick a time", "live": live, "slots": slots}],
+                qualification=qual,
+                estimate=estimate,
+                handoff_summary=handoff,
+            )
+
+    # Post-booking specific questions (colleague, agenda)
+    if session.booking_json and text:
+        if re.search(r"\b(colleague|coworker|team member|partner|invite)\b", text.lower()):
+            reply = (
+                "Yes, absolutely! Feel free to forward the calendar invitation or invite any team members, "
+                "technical leads, or stakeholders to the call. Having key collaborators present makes the "
+                "scoping session even more productive."
+            )
+            post_chips = [
+                {"label": "What is on the agenda?", "field": "ask", "value": "What is on the agenda for our discovery call?"},
+                {"label": "Can I reschedule the time?", "field": "booking_window", "value": "reschedule"},
+            ]
+            return _finish(
+                session, brief, contact, summary,
+                message=reply,
+                stage="handoff",
+                route="booking_faq",
+                chips=post_chips,
+            )
+        if re.search(r"\b(agenda|what to expect|discuss on the call|happen on the call)\b", text.lower()):
+            reply = (
+                "Our 30-minute discovery call agenda covers:\n"
+                "1. **Requirements & Scope**: Deep-dive into your core user workflows and product goals.\n"
+                "2. **Technical Architecture**: Aligning on stack, security, APIs, and key integrations.\n"
+                "3. **Delivery & Team Sizing**: Reviewing sprint roadmap, squad composition, and MVP boundaries.\n"
+                "4. **Timeline & Budget**: Sign-off on budget bands and engineering kickoff steps."
+            )
+            post_chips = [
+                {"label": "Can I invite a colleague?", "field": "ask", "value": "Can I invite a colleague to the call?"},
+                {"label": "Can I reschedule the time?", "field": "booking_window", "value": "reschedule"},
+            ]
+            return _finish(
+                session, brief, contact, summary,
+                message=reply,
+                stage="handoff",
+                route="booking_faq",
+                chips=post_chips,
+            )
+
     if field == "show_portfolio":
         cases = match_portfolio(brief, config.portfolio)
         return _finish(
@@ -119,7 +246,7 @@ def run_turn(
             message=direct_objection["reply"],
             stage=session.stage or "discovery",
             route="objection",
-            chips=_next_chips(brief) or [BOOK_CHIP],
+            chips=_next_chips(brief, has_booking=bool(session.booking_json)),
         )
 
     filled = False
@@ -153,7 +280,7 @@ def run_turn(
                     ),
                     stage=session.stage or "discovery",
                     route="off_topic",
-                    chips=_next_chips(brief) or [BOOK_CHIP],
+                    chips=_next_chips(brief, has_booking=bool(session.booking_json)),
                 )
             if extracted and not extracted.get("is_question") and apply_extracted_slots(brief, extracted, pending):
                 _note_flags(brief)
@@ -165,6 +292,17 @@ def run_turn(
             elif re.search(r"\b(student|intern)\b", text.lower()) and not brief.decision_role:
                 brief.role_unconfirmed = True
                 filled = True
+            elif found and not brief_ready(brief):
+                pending = _pending(brief)
+                if pending:
+                    p_text = prompt_for(brief, pending)
+                    return _finish(
+                        session, brief, contact, summary,
+                        message=f"Thank you, saved your email ({contact['email']})! Now, to help size your project: {p_text}",
+                        stage="discovery",
+                        route="discovery",
+                        chips=chips_for_field(pending, brief),
+                    )
 
     if filled or (field and field not in ACTION):
         return _after_brief(session, config, brief, contact, summary, user_text=text, history=history)
@@ -176,7 +314,7 @@ def run_turn(
             message=semantic_objection["reply"],
             stage=session.stage or "discovery",
             route="objection",
-            chips=_next_chips(brief) or [BOOK_CHIP],
+            chips=_next_chips(brief, has_booking=bool(session.booking_json)),
         )
 
     raw_queries = lookup_queries(text, summary, previous[-3:]) or [text]
@@ -191,7 +329,10 @@ def run_turn(
             message = f"{message}\n\n{extra[0]}"
             chips = list(extra[1])
         else:
-            chips = [BOOK_CHIP, PORTFOLIO_CHIP]
+            chips = [
+                {"label": "Can I reschedule?", "field": "booking_window", "value": "reschedule"},
+                PORTFOLIO_CHIP,
+            ] if session.booking_json else [BOOK_CHIP, PORTFOLIO_CHIP]
         return _finish(
             session, brief, contact, summary,
             message=message,
@@ -229,7 +370,10 @@ def run_turn(
             message = f"{message}\n\n{extra[0]}"
         chips = list(extra[1])
     elif brief_ready(brief):
-        chips = [BOOK_CHIP, PORTFOLIO_CHIP]
+        chips = [
+            {"label": "Can I reschedule?", "field": "booking_window", "value": "reschedule"},
+            PORTFOLIO_CHIP,
+        ] if session.booking_json else [BOOK_CHIP, PORTFOLIO_CHIP]
     else:
         chips = []
     return _finish(
@@ -446,7 +590,12 @@ def _continuation(brief: ProjectBrief, history: list[dict] | None = None) -> tup
     return prompt_for(brief, field, repeat=repeat), chips_for_field(field, brief, repeat=repeat)
 
 
-def _next_chips(brief: ProjectBrief) -> list[dict]:
+def _next_chips(brief: ProjectBrief, has_booking: bool = False) -> list[dict]:
+    if has_booking:
+        return [
+            {"label": "Can I reschedule?", "field": "booking_window", "value": "reschedule"},
+            PORTFOLIO_CHIP,
+        ]
     if brief_ready(brief):
         chips = [BOOK_CHIP, PORTFOLIO_CHIP]
         if not brief.company_size:
