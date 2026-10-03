@@ -9,6 +9,16 @@ from backend.app.tenants.schema import TenantConfig
 
 log = logging.getLogger(__name__)
 
+GROUNDING_LINE = (
+    "Answer only from the engine data and the provided notes. If the notes do not contain the answer, "
+    "say you are not sure and offer to connect the team. Never invent clients, case studies, guarantees, "
+    "delivery dates or prices."
+)
+FALLBACK_SYSTEM_PROMPT = (
+    "You are an expert enterprise pre-sales software consultant. Output JSON only. "
+    + GROUNDING_LINE
+)
+
 
 def fallback_message(
     config: TenantConfig,
@@ -22,7 +32,23 @@ def fallback_message(
     services_str = ", ".join(service_labels[:4])
 
     cleaned_q = (query or "").strip().lower()
-    is_ack = cleaned_q in {"ok", "okay", "cool", "got it", "sounds good", "great", "thanks", "thank you", "sure", "nice", "perfect", "done", "alright"}
+    is_ack = cleaned_q in {
+        "ok", "okay", "cool", "got it", "sounds good", "great", "thanks", "thank you",
+        "sure", "nice", "perfect", "done", "alright", "hi", "hello", "hey", "yes", "no",
+        "haan", "ha", "theek hai", "thik hai",
+    }
+
+    if is_ack:
+        if not (brief and brief_ready(brief)):
+            return (
+                f"I'm {name}'s assistant and pre-sales consultant. We specialize in custom web applications, "
+                f"cross-platform mobile apps (iOS & Android), and AI solutions. "
+                f"I'd love to learn more about what you're looking to build so we can tailor the right approach."
+            )
+        return (
+            f"Glad that aligns! If you'd like to talk through the technical architecture, team setup, or confirm the timeline, "
+            f"feel free to schedule a short discovery call with our team anytime."
+        )
 
     notes_instruction = ""
     if notes:
@@ -73,7 +99,7 @@ def fallback_message(
                 f'Return JSON {{"message": "..."}}.'
             )
         try:
-            data = complete_json("You are an expert enterprise pre-sales software consultant. Output JSON only.", prompt)
+            data = complete_json(FALLBACK_SYSTEM_PROMPT, prompt, mode="request")
             msg = str(data.get("message") or "").strip()
             if msg:
                 return msg

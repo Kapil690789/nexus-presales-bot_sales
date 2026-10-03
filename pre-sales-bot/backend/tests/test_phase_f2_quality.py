@@ -179,79 +179,85 @@ def test_student_role_confirmation_does_not_inflate_score():
 # 5. Price guard 30-sample matrix (Item 5)
 # ---------------------------------------------------------------------------
 
+EXACT_PRICE_CONFIRMATION = "Exact pricing depends on scope; the indicative range above is the only figure I can confirm."
+
 GUARD_SAMPLES = [
-    # (input_text, allowed_estimate, visitor_budget, expected_contains_or_exact, should_pass_figure)
+    # (input_text, allowed_estimate, visitor_budget, expected_exact_full_string, should_pass_figure)
     # 1. Legit engine lower band $36k
-    ("Estimated range is $36k for your scope.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36k", True),
+    ("Estimated range is $36k for your scope.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "Estimated range is $36k for your scope.", True),
     # 2. Legit engine upper band $45k
-    ("Total could be up to $45k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$45k", True),
+    ("Total could be up to $45k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "Total could be up to $45k.", True),
     # 3. Legit uppercase K
-    ("Pricing band: $36K to $45K.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36K to $45K", True),
+    ("Pricing band: $36K to $45K.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "Pricing band: $36K to $45K.", True),
     # 4. Legit comma format
-    ("The baseline is 36,000 USD.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "36,000 USD", True),
+    ("The baseline is 36,000 USD.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "The baseline is 36,000 USD.", True),
     # 5. Legit USD 36000 prefix
-    ("Target cost is USD 36000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "USD 36000", True),
+    ("Target cost is USD 36000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "Target cost is USD 36000.", True),
     # 6. Legit word format
-    ("Overall investment is 36 thousand dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "36 thousand dollars", True),
+    ("Overall investment is 36 thousand dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "Overall investment is 36 thousand dollars.", True),
     # 7. Legit high word format
-    ("Capped at 45 thousand dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "45 thousand dollars", True),
+    ("Capped at 45 thousand dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "Capped at 45 thousand dollars.", True),
     # 8. Visitor-stated budget echoed back ($25k-$50k)
-    ("Aligned with your $25k-$50k budget.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, "$25k-$50k", "$25k-$50k", True),
+    ("Aligned with your $25k-$50k budget.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, "$25k-$50k", "Aligned with your $25k-$50k budget.", True),
     # 9. Visitor-stated budget single figure
-    ("Fits inside your $50k envelope.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, "50k", "$50k", True),
+    ("Fits inside your $50k envelope.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, "50k", "Fits inside your $50k envelope.", True),
     # 10. Visitor-stated budget range with text
-    ("Referencing your 25k to 50k budget.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, "25k to 50k", "25k to 50k", True),
+    ("Referencing your 25k to 50k budget.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, "25k to 50k", "Referencing your 25k to 50k budget.", True),
     # 11. Unauthorized cheap figure $5,000
-    ("We can deliver this for only $5,000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
+    ("We can deliver this for only $5,000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 12. Unauthorized $12k
-    ("Special discount rate is $12k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
+    ("Special discount rate is $12k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 13. Unauthorized $15,000 comma
-    ("It will cost exactly $15,000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
+    ("It will cost exactly $15,000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 14. Unauthorized USD 20000
-    ("Fixed price: USD 20000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
+    ("Fixed price: USD 20000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 15. Unauthorized 80 thousand dollars
-    ("Total quote is 80 thousand dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
+    ("Total quote is 80 thousand dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 16. Unauthorized Rupee figure Rs 30 lakh without estimate
-    ("Rough estimate is Rs 30 lakh.", None, None, "custom indicative pricing", False),
+    ("Rough estimate is Rs 30 lakh.", None, None, EXACT_PRICE_CONFIRMATION, False),
     # 17. Unauthorized ₹50,000
-    ("Development fee is ₹50,000.", None, None, "custom indicative pricing", False),
+    ("Development fee is ₹50,000.", None, None, EXACT_PRICE_CONFIRMATION, False),
     # 18. Unauthorized Rs. 25 lakh
-    ("Starts from Rs. 25 lakh.", None, None, "custom indicative pricing", False),
+    ("Starts from Rs. 25 lakh.", None, None, EXACT_PRICE_CONFIRMATION, False),
     # 19. Unauthorized INR 500000
-    ("Budget needed: INR 500000.", None, None, "custom indicative pricing", False),
+    ("Budget needed: INR 500000.", None, None, EXACT_PRICE_CONFIRMATION, False),
     # 20. Exact range label match passes through
-    ("Project quote: $36,000–$45,000 USD.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", True),
+    ("Project quote: $36,000–$45,000 USD.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "Project quote: $36,000–$45,000 USD.", True),
     # 21. Bare legit number 36000
-    ("Budget baseline: 36000 dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "36000 dollars", True),
+    ("Budget baseline: 36000 dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "Budget baseline: 36000 dollars.", True),
     # 22. Bare unauthorized number 10,000
-    ("Budget baseline: 10,000 dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
+    ("Budget baseline: 10,000 dollars.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 23. Legit range label without estimate object
     ("Consultation is free.", None, None, "Consultation is free.", True),
     # 24. Multiple unauthorized figures in one sentence
-    ("Was $20k now $15k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
-    # 25. Mixed legit engine figure and unauthorized figure
-    ("Between $36k and $90k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36k", True),
+    ("Was $20k now $15k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
+    # 25. Mixed legit engine figure and unauthorized figure (replaces whole sentence)
+    ("Between $36k and $90k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 26. Visitor budget 15k to 40k
-    ("Based on your $15k-$40k range.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, "$15k-$40k", "$15k-$40k", True),
+    ("Based on your $15k-$40k range.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, "$15k-$40k", "Based on your $15k-$40k range.", True),
     # 27. Unauthorized $100k
-    ("Enterprise edition is $100k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
+    ("Enterprise edition is $100k.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 28. Small unauthorized $500
-    ("Hosting fee is $500.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
+    ("Hosting fee is $500.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 29. Unauthorized 999 USD
-    ("Setup cost is 999 USD.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$36,000–$45,000 USD", False),
+    ("Setup cost is 999 USD.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, EXACT_PRICE_CONFIRMATION, False),
     # 30. Legit high figure $45,000
-    ("The upper ceiling is $45,000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "$45,000", True),
+    ("The upper ceiling is $45,000.", {"low": 36000, "high": 45000, "range_label": "$36,000–$45,000 USD"}, None, "The upper ceiling is $45,000.", True),
+    # 31. Direct required checks: "Hosting fee is $500", "Was $20k now $15k", "about 5 lakh rupees"
+    ("Hosting fee is $500", None, None, EXACT_PRICE_CONFIRMATION, False),
+    ("Was $20k now $15k", None, None, EXACT_PRICE_CONFIRMATION, False),
+    ("about 5 lakh rupees", None, None, EXACT_PRICE_CONFIRMATION, False),
 ]
 
 
 def test_price_guard_30_sample_matrix():
-    """Verify all 30 price guard samples pass legit figures and replace unauthorized ones."""
+    """Verify price guard samples pass legit figures and replace unauthorized ones with exact full string."""
     table_rows = []
     for idx, (input_text, estimate, visitor_budget, expected_token, should_pass) in enumerate(GUARD_SAMPLES, 1):
         actual = sanitize_price_leaks(input_text, allowed_estimate=estimate, visitor_budget=visitor_budget)
-        assert expected_token in actual, f"Sample {idx} failed:\nInput: {input_text}\nExpected: {expected_token}\nActual: {actual}"
+        assert actual == expected_token, f"Sample {idx} failed:\nInput: {input_text}\nExpected: {expected_token}\nActual: {actual}"
         table_rows.append((idx, input_text, actual, "PASSED"))
-    assert len(table_rows) == 30
+    assert len(table_rows) >= 30
 
 
 # ---------------------------------------------------------------------------

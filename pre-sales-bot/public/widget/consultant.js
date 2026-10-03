@@ -453,7 +453,11 @@
       (card.cases || []).forEach(function (item) {
         var href = safeUrl(item.url);
         var title = esc(item.title || "Project");
+        var isSample = item.is_sample || card.is_sample;
         html += "<p>";
+        if (isSample) {
+          html += '<span class="ps-badge-sample" style="display:inline-block;font-size:11px;padding:2px 6px;border-radius:4px;background:#fef3c7;color:#92400e;margin-bottom:4px;font-weight:600;">Sample project (demo data)</span><br>';
+        }
         html += href ? '<a href="' + href + '" target="_blank" rel="noreferrer">' + title + "</a>" : title;
         if (item.outcome) html += "<br>" + esc(item.outcome);
         html += "</p>";

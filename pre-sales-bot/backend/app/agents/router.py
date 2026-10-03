@@ -40,6 +40,40 @@ BOOK = re.compile(r"\b(book|schedule|reschedule)\b.{0,40}\b(call|meeting|consult
 OUT_OF_SCOPE = ("shopify", "crypto", "web3", "homework", "student project")
 ACTION = {"show_portfolio", "booking_window", "booking_slot", "nda", "close_out"}
 
+import time
+import backend.app.rag.store as rag_store
+
+GROUNDING_LINE = (
+    "Answer only from the engine data and the provided notes. If the notes do not contain the answer, "
+    "say you are not sure and offer to connect the team. Never invent clients, case studies, guarantees, "
+    "delivery dates or prices."
+)
+SOLUTION_SYSTEM_PROMPT = (
+    "You are an expert enterprise pre-sales software consultant. Output JSON only. "
+    + GROUNDING_LINE
+)
+ALWAYS_ACK_RE = re.compile(
+    r"^(hi|hello|hey|thanks|thank you)[\s.!,]*$",
+    re.IGNORECASE,
+)
+CONDITIONAL_ACK_RE = re.compile(
+    r"^(ok|okay|k|yes|no|yep|nope|haan|ha|theek hai|thik hai)[\s.!,]*$",
+    re.IGNORECASE,
+)
+PURE_ACK_RE = re.compile(
+    r"^(hi|hello|hey|ok|okay|k|thanks|thank you|yes|no|yep|nope|haan|ha|theek hai|thik hai)[\s.!,]*$",
+    re.IGNORECASE,
+)
+
+
+def _is_ack(text: str, has_pending_discovery: bool) -> bool:
+    cleaned = (text or "").strip()
+    if ALWAYS_ACK_RE.match(cleaned):
+        return True
+    if CONDITIONAL_ACK_RE.match(cleaned):
+        return not has_pending_discovery
+    return False
+
 
 def run_turn(
     db: Session,
@@ -59,6 +93,15 @@ def run_turn(
     if field == "ask":
         field = ""
         value = None
+
+    timings = {
+        "extractor": 0.0,
+        "query_embedding": 0.0,
+        "retrieval_db": 0.0,
+        "answer_llm": 0.0,
+        "db_writes": 0.0,
+    }
+    is_chip_click = bool(chip and (chip.get("field") or chip.get("value") or chip.get("label")))
     found = EMAIL.search(text)
     if found:
         contact["email"] = found.group(0).rstrip(".")
@@ -220,14 +263,19 @@ def run_turn(
 
     if field == "show_portfolio":
         cases = match_portfolio(brief, config.portfolio)
+        is_sample = getattr(config, "slug", "") == "demo" or tenant.slug == "demo"
+        for c in cases:
+            if is_sample or c.get("is_sample"):
+                c["is_sample"] = True
         return _finish(
             session, brief, contact, summary,
-            message="Here are relevant case studies and similar projects from our past work:",
+            message="Here are relevant sample case studies and similar projects from our past work:" if is_sample else "Here are relevant case studies and similar projects from our past work:",
             stage=session.stage or "advising",
             route="portfolio",
             chips=[BOOK_CHIP],
-            cards=[{"type": "portfolio", "title": "Similar work", "cases": cases}],
+            cards=[{"type": "portfolio", "title": "Similar work", "cases": cases, "is_sample": is_sample}],
             portfolio=cases,
+            timings=timings,
         )
 
     if field == "close_out":
@@ -237,6 +285,7 @@ def run_turn(
             stage=session.stage or "discovery",
             route="discovery",
             chips=[BOOK_CHIP],
+            timings=timings,
         )
 
     direct_objection = match_objection(text, config.objections) if (text and not field) else None
@@ -247,6 +296,7 @@ def run_turn(
             stage=session.stage or "discovery",
             route="objection",
             chips=_next_chips(brief, has_booking=bool(session.booking_json)),
+            timings=timings,
         )
 
     filled = False
@@ -267,8 +317,46 @@ def run_turn(
                 filled = True
         if not filled:
             pending = _pending(brief)
-            # 1. Try LLM-assisted multi-slot extraction if not a simple FAQ question
-            extracted = extract_slots(text, pending, brief)
+            last_assistant_msg = ""
+            for item in reversed(history):
+                if item.get("role") == "assistant" and item.get("content"):
+                    last_assistant_msg = str(item.get("content")).lower()
+                    break
+
+            lowered_text = text.lower().strip()
+            # Handle direct yes/no answers to specific discovery questions
+            if (pending == "integrations" or "integration" in last_assistant_msg) and lowered_text in (
+                "no", "none", "nope", "nah", "no integrations", "none needed", "not needed", "no need", "none on day one"
+            ):
+                brief.integrations = ["none"]
+                _note_flags(brief)
+                filled = True
+            elif ("admin" in last_assistant_msg or pending == "admin") and lowered_text in (
+                "yes", "yep", "yeah", "sure", "true", "1"
+            ):
+                brief.admin = True
+                _note_flags(brief)
+                filled = True
+            elif ("admin" in last_assistant_msg or pending == "admin") and lowered_text in (
+                "no", "nope", "nah", "false", "0"
+            ):
+                brief.admin = False
+                filled = True
+
+        if not filled:
+            has_pending_discovery = (
+                not brief_ready(brief)
+                and not bool(session.estimate_json)
+                and (session.stage not in ("advising", "handoff", "disqualified"))
+            )
+            # Skip LLM extractor for chip clicks and pure acknowledgements (yes/no/ok are acks only when nothing is pending)
+            is_ack = _is_ack(text, has_pending_discovery)
+            if is_chip_click or is_ack:
+                extracted = {}
+            else:
+                t0_ext = time.perf_counter()
+                extracted = extract_slots(text, pending, brief)
+                timings["extractor"] += (time.perf_counter() - t0_ext) * 1000.0
             if extracted.get("is_off_topic"):
                 return _finish(
                     session, brief, contact, summary,
@@ -281,6 +369,7 @@ def run_turn(
                     stage=session.stage or "discovery",
                     route="off_topic",
                     chips=_next_chips(brief, has_booking=bool(session.booking_json)),
+                    timings=timings,
                 )
             if extracted and not extracted.get("is_question") and apply_extracted_slots(brief, extracted, pending):
                 _note_flags(brief)
@@ -302,10 +391,44 @@ def run_turn(
                         stage="discovery",
                         route="discovery",
                         chips=chips_for_field(pending, brief),
+                        timings=timings,
                     )
 
     if filled or (field and field not in ACTION):
-        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history)
+        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings)
+
+    # Skip embedding and retrieval for pure acknowledgements
+    has_pending_discovery = (
+        not brief_ready(brief)
+        and not bool(session.estimate_json)
+        and (session.stage not in ("advising", "handoff", "disqualified"))
+    )
+    is_ack = _is_ack(text, has_pending_discovery)
+    if not is_chip_click and is_ack:
+        estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
+        reply_msg = fallback_message(config, brief, estimate, query=text)
+        extra = _continuation(brief, history)
+        if extra:
+            reply_msg = f"{reply_msg}\n\n{extra[0]}"
+            chips = list(extra[1])
+        else:
+            chips = [
+                {"label": "Can I reschedule?", "field": "booking_window", "value": "reschedule"},
+                PORTFOLIO_CHIP,
+            ] if session.booking_json else ([BOOK_CHIP, PORTFOLIO_CHIP] if brief_ready(brief) else _next_chips(brief))
+        return _finish(
+            session, brief, contact, summary,
+            message=reply_msg,
+            stage="advising" if brief_ready(brief) else "discovery",
+            route="fallback",
+            chips=chips,
+            passages=[],
+            chunk_ids=[],
+            query="",
+            score=0.0,
+            estimate=estimate,
+            timings=timings,
+        )
 
     semantic_objection = _objection(db, tenant, config, text, session.nda_accepted) if (text and not field) else None
     if semantic_objection:
@@ -320,44 +443,69 @@ def run_turn(
     raw_queries = lookup_queries(text, summary, previous[-3:]) or [text]
     queries = [rewrite_query_with_brief(q, brief) for q in raw_queries]
     filters = query_filters(text, service=brief.service, industry=brief.industry)
-    faq_hits = _merge(db, tenant, queries, "faq", session.nda_accepted, filters)
-    if faq_hits and faq_hits[0].score >= get_platform().faq_min_score:
-        hit = faq_hits[0]
-        message = hit.content
-        extra = _continuation(brief, history)
-        if extra:
-            message = f"{message}\n\n{extra[0]}"
-            chips = list(extra[1])
-        else:
-            chips = [
-                {"label": "Can I reschedule?", "field": "booking_window", "value": "reschedule"},
-                PORTFOLIO_CHIP,
-            ] if session.booking_json else [BOOK_CHIP, PORTFOLIO_CHIP]
-        return _finish(
-            session, brief, contact, summary,
-            message=message,
-            stage="discovery" if not brief_ready(brief) else "advising",
-            route="faq",
-            chips=chips,
-            passages=[hit.content],
-            chunk_ids=[hit.id],
-            query=queries[0],
-            score=hit.score,
-        )
 
-    hits = _merge(db, tenant, queries, "knowledge", session.nda_accepted, filters)
+    orig_embed = rag_store.embed_query
+    def timed_embed(*args, **kwargs):
+        t0_emb = time.perf_counter()
+        try:
+            return orig_embed(*args, **kwargs)
+        finally:
+            timings["query_embedding"] += (time.perf_counter() - t0_emb) * 1000.0
+
+    rag_store.embed_query = timed_embed
+    t_ret_start = time.perf_counter()
+    try:
+        faq_hits = _merge(db, tenant, queries, "faq", session.nda_accepted, filters)
+        if faq_hits and faq_hits[0].score >= get_platform().faq_min_score:
+            hit = faq_hits[0]
+            message = hit.content
+            extra = _continuation(brief, history)
+            if extra:
+                message = f"{message}\n\n{extra[0]}"
+                chips = list(extra[1])
+            else:
+                chips = [
+                    {"label": "Can I reschedule?", "field": "booking_window", "value": "reschedule"},
+                    PORTFOLIO_CHIP,
+                ] if session.booking_json else [BOOK_CHIP, PORTFOLIO_CHIP]
+            return _finish(
+                session, brief, contact, summary,
+                message=message,
+                stage="discovery" if not brief_ready(brief) else "advising",
+                route="faq",
+                chips=chips,
+                passages=[hit.content],
+                chunk_ids=[hit.id],
+                query=queries[0],
+                score=hit.score,
+                timings=timings,
+            )
+
+        hits = _merge(db, tenant, queries, "knowledge", session.nda_accepted, filters)
+    finally:
+        rag_store.embed_query = orig_embed
+        t_ret_total = (time.perf_counter() - t_ret_start) * 1000.0
+        timings["retrieval_db"] = max(0.0, t_ret_total - timings["query_embedding"])
+
     decision, score = grade(queries[0], hits)
     strong = _strong_hits(hits)
     if decision == "show" and strong:
+        t0_ans = time.perf_counter()
         message = grounded_answer(queries[0], strong)
+        timings["answer_llm"] += (time.perf_counter() - t0_ans) * 1000.0
         chunk_ids = [hit.id for hit in strong]
         route = "rag"
+        has_sample = any(hit.metadata.get("is_sample") or (getattr(hit, "source_id", "") and "case" in getattr(hit, "source_id", "").lower()) for hit in strong) or (tenant.slug == "demo" and any("case" in (hit.source or "").lower() or "portfolio" in (hit.source or "").lower() for hit in strong))
+        if has_sample and "sample" not in message.lower():
+            message = f"Sample case study: {message}"
     else:
         estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
         platform = get_platform()
         is_weak = decision == "weak" or (platform.weak_min_score <= score < platform.show_min_score)
         weak_notes = hits[:3] if is_weak and hits else None
+        t0_ans = time.perf_counter()
         message = fallback_message(config, brief, estimate, query=queries[0], notes=weak_notes)
+        timings["answer_llm"] += (time.perf_counter() - t0_ans) * 1000.0
         chunk_ids = []
         route = "fallback"
     extra = _continuation(brief, history)
@@ -387,6 +535,7 @@ def run_turn(
         query=queries[0] if text else "",
         score=score,
         estimate=estimate_project(brief, config.pricing) if brief_ready(brief) else None,
+        timings=timings,
     )
 
 
@@ -455,7 +604,7 @@ def _synthesize_estimate_message(config: TenantConfig, brief: ProjectBrief, esti
         f'Return JSON {{"message": "..."}}.'
     )
     try:
-        data = complete_json("You are an expert enterprise pre-sales software consultant. Output JSON only.", prompt)
+        data = complete_json(SOLUTION_SYSTEM_PROMPT, prompt, mode="request")
         msg = str(data.get("message") or "").strip()
         if msg:
             return msg
@@ -481,7 +630,8 @@ def _field_asked_count(history: list[dict], field: str | None) -> int:
     return count
 
 
-def _after_brief(session, config, brief, contact, summary, user_text: str = "", history: list[dict] | None = None) -> dict:
+def _after_brief(session, config, brief, contact, summary, user_text: str = "", history: list[dict] | None = None, timings: dict | None = None) -> dict:
+    timings = timings or {}
     qual = qualify(brief, config.qualification, config.services, has_email=bool(contact.get("email")))
     if brief.role_unconfirmed:
         return _finish(
@@ -494,6 +644,7 @@ def _after_brief(session, config, brief, contact, summary, user_text: str = "", 
                 {"label": "Study or practice", "field": "confirm_role", "value": "study_or_practice"},
             ],
             qualification=qual,
+            timings=timings,
         )
     if qual["band"] == "disqualify":
         if brief.out_of_scope:
@@ -511,15 +662,19 @@ def _after_brief(session, config, brief, contact, summary, user_text: str = "", 
             route="discovery",
             chips=[BOOK_CHIP],
             qualification=qual,
+            timings=timings,
         )
     if brief_ready(brief):
-        return _estimate(session, config, brief, contact, summary, qual)
+        return _estimate(session, config, brief, contact, summary, qual, timings=timings)
     field = next_discovery_field(brief)
     attempts = brief.field_attempts.get(field or "", 0)
     repeat = attempts >= 1
     if field:
         brief.field_attempts[field] = attempts + 1
+    t0_ans = time.perf_counter()
     prompt_msg = prompt_for(brief, field, repeat=repeat) if repeat else synthesize_discovery_prompt(config, brief, field, user_text=user_text)
+    if not repeat:
+        timings["answer_llm"] = timings.get("answer_llm", 0.0) + (time.perf_counter() - t0_ans) * 1000.0
     chips = chips_for_field(field, brief, repeat=repeat) or ensure_chips(brief, prompt_msg)
     return _finish(
         session, brief, contact, summary,
@@ -528,15 +683,23 @@ def _after_brief(session, config, brief, contact, summary, user_text: str = "", 
         route="discovery",
         chips=chips,
         qualification=qual,
+        timings=timings,
     )
 
 
-def _estimate(session, config, brief, contact, summary, qual) -> dict:
+def _estimate(session, config, brief, contact, summary, qual, timings: dict | None = None) -> dict:
+    timings = timings or {}
     estimate = estimate_project(brief, config.pricing)
     architecture = recommend_architecture(brief, config.services)
     mvp = recommend_mvp(brief)
     cases = match_portfolio(brief, config.portfolio)
+    is_sample = getattr(config, "slug", "") == "demo"
+    for c in cases:
+        if is_sample or c.get("is_sample"):
+            c["is_sample"] = True
+    t0_ans = time.perf_counter()
     message = _synthesize_estimate_message(config, brief, estimate)
+    timings["answer_llm"] = timings.get("answer_llm", 0.0) + (time.perf_counter() - t0_ans) * 1000.0
     chips = [BOOK_CHIP, PORTFOLIO_CHIP]
     if not brief.company_size:
         message += "\n\n" + DISCOVERY_PROMPTS["company_size"]
@@ -561,7 +724,7 @@ def _estimate(session, config, brief, contact, summary, qual) -> dict:
             "notes": architecture["notes"],
         },
         {"type": "mvp", "title": "MVP", "mvp": mvp["mvp"], "later": mvp["later"]},
-        {"type": "portfolio", "title": "Similar work", "cases": cases},
+        {"type": "portfolio", "title": "Similar work", "cases": cases, "is_sample": is_sample},
     ]
     return _finish(
         session, brief, contact, summary,
@@ -575,6 +738,7 @@ def _estimate(session, config, brief, contact, summary, qual) -> dict:
         architecture=architecture,
         mvp=mvp,
         portfolio=cases,
+        timings=timings,
     )
 
 
@@ -669,7 +833,14 @@ def _apply_free_text(brief: ProjectBrief, field: str, text: str) -> bool:
         brief.feature_detail = cleaned
         return True
     if field == "integrations":
+        lowered = cleaned.lower()
+        if lowered in ("no", "none", "nope", "nah", "no integrations", "none needed", "not needed", "no need", "none on day one"):
+            brief.integrations = ["none"]
+            return True
         brief.integrations = [part.strip() for part in cleaned.split(",") if part.strip()]
+        return True
+    if field == "admin":
+        brief.admin = cleaned.lower() in ("yes", "true", "yep", "sure", "1", "yeah")
         return True
     if field in brief.model_fields:
         setattr(brief, field, cleaned)
@@ -911,6 +1082,7 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
         "summary": summary,
         "contact": contact,
         "handoff_summary": payload.get("handoff_summary") or session.handoff_summary or "",
+        "_timings": payload.get("timings") or {},
     }
     return result
 

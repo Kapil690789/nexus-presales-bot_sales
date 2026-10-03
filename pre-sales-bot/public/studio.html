@@ -1640,6 +1640,7 @@ function updatePortfolioSection(card) {
     <div class="portfolio-grid">
       ${cases.map(c => `
         <div class="case-card">
+          ${(c.is_sample || card.is_sample) ? '<span class="sample-badge" style="display:inline-block;font-size:11px;padding:2px 6px;border-radius:4px;background:#fef3c7;color:#92400e;margin-bottom:6px;font-weight:600;">Sample project (demo data)</span>' : ''}
           <div class="case-name">${esc(c.title || c.name || '')}</div>
           <div class="case-desc">${esc(c.summary || c.description || c.outcome || '')}</div>
         </div>

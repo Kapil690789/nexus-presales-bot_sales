@@ -1,11 +1,13 @@
-from __future__ import annotations
-
 import json
+import logging
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
+
+log = logging.getLogger(__name__)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -171,7 +173,16 @@ def _is_expired(expires_at: datetime | None) -> bool:
 
 
 @router.post("/api/v1/sessions/{session_id}/messages")
-def post_message(session_id: str, body: MessageIn, request: Request, db: Session = Depends(get_db)) -> dict:
+def post_message(
+    session_id: str,
+    body: MessageIn,
+    request: Request,
+    response: Response = None,
+    db: Session = Depends(get_db),
+) -> dict:
+    t_turn_start = time.perf_counter()
+    db_writes_ms = 0.0
+
     session = _session(db, session_id)
     if _is_expired(session.expires_at):
         raise HTTPException(status_code=410, detail="Session has expired. Please refresh to start a new chat.")
@@ -191,6 +202,7 @@ def post_message(session_id: str, body: MessageIn, request: Request, db: Session
         raise HTTPException(status_code=400, detail="Message is too long")
     rate_limit_messages(request)
     if _unsafe_message(text, body.chip):
+        t0_db = time.perf_counter()
         _add(db, session.id, "user", text, {"chip": body.chip.model_dump() if body.chip else None})
         assistant = _add(
             db,
@@ -199,6 +211,18 @@ def post_message(session_id: str, body: MessageIn, request: Request, db: Session
             REFUSAL_MESSAGE,
             {"route": "refused", "chips": [], "chunk_ids": []},
         )
+        db_writes_ms += (time.perf_counter() - t0_db) * 1000.0
+        total_turn_ms = (time.perf_counter() - t_turn_start) * 1000.0
+        log.info(
+            "Turn timing: route=refused stage=%s extractor=0.0ms query_embedding=0.0ms retrieval_db=0.0ms answer_llm=0.0ms db_writes=%.1fms total=%.1fms",
+            session.stage or "discovery",
+            db_writes_ms,
+            total_turn_ms,
+        )
+        if response is not None:
+            response.headers["Server-Timing"] = (
+                f"extractor;dur=0.0, query_embedding;dur=0.0, retrieval_db;dur=0.0, answer_llm;dur=0.0, db_writes;dur={db_writes_ms:.1f}, total;dur={total_turn_ms:.1f}"
+            )
         return _public(
             session,
             assistant,
@@ -213,8 +237,12 @@ def post_message(session_id: str, body: MessageIn, request: Request, db: Session
             },
             config,
         )
+
     history = _history(db, session.id)
+    t0_db = time.perf_counter()
     _add(db, session.id, "user", text, {"chip": body.chip.model_dump() if body.chip else None})
+    db_writes_ms += (time.perf_counter() - t0_db) * 1000.0
+
     token = bind_llm_actor(session.id, client_ip(request))
     try:
         result = run_turn(
@@ -228,6 +256,8 @@ def post_message(session_id: str, body: MessageIn, request: Request, db: Session
         )
     finally:
         reset_llm_actor(token)
+
+    t0_db = time.perf_counter()
     assistant = _add(
         db,
         session.id,
@@ -244,6 +274,40 @@ def post_message(session_id: str, body: MessageIn, request: Request, db: Session
     )
     db.add(session)
     db.commit()
+    db_writes_ms += (time.perf_counter() - t0_db) * 1000.0
+
+    turn_timings = result.get("_timings") or {}
+    extractor_ms = float(turn_timings.get("extractor", 0.0))
+    query_emb_ms = float(turn_timings.get("query_embedding", 0.0))
+    retrieval_db_ms = float(turn_timings.get("retrieval_db", 0.0))
+    answer_llm_ms = float(turn_timings.get("answer_llm", 0.0))
+    total_db_writes_ms = db_writes_ms + float(turn_timings.get("db_writes", 0.0))
+    total_turn_ms = (time.perf_counter() - t_turn_start) * 1000.0
+
+    route = result.get("route", "discovery")
+    stage = result.get("stage", "discovery")
+    log.info(
+        "Turn timing: route=%s stage=%s extractor=%.1fms query_embedding=%.1fms retrieval_db=%.1fms answer_llm=%.1fms db_writes=%.1fms total=%.1fms",
+        route,
+        stage,
+        extractor_ms,
+        query_emb_ms,
+        retrieval_db_ms,
+        answer_llm_ms,
+        total_db_writes_ms,
+        total_turn_ms,
+    )
+
+    if response is not None:
+        response.headers["Server-Timing"] = (
+            f"extractor;dur={extractor_ms:.1f}, "
+            f"query_embedding;dur={query_emb_ms:.1f}, "
+            f"retrieval_db;dur={retrieval_db_ms:.1f}, "
+            f"answer_llm;dur={answer_llm_ms:.1f}, "
+            f"db_writes;dur={total_db_writes_ms:.1f}, "
+            f"total;dur={total_turn_ms:.1f}"
+        )
+
     return _public(session, assistant, result, config)
 
 
@@ -267,10 +331,17 @@ def post_feedback(session_id: str, body: FeedbackIn, db: Session = Depends(get_d
 
 
 @router.post("/api/v1/sessions/{session_id}/nda")
-def accept_nda(session_id: str, body: NdaIn, request: Request, db: Session = Depends(get_db)) -> dict:
+def accept_nda(
+    session_id: str,
+    body: NdaIn,
+    request: Request,
+    response: Response = None,
+    db: Session = Depends(get_db),
+) -> dict:
     return post_message(
         session_id,
         MessageIn(content="I accept the confidentiality notice", chip=ChipIn(field="nda", value=body.version, label="Accept")),
         request,
+        response,
         db,
     )

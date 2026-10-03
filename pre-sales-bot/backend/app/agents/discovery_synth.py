@@ -11,6 +11,16 @@ from backend.app.tenants.schema import TenantConfig
 
 log = logging.getLogger(__name__)
 
+GROUNDING_LINE = (
+    "Answer only from the engine data and the provided notes. If the notes do not contain the answer, "
+    "say you are not sure and offer to connect the team. Never invent clients, case studies, guarantees, "
+    "delivery dates or prices."
+)
+CONSULT_SYSTEM_PROMPT = (
+    "You are an expert enterprise pre-sales software consultant. Output JSON only. "
+    + GROUNDING_LINE
+)
+
 
 def synthesize_discovery_prompt(
     config: TenantConfig,
@@ -62,7 +72,7 @@ def synthesize_discovery_prompt(
     )
 
     try:
-        data = complete_json("You are an expert enterprise pre-sales software consultant. Output JSON only.", prompt)
+        data = complete_json(CONSULT_SYSTEM_PROMPT, prompt)
         msg = str(data.get("message") or "").strip()
         if msg and len(msg) > 10:
             return msg

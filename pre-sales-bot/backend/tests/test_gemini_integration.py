@@ -61,3 +61,111 @@ def test_gemini_llm_complete_json(monkeypatch):
     data = complete_json("System prompt", "User prompt")
     assert data.get("result") == "success"
     assert data.get("confidence") == 0.95
+
+
+def test_thinking_level_settings_validation():
+    import pytest
+    from backend.app.core.settings import Settings
+
+    # Valid levels
+    for level in ("low", "medium", "high", "LOW", "High"):
+        s = Settings(llm_thinking_level=level)
+        assert s.llm_thinking_level == level.lower()
+
+    # Minimal must fail with clear error
+    with pytest.raises(ValueError, match="rejected by gemini-3.8-flash"):
+        Settings(llm_thinking_level="minimal")
+
+    # Other invalid values must fail
+    with pytest.raises(ValueError, match="Invalid llm_thinking_level"):
+        Settings(llm_thinking_level="ultra")
+
+
+def test_gemini_3_sends_thinking_level_in_request_body(monkeypatch):
+    captured_payloads = []
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [{"text": '{"result": "ok"}'}]
+                        }
+                    }
+                ]
+            }
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def post(self, url, json=None):
+            captured_payloads.append(json)
+            return FakeResponse()
+
+    monkeypatch.setattr("httpx.Client", FakeClient)
+    settings = get_settings()
+    monkeypatch.setattr(settings, "llm_api_key", "test-key")
+    monkeypatch.setattr(settings, "llm_model", "gemini-3.8-flash")
+    monkeypatch.setattr(settings, "llm_thinking_level", "low")
+
+    data = complete_json("System", "User")
+    assert data.get("result") == "ok"
+    assert len(captured_payloads) == 1
+    gen_config = captured_payloads[0].get("generationConfig", {})
+    assert "thinkingConfig" in gen_config
+    assert gen_config["thinkingConfig"]["thinkingLevel"] == "low"
+
+
+def test_non_gemini_3_model_omits_thinking_config(monkeypatch):
+    captured_payloads = []
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "candidates": [
+                    {
+                        "content": {
+                            "parts": [{"text": '{"result": "ok"}'}]
+                        }
+                    }
+                ]
+            }
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def post(self, url, json=None):
+            captured_payloads.append(json)
+            return FakeResponse()
+
+    monkeypatch.setattr("httpx.Client", FakeClient)
+    settings = get_settings()
+    monkeypatch.setattr(settings, "llm_api_key", "test-key")
+    monkeypatch.setattr(settings, "llm_model", "gemini-2.5-flash")
+    monkeypatch.setattr(settings, "llm_thinking_level", "low")
+
+    data = complete_json("System", "User")
+    assert data.get("result") == "ok"
+    assert len(captured_payloads) == 1
+    gen_config = captured_payloads[0].get("generationConfig", {})
+    assert "thinkingConfig" not in gen_config
+

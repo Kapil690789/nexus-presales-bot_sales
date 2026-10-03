@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     llm_calls_per_ip_per_hour: int = 80
 
 
+    llm_thinking_level: str = "low"
+
     @property
     def is_production_like(self) -> bool:
         return self.environment.strip().lower() == "production" or bool(os.environ.get("VERCEL"))
@@ -92,6 +94,17 @@ class Settings(BaseSettings):
                     "SQLite database_url is not allowed in production environment. Configure a Postgres DATABASE_URL."
                 )
             _log_ephemeral_db_warning_once()
+
+        level = (self.llm_thinking_level or "").strip().lower()
+        if level == "minimal":
+            raise ValueError(
+                "Thinking level 'minimal' is rejected by gemini-3.8-flash. Allowed levels: low, medium, high."
+            )
+        if level not in {"low", "medium", "high"}:
+            raise ValueError(
+                f"Invalid llm_thinking_level '{self.llm_thinking_level}'. Allowed levels: low, medium, high."
+            )
+        self.llm_thinking_level = level
         return self
 
     @property

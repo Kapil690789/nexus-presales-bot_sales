@@ -343,3 +343,5 @@
 12. [x] **Prompt T1**: Token tracker & measured pricing (YAML rate table, thinking tokens, ContextVar session isolation, estimated tags, measured projections $n \ge 20$).
 13. [x] **Prompt F2**: Conversation & guard quality (12s LLM budget, minimal health, listener-based failure events, 30-sample price guard matrix, lexical-only RAG cap, Sarah golden prompt pinned).
 14. [x] **Prompt F3**: Docs & eval accuracy pass (Section 3 current state rewrite, History appendix, Mermaid fix, exact price band formulas, EVAL.md update, PROGRESS.md condensation).
+15. [x] **TASK SHIP-1**: Performance, timing headers, sample labels, price guard, and prompt grounding pass (269 passed).
+16. [x] **TASK SHIP-2**: Acknowledgement scoping, mode="request" thinkingLevel low, and grounded_answer prompt grounding pass (278 passed).

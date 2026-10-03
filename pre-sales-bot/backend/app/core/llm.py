@@ -146,12 +146,18 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
 
     target_model = (model or "").strip() or "gemini-2.5-flash"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={api_key.strip()}"
+    generation_config: dict[str, Any] = {
+        "responseMimeType": "application/json",
+        "temperature": 0.2,
+    }
+    settings = get_settings()
+    if target_model.startswith("gemini-3") and mode == "request":
+        generation_config["thinkingConfig"] = {
+            "thinkingLevel": settings.llm_thinking_level,
+        }
     payload: dict[str, Any] = {
         "contents": [{"parts": [{"text": user}]}],
-        "generationConfig": {
-            "responseMimeType": "application/json",
-            "temperature": 0.2,
-        },
+        "generationConfig": generation_config,
     }
     if system.strip():
         payload["systemInstruction"] = {"parts": [{"text": system.strip()}]}
