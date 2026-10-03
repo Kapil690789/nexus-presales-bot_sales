@@ -3,6 +3,48 @@
 > **Note for new sessions**: Read this file first. It tracks completed work, modified files, test counts, verified facts, and open deliverables.
 > **Rules**: Work only in `pre-sales-bot/`. Never `git commit` or `git push`. Never print `.env` or keys. Keep the suite green.
 
+## Session 16 (Live Deployment Hardening, UX Polish & Post-Booking Flow) — 2026-10-03
+
+### 1. What was done in Session 16
+- **Live Production Deployment & Verification**:
+  - Live production URL verified: `https://nexus-presales-bot-sales.vercel.app`.
+  - Database connected to Neon PostgreSQL (`persistence: "persistent"`).
+  - Production corpus reindexed: 199 documents indexed, 0 failures.
+  - Admin dashboard live at `/admin` (token tracker, INR costs, projections).
+- **Smart Chip Deduplication & Catalog Filtering (`backend/app/screening/slots.py`)**:
+  - Solved repetitive feature loop (e.g. clicking "Payments" gave the same 4 options again).
+  - Dynamically catalogs features based on `brief.service` (`ai_product`, `mobile_app`, `web_app`, `ui_ux`).
+  - Auto-filters already selected features from suggestion chips.
+  - Adds prominent `"Continue to next step →"` chip when at least one feature is selected.
+- **Purged "v1" Technical Jargon Across System**:
+  - Replaced technical "v1" jargon with client-friendly phrases ("initial launch", "first release", "core MVP") across `slots.py`, `discovery_synth.py`, `mvp.py`, and `studio.html`.
+- **Live Proposal Studio & Widget Executive Guide Book**:
+  - `public/studio.html`: Added `ⓘ Guide Book` modal explaining real-time sync, deterministic pricing, MVP separation, and PDF export.
+  - `widget/consultant.js` & `public/widget/consultant.js`: Added `ⓘ` info popover explaining the 4 advisor steps.
+- **Post-Booking Email Capture & Inquiry Resolution (`backend/app/agents/router.py`)**:
+  - Fixed bug where replying with an email after booking (`"kapil19092003@gmail.com here is my mail"`) triggered an unrelated BrowserStack testing RAG answer.
+  - Linked attendee email to `session.booking_json`, recorded lead in `LeadRow`, sent Slack notification, and returned warm executive invite confirmation.
+  - Added dedicated handlers for post-booking questions: "What is on the agenda?", "Can I invite a colleague?", "Can I reschedule?".
+  - Contextual post-booking chips: replaced redundant "Book a meeting" chip with reschedule / agenda chips.
+- **Test Suite Hardening**:
+  - Added comprehensive regression test in `backend/tests/test_booking_email_flow.py`.
+  - Suite status: **252 passed, 0 xfailed, 0 failed in 11.95s** (100% green).
+
+### 2. Files Changed in Session 16
+| File | Change |
+|------|--------|
+| `backend/app/screening/slots.py` | Dynamic service catalog, deduplicated chips, "Continue to next step →" chip, purged v1. |
+| `backend/app/agents/discovery_synth.py` | Added system prompt rule against "v1", updated fallback prompt. |
+| `backend/app/engines/mvp.py` | Replaced `v1:` item prefix with `Core:`. |
+| `public/studio.html` | Added `ⓘ Guide Book` modal, Core MVP title update, script open/close handlers. |
+| `widget/consultant.js` & `public/widget/consultant.js` | Added `ⓘ` info button and overlay modal. |
+| `backend/app/agents/router.py` | Post-booking email capture, agenda/colleague inquiry handlers, reschedule regex. |
+| `backend/tests/test_booking_email_flow.py` | Full lifecycle test for booking, email capture, DB lead, agenda, colleague, reschedule. |
+
+### 3. Commits Pushed to `main`
+- `4a04c78`: feat: smart chip deduplication, purge v1 jargon, and add executive guide book
+- `beb68f2`: fix: seamlessly capture work email post-booking and handle agenda/colleague inquiries
+
 ---
 
 ## Session 15 (Prompt F3: Documentation Accuracy & Eval Calibration) — 2026-10-03

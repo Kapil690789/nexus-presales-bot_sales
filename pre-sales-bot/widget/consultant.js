@@ -139,7 +139,7 @@
     ".ps-step-badge{background:rgba(59,130,246,0.18);color:#60A5FA;border:1px solid rgba(96,165,250,0.3);width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}",
     ".ps-guide-ok{margin-top:16px;width:100%;background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background 150ms}",
     ".ps-guide-ok:hover{background:#1D4ED8}",
-    "@media (max-width:520px){.ps-panel,.ps-panel.bottom-right,.ps-panel.bottom-left{width:100vw;height:100vh;right:0 !important;left:0 !important;bottom:0 !important;border-radius:0}.ps-launcher.bottom-right,.ps-launcher.bottom-left{right:16px;bottom:16px;left:auto}}",
+    "@media (max-width:520px){.ps-panel,.ps-panel.bottom-right,.ps-panel.bottom-left{width:100vw;height:100vh;height:100dvh;right:0 !important;left:0 !important;bottom:0 !important;border-radius:0}.ps-launcher.bottom-right,.ps-launcher.bottom-left{right:16px;bottom:16px;left:auto}.ps-compose input[type=text]{font-size:16px}.ps-compose{padding-bottom:max(12px, env(safe-area-inset-bottom))}}",
     "@media (prefers-reduced-motion:reduce){.ps-launcher,.ps-panel.is-open,.ps-msg,.ps-card,.ps-chip,.ps-online-dot,.ps-shimmer-line{animation:none !important}}"
   ].join("");
   document.head.appendChild(style);
