@@ -656,6 +656,136 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    /* ===== GUIDE BOOK MODAL ===== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(8px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      animation: fadeIn 0.2s ease;
+    }
+    .modal-backdrop.is-open { display: flex; }
+    .guide-modal {
+      background: #111215;
+      border: 1px solid var(--border-md);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 88vh;
+      overflow-y: auto;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      position: relative;
+    }
+    .guide-modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: #111215;
+      z-index: 10;
+    }
+    .guide-modal-title {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .guide-modal-title svg { color: var(--accent); }
+    .guide-modal-close {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-muted);
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      transition: all 0.15s;
+    }
+    .guide-modal-close:hover {
+      background: var(--bg-card);
+      color: #fff;
+      border-color: var(--text-muted);
+    }
+    .guide-modal-body {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .guide-lead {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+    .guide-lead strong { color: #fff; }
+    .guide-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 640px) {
+      .guide-grid { grid-template-columns: 1fr; }
+    }
+    .guide-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      transition: border-color 0.2s;
+    }
+    .guide-card:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    .guide-card-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      margin-bottom: 10px;
+    }
+    .guide-card-icon svg { width: 17px; height: 17px; }
+    .guide-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .guide-card-text {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .guide-footer-callout {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(16, 185, 129, 0.06) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .guide-footer-callout strong { color: #fff; }
+
     /* ===== PRINT / PDF EXPORT STYLES ===== */
     @media print {
       body { background: #fff !important; color: #111 !important; overflow: visible !important; font-size: 12pt; }
@@ -702,6 +832,10 @@
       <span class="top-bar-label">Studio — Live Proposal Builder</span>
     </div>
     <div class="top-bar-right">
+      <button class="btn btn-ghost" onclick="openGuideBook()" title="How this live proposal builder works">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        Guide Book
+      </button>
       <button class="btn btn-ghost" onclick="resetSession()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
         New Session
@@ -712,6 +846,70 @@
       </button>
     </div>
   </header>
+
+  <!-- GUIDE BOOK MODAL -->
+  <div class="modal-backdrop" id="guideModalBackdrop" onclick="if(event.target === this) closeGuideBook()">
+    <div class="guide-modal" role="dialog" aria-labelledby="guideTitle" aria-modal="true">
+      <div class="guide-modal-header">
+        <div class="guide-modal-title" id="guideTitle">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Nexus Studio — Executive Guide Book
+        </div>
+        <button class="guide-modal-close" onclick="closeGuideBook()" aria-label="Close guide">&times;</button>
+      </div>
+      <div class="guide-modal-body">
+        <div class="guide-lead">
+          Welcome to the <strong>Nexus Live Proposal Studio</strong>. As you converse with our consultative AI advisor in the right pane, this interactive studio synthesizes a real-time, executive-ready technical proposal on the left.
+        </div>
+
+        <div class="guide-grid">
+          <div class="guide-card">
+            <div class="guide-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="guide-card-title">1. Real-Time Document Sync</div>
+            <div class="guide-card-text">
+              Every architectural decision, technology preference, and timeline constraint you share is instantly structured and reflected in the live document.
+            </div>
+          </div>
+
+          <div class="guide-card">
+            <div class="guide-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </div>
+            <div class="guide-card-title">2. Smart Contextual Chips</div>
+            <div class="guide-card-text">
+              Suggestions adapt specifically to Web, Mobile, AI, or Design platforms. Already chosen features are removed automatically to avoid loops, and a clear "Continue" path is always provided.
+            </div>
+          </div>
+
+          <div class="guide-card">
+            <div class="guide-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+            </div>
+            <div class="guide-card-title">3. Deterministic Pricing</div>
+            <div class="guide-card-text">
+              No generative hallucinations or arbitrary quotes. Pricing uses engineering squad rates, team composition models, and complexity matrices verified against standard deliverable tiers.
+            </div>
+          </div>
+
+          <div class="guide-card">
+            <div class="guide-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div class="guide-card-title">4. Launch MVP vs Backlog</div>
+            <div class="guide-card-text">
+              We separate essential Day-1 launch requirements from Phase 2 backlog enhancements, protecting your budget and ensuring your first version launches on time.
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-footer-callout">
+          <strong>Ready for Stakeholders?</strong> Click <strong>"Download PDF"</strong> at any point to generate an executive-formatted document, or book a live 30-minute technical architecture session directly with our solutions engineering pod.
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- PROGRESS BAR -->
   <div class="progress-bar-wrap">
@@ -1214,7 +1412,7 @@ function updateMVPSection(card) {
     <div>
       ${mvpItems.length ? `
         <div class="mvp-block">
-          <div class="mvp-block-title">v1 MVP Core Scope (Guaranteed Release)</div>
+          <div class="mvp-block-title">Core MVP Scope (Initial Release)</div>
           <ul class="mvp-items">${mvpItems.map(i => `<li>${esc(i)}</li>`).join('')}</ul>
         </div>` : ''}
       ${laterItems.length ? `
@@ -1394,6 +1592,20 @@ function formatSize(s) {
   };
   return map[s] || s;
 }
+
+function openGuideBook() {
+  const modal = document.getElementById('guideModalBackdrop');
+  if (modal) modal.classList.add('is-open');
+}
+
+function closeGuideBook() {
+  const modal = document.getElementById('guideModalBackdrop');
+  if (modal) modal.classList.remove('is-open');
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeGuideBook();
+});
 </script>
 </body>
 </html>

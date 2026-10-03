@@ -5,13 +5,13 @@ from backend.app.agents.brief import ProjectBrief, named_features
 DISCOVERY_PROMPTS = {
     "service": "What are you looking to build — mobile, web, AI, or design?",
     "goal": "What should this first version actually do for people?",
-    "features": "Which features do you want in v1? Pick any that matter, or type your own list.",
-    "feature_detail": "What should those features actually do in the first version?",
+    "features": "Which core features do you want for the initial launch? Pick any that matter, or type your own list.",
+    "feature_detail": "What should those core features accomplish in the initial release?",
     "user_flow": "If you already have a user journey (sign up, core action, result), sketch it. You can skip this.",
     "platforms": "Which platforms matter for the first release?",
     "users": "Who is the first person this should work well for?",
     "integrations": "Any systems this needs to talk to on day one?",
-    "timeline": "When would you like a first version in people's hands?",
+    "timeline": "When would you like the initial version in users' hands?",
     "budget_band": "Which budget range should I size this against? It's only a first pass, not a quote.",
     "decision_role": "What's your role when this decision gets made?",
     "company_size": "Roughly how large is the company?",
@@ -20,7 +20,7 @@ DISCOVERY_PROMPTS = {
 REPHRASED_PROMPTS = {
     "service": "No problem! What type of product or application are you hoping to create?",
     "goal": "To help us picture this, what is the main problem this first version will solve for users?",
-    "features": "What are the essential building blocks or capabilities you imagine for v1?",
+    "features": "What essential building blocks or capabilities do you envision for the initial release?",
     "feature_detail": "Could you describe in simple terms what users will do in this feature?",
     "user_flow": "How do you envision someone signing up and using this from start to finish?",
     "platforms": "Where would your target audience primarily use this — on mobile devices or in a web browser?",
@@ -49,7 +49,7 @@ def _feature_names(brief: ProjectBrief | None) -> str:
 
 def prompt_for(brief: ProjectBrief | None, field: str | None, repeat: bool = False) -> str:
     if field == "features" and brief and named_features(brief) and not brief.features_confirmed:
-        return f"Got it: {_feature_names(brief)}. Any other features for v1, or is that the list?"
+        return f"Got it: {_feature_names(brief)}. Any other features for the launch, or ready to continue?"
     if field == "feature_detail":
         return f"You mentioned {_feature_names(brief)}. What should each of those do in the first version?"
     if repeat and field in REPHRASED_PROMPTS:
@@ -69,14 +69,62 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
     elif field == "goal":
         chips = []
     elif field == "features":
-        chips = [
-            {"label": "Login & accounts", "field": "features", "value": ["Login & accounts"]},
-            {"label": "Payments", "field": "features", "value": ["Payments"]},
-            {"label": "Admin", "field": "features", "value": ["Admin"]},
-            {"label": "Not sure yet", "field": "features", "value": []},
+        existing = [item.lower().strip() for item in named_features(brief)] if brief else []
+        svc = (brief.service or "").lower().strip() if brief else ""
+        if svc == "ai_product":
+            catalog = [
+                {"label": "AI chat / Assistant", "value": "AI chat"},
+                {"label": "Document processing", "value": "Document processing"},
+                {"label": "User accounts & auth", "value": "User accounts"},
+                {"label": "Payments & billing", "value": "Payments"},
+                {"label": "Admin dashboard", "value": "Admin dashboard"},
+            ]
+        elif svc == "mobile_app":
+            catalog = [
+                {"label": "User login & profiles", "value": "User profiles"},
+                {"label": "In-app payments", "value": "Payments"},
+                {"label": "Push notifications", "value": "Push notifications"},
+                {"label": "Search & discovery", "value": "Search & discovery"},
+                {"label": "Admin portal", "value": "Admin portal"},
+            ]
+        elif svc == "web_app":
+            catalog = [
+                {"label": "User authentication", "value": "User authentication"},
+                {"label": "Payment checkout", "value": "Payments"},
+                {"label": "Admin dashboard", "value": "Admin dashboard"},
+                {"label": "Analytics & reports", "value": "Analytics"},
+                {"label": "Team collaboration", "value": "Team collaboration"},
+            ]
+        elif svc == "ui_ux":
+            catalog = [
+                {"label": "Design system & UI kit", "value": "Design system"},
+                {"label": "Clickable prototype", "value": "Clickable prototype"},
+                {"label": "User wireframes", "value": "User wireframes"},
+                {"label": "Responsive design", "value": "Responsive design"},
+            ]
+        else:
+            catalog = [
+                {"label": "Login & accounts", "value": "Login & accounts"},
+                {"label": "Payments", "value": "Payments"},
+                {"label": "Admin", "value": "Admin"},
+                {"label": "Analytics & reporting", "value": "Analytics"},
+            ]
+
+        available = [
+            item for item in catalog
+            if item["value"].lower().strip() not in existing
+            and not any(term in item["value"].lower() for term in existing)
         ]
+
         if brief and named_features(brief):
-            chips.append({"label": "That's all", "field": "features_done", "value": "yes"})
+            chips.append({"label": "Continue to next step →", "field": "features_done", "value": "yes"})
+            for item in available[:3]:
+                chips.append({"label": f"+ {item['label']}", "field": "features", "value": [item["value"]]})
+            chips.append({"label": "Ready with this list", "field": "features_done", "value": "yes"})
+        else:
+            for item in available[:4]:
+                chips.append({"label": item["label"], "field": "features", "value": [item["value"]]})
+            chips.append({"label": "Not sure yet", "field": "features", "value": []})
     elif field == "feature_detail":
         chips = [{"label": "That's enough", "field": "feature_detail", "value": "not_specified"}]
     elif field == "user_flow":

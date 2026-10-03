@@ -28,6 +28,7 @@
     expand: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     compress: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     restart: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.4L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.4L3 16M3 21v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     clip: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.2 7.2 8.4 14a3.1 3.1 0 0 0 4.4 4.4l7.1-7.2a5 5 0 0 0-7.1-7.1L6 11.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     send: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12 20 5l-6.2 14-2.1-5.2L5 12Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m11.7 13.8 8.3-8.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     avatar: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="80" height="80" fill="#0A0A0A"/><circle cx="40" cy="30" r="14" fill="#EDEDED"/><path d="M16 72c4-16 16-24 24-24s20 8 24 24" fill="#EDEDED"/><rect x="28" y="48" width="24" height="18" rx="6" fill="#0A0A0A"/></svg>'
@@ -126,6 +127,18 @@
     ".ps-thumb-btn{border:0;background:transparent;color:var(--ps-muted);font:inherit;font-size:11px;font-weight:500;cursor:pointer;padding:2px 6px;border-radius:4px;transition:background 150ms ease}",
     ".ps-thumb-btn:hover{background:var(--ps-silver);color:var(--ps-text)}",
     ".ps-thumb-btn.selected{color:var(--ps-success);font-weight:600;pointer-events:none}",
+    ".ps-guide-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;animation:ps-msg-in 180ms ease-out}",
+    ".ps-guide-box{background:#111215;border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:18px;max-width:340px;width:100%;color:#EDEDED;box-shadow:0 12px 32px rgba(0,0,0,0.7)}",
+    ".ps-guide-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:10px}",
+    ".ps-guide-header h4{margin:0;font-size:14px;font-weight:600;color:#FFFFFF}",
+    ".ps-guide-close{background:transparent;border:0;color:#A1A1AA;font-size:20px;line-height:1;cursor:pointer;padding:0 4px}",
+    ".ps-guide-close:hover{color:#fff}",
+    ".ps-guide-body{display:flex;flex-direction:column;gap:12px;font-size:12px;line-height:1.45;color:#A1A1AA}",
+    ".ps-guide-step{display:flex;gap:10px;align-items:flex-start}",
+    ".ps-guide-step strong{color:#FFFFFF;display:inline}",
+    ".ps-step-badge{background:rgba(59,130,246,0.18);color:#60A5FA;border:1px solid rgba(96,165,250,0.3);width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}",
+    ".ps-guide-ok{margin-top:16px;width:100%;background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background 150ms}",
+    ".ps-guide-ok:hover{background:#1D4ED8}",
     "@media (max-width:520px){.ps-panel,.ps-panel.bottom-right,.ps-panel.bottom-left{width:100vw;height:100vh;right:0 !important;left:0 !important;bottom:0 !important;border-radius:0}.ps-launcher.bottom-right,.ps-launcher.bottom-left{right:16px;bottom:16px;left:auto}}",
     "@media (prefers-reduced-motion:reduce){.ps-launcher,.ps-panel.is-open,.ps-msg,.ps-card,.ps-chip,.ps-online-dot,.ps-shimmer-line{animation:none !important}}"
   ].join("");
@@ -153,6 +166,12 @@
   identity.appendChild(status);
 
   var headerActions = el("div", "ps-header-actions");
+  var infoBtn = el("button", "ps-header-btn");
+  infoBtn.type = "button";
+  infoBtn.title = "How Nexus Advisor works";
+  infoBtn.setAttribute("aria-label", "How Nexus Advisor works");
+  infoBtn.innerHTML = ICONS.info;
+
   var restartBtn = el("button", "ps-header-btn");
   restartBtn.type = "button";
   restartBtn.title = "Start new conversation";
@@ -170,6 +189,7 @@
   close.setAttribute("aria-label", "Close");
   close.innerHTML = ICONS.close;
 
+  headerActions.appendChild(infoBtn);
   headerActions.appendChild(restartBtn);
   headerActions.appendChild(expandBtn);
   headerActions.appendChild(close);
@@ -209,6 +229,54 @@
   panel.appendChild(thread);
   panel.appendChild(chipsBox);
   panel.appendChild(compose);
+
+  var guideModal = el("div", "ps-guide-overlay");
+  guideModal.style.display = "none";
+  guideModal.innerHTML = [
+    '<div class="ps-guide-box">',
+      '<div class="ps-guide-header">',
+        '<h4>How Nexus Advisor Works</h4>',
+        '<button type="button" class="ps-guide-close" aria-label="Close guide">&times;</button>',
+      '</div>',
+      '<div class="ps-guide-body">',
+        '<div class="ps-guide-step">',
+          '<span class="ps-step-badge">1</span>',
+          '<div><strong>Interactive Scoping:</strong> Select features or share your vision. Chips adapt intelligently without repetitive loops.</div>',
+        '</div>',
+        '<div class="ps-guide-step">',
+          '<span class="ps-step-badge">2</span>',
+          '<div><strong>Technical Architecture:</strong> Recommends modern stack, key integrations, and initial launch boundaries.</div>',
+        '</div>',
+        '<div class="ps-guide-step">',
+          '<span class="ps-step-badge">3</span>',
+          '<div><strong>Deterministic Estimates:</strong> Calibrated engineering squad sizing and timelines without guesswork.</div>',
+        '</div>',
+        '<div class="ps-guide-step">',
+          '<span class="ps-step-badge">4</span>',
+          '<div><strong>Direct Booking:</strong> Schedule a 30-min discovery call or export your project proposal.</div>',
+        '</div>',
+      '</div>',
+      '<button type="button" class="ps-guide-ok">Got it</button>',
+    '</div>'
+  ].join("");
+  panel.appendChild(guideModal);
+
+  infoBtn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    guideModal.style.display = guideModal.style.display === "none" ? "flex" : "none";
+  });
+  guideModal.querySelector(".ps-guide-close").addEventListener("click", function() {
+    guideModal.style.display = "none";
+  });
+  guideModal.querySelector(".ps-guide-ok").addEventListener("click", function() {
+    guideModal.style.display = "none";
+  });
+  guideModal.addEventListener("click", function(e) {
+    if (e.target === guideModal) {
+      guideModal.style.display = "none";
+    }
+  });
+
   root.appendChild(launcher);
   root.appendChild(panel);
   document.body.appendChild(root);

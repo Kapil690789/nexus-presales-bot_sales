@@ -46,7 +46,7 @@ def recommend_mvp(brief: ProjectBrief) -> dict:
         mvp.insert(0, f"Prove this outcome: {brief.goal}")
     named = [item.strip() for item in (brief.features or []) if item.strip()]
     if named:
-        mvp[1:1] = [f"v1: {item}" for item in named[:4]]
+        mvp[1:1] = [f"Core: {item}" for item in named[:4]]
     if brief.integrations:
         keep = [item for item in brief.integrations if item.lower() not in {"none", "no", "n/a"}]
         if keep:

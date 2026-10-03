@@ -56,6 +56,7 @@ def synthesize_discovery_prompt(
         f"{UNTRUSTED_RULE} "
         f"Write a polished, consultative reply (1-2 sentences max). "
         f"Briefly acknowledge the client's input with domain expertise, then naturally ask the question for '{field}'. "
+        f"Never use technical jargon or acronyms like 'v1'; instead refer to 'initial launch', 'first release', or 'core MVP'. "
         f"Keep the tone professional, consultative, and concise. "
         f'Return JSON {{"message": "..."}}.'
     )
@@ -90,7 +91,7 @@ def _templated_discovery_prompt(brand_name: str, brief: ProjectBrief, field: str
         from backend.app.agents.brief import named_features
         if brief and named_features(brief):
             return prompt_for(brief, field)
-        return "Which core features or capabilities are essential for the v1 release?"
+        return "Which core features or capabilities are essential for the initial launch?"
 
     if field == "timeline":
         return "What is your target launch timeline for getting the first version live?"
