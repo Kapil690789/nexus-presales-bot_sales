@@ -54,11 +54,12 @@ def create_app() -> FastAPI:
             )
     application = FastAPI(title="Pre-Sales Consultant", version="1.0.0", lifespan=lifespan)
     if "*" in settings.cors_origin_list:
-        if settings.environment.strip().lower() == "production":
+        if settings.is_production_like:
             raise ValueError(
                 "Wildcard CORS origin '*' with allow_credentials=True is unsafe and not allowed in production."
             )
         log.warning("Wildcard CORS origin '*' with allow_credentials=True is insecure.")
+
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,

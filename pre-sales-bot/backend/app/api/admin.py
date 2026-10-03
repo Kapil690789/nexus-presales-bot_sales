@@ -42,7 +42,17 @@ def admin_home(request: Request, db: Session = Depends(get_db), _: str = Depends
     sessions = db.scalars(select(SessionRow).order_by(SessionRow.created_at.desc()).limit(30)).all()
     labels = {row.id: row.slug for row in db.scalars(select(TenantRow)).all()}
     usage = get_usage_summary(db=db)
-    return _render(request, "index.html", tenants=tenants, sessions=sessions, labels=labels, usage=usage)
+    is_ephemeral = get_settings().database_url.lower().startswith("sqlite")
+    persistence = "ephemeral" if is_ephemeral else "persistent"
+    return _render(
+        request,
+        "index.html",
+        tenants=tenants,
+        sessions=sessions,
+        labels=labels,
+        usage=usage,
+        persistence=persistence,
+    )
 
 
 @router.get("/admin/api/usage")
@@ -50,6 +60,57 @@ def admin_usage_api(db: Session = Depends(get_db), _: str = Depends(require_admi
     from backend.app.core.usage import get_usage_summary
 
     return get_usage_summary(db=db)
+
+
+@router.get("/admin/api/health")
+def admin_health_api(db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    from backend.app.core.llm import get_llm_health
+    from backend.app.core.security import is_admin_misconfigured
+    from backend.app.rag.embeddings import embedding_backend, get_embedding_health
+
+    settings = get_settings()
+    is_ephemeral = settings.database_url.lower().startswith("sqlite")
+    persistence = "ephemeral" if is_ephemeral else "persistent"
+    admin_status = "disabled_misconfigured" if is_admin_misconfigured(settings) else "enabled"
+
+    stale_count = 0
+    try:
+        from backend.app.rag.store import count_stale_chunks
+
+        stale_count = count_stale_chunks(db)
+    except Exception:
+        pass
+
+    emb_health = get_embedding_health()
+    emb_health["stale_chunks"] = stale_count
+
+    llm_health = get_llm_health(db)
+    degraded = emb_health.get("degraded", False) or llm_health.get("degraded", False)
+
+    return {
+        "status": "degraded" if degraded else "ok",
+        "persistence": persistence,
+        "environment": settings.environment,
+        "is_production_like": settings.is_production_like,
+        "allow_ephemeral_db": settings.allow_ephemeral_db,
+        "admin": admin_status,
+        "embedding_backend": embedding_backend(),
+        "tenants": list_tenant_slugs(),
+        "embeddings": emb_health,
+        "llm": llm_health,
+        "llm_failures": llm_health["failures_1h"],
+        "llm_degraded": llm_health["degraded"],
+        "stale_chunks": stale_count,
+    }
+
+
+@router.post("/admin/reindex")
+def admin_reindex(db: Session = Depends(get_db), _: str = Depends(require_admin)):
+    from backend.app.rag.ingest import ingest_all
+
+    results = ingest_all(db)
+    return {"status": "ok", "tenants_indexed": len(results), "results": results}
+
 
 
 @router.post("/admin/tenants")

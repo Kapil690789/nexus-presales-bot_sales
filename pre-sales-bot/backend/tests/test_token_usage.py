@@ -35,6 +35,7 @@ def client(monkeypatch):
     monkeypatch.setattr(settings, "admin_username", "admin")
     monkeypatch.setattr(settings, "admin_password", "test-admin")
     monkeypatch.setattr(settings, "admin_password_hash", "")
+    monkeypatch.setattr(settings, "usage_budget_inr", 500.0)
     init_db()
     return TestClient(app)
 

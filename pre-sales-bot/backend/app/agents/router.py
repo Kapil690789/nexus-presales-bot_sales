@@ -135,7 +135,7 @@ def run_turn(
                 brief.role_unconfirmed = False
                 filled = True
             elif any(w in lowered for w in ("live", "company", "client", "business", "work", "commercial", "startup", "founder", "team", "production")):
-                brief.decision_role = "founder_or_exec"
+                brief.decision_role = None
                 brief.role_unconfirmed = False
                 filled = True
         if not filled:
@@ -746,7 +746,7 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
             estimate_ctx = json.loads(session.estimate_json)
         except Exception:
             estimate_ctx = None
-    sanitized_message = sanitize_price_leaks(raw_message, estimate_ctx)
+    sanitized_message = sanitize_price_leaks(raw_message, estimate_ctx, visitor_budget=getattr(brief, "budget_band", None))
     result = {
         "message": sanitized_message,
         "stage": payload.get("stage") or "discovery",

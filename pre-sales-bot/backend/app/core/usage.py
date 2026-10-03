@@ -2,42 +2,105 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime, timezone
+from contextvars import ContextVar, Token
+from datetime import date, datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from backend.app.core.settings import ROOT, get_settings
+
 log = logging.getLogger(__name__)
 
-# Currency conversion: 1 USD = 95.0 INR (latest market rate)
+# Currency conversion default (as-of 2026-10, configurable via USD_TO_INR env var)
 USD_TO_INR = 95.0
-
-# Model pricing table (per 1,000,000 tokens in USD)
-# Format: (input_cost_per_1m, output_cost_per_1m)
-_MODEL_RATES: dict[str, tuple[float, float]] = {
-    # Gemini models
-    "gemini-2.5-flash": (0.075, 0.30),
-    "gemini-1.5-flash": (0.075, 0.30),
-    "gemini-2.0-flash": (0.075, 0.30),
-    "gemini-1.5-pro": (1.25, 5.00),
-    "gemini-pro": (1.25, 5.00),
-    "gemini-embedding-001": (0.02, 0.0),
-    "text-embedding-004": (0.02, 0.0),
-    # OpenAI models
-    "gpt-4.1-mini": (0.15, 0.60),
-    "gpt-4o-mini": (0.15, 0.60),
-    "gpt-4o": (2.50, 10.00),
-    # Anthropic models
-    "claude-sonnet-4-20250514": (3.00, 15.00),
-    "claude-3-5-sonnet": (3.00, 15.00),
-    "claude-3-5-haiku": (0.80, 4.00),
-}
-_DEFAULT_RATE = (0.075, 0.30)
 
 # Thread-safe in-memory cache for fast lookups and fallback tracking
 _lock = threading.Lock()
 _in_memory_records: list[dict[str, Any]] = []
+
+# ContextVar for session binding across concurrent requests
+_active_session_id: ContextVar[str | None] = ContextVar("active_session_id", default=None)
+
+
+def set_active_session(session_id: str | None) -> Token:
+    return _active_session_id.set(session_id)
+
+
+def reset_active_session(token: Token) -> None:
+    _active_session_id.reset(token)
+
+
+def get_active_session() -> str:
+    session_id = _active_session_id.get()
+    if session_id:
+        return session_id
+    try:
+        from backend.app.core.security import _llm_actor
+
+        actor = _llm_actor.get()
+        if actor:
+            return actor[0]
+    except Exception:
+        pass
+    return ""
+
+
+def _load_model_rates() -> dict[str, Any]:
+    rates_path = ROOT / "config" / "model_rates.yaml"
+    if not rates_path.is_file():
+        return {}
+    try:
+        import yaml
+
+        with open(rates_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+            return data.get("models", {})
+    except Exception as exc:
+        log.warning("Failed to load model rates from yaml: %s", type(exc).__name__)
+        return {}
+
+
+def get_model_rate(model: str, as_of_date: str | datetime | date | None = None) -> dict[str, Any] | None:
+    """Look up the active rate tier for an exact model id as of a specific date."""
+    if not model:
+        return None
+    clean = model.strip().lower()
+    if clean.startswith("models/"):
+        clean = clean[7:]
+    rates_data = _load_model_rates()
+    tiers = rates_data.get(clean)
+    if not tiers or not isinstance(tiers, list):
+        return None
+
+    if as_of_date is None:
+        target_date = datetime.now(timezone.utc).date()
+    elif isinstance(as_of_date, datetime):
+        target_date = as_of_date.date()
+    elif isinstance(as_of_date, date):
+        target_date = as_of_date
+    elif isinstance(as_of_date, str):
+        try:
+            target_date = datetime.fromisoformat(as_of_date[:10]).date()
+        except Exception:
+            target_date = datetime.now(timezone.utc).date()
+    else:
+        target_date = datetime.now(timezone.utc).date()
+
+    best_tier = None
+    best_eff = None
+    for tier in tiers:
+        eff_str = str(tier.get("effective_from", "1970-01-01"))
+        try:
+            eff_date = datetime.fromisoformat(eff_str).date()
+        except Exception:
+            continue
+        if eff_date <= target_date:
+            if best_eff is None or eff_date >= best_eff:
+                best_eff = eff_date
+                best_tier = tier
+    return best_tier
 
 
 def calculate_cost(
@@ -45,24 +108,23 @@ def calculate_cost(
     prompt_tokens: int,
     completion_tokens: int,
     call_type: str = "llm",
-) -> tuple[float, float]:
+    as_of_date: str | datetime | date | None = None,
+) -> tuple[float | None, float | None]:
     """Calculate USD and INR costs based on model token rates.
 
-    Returns (cost_usd, cost_inr).
+    Returns (cost_usd, cost_inr) or (None, None) if rate is unknown.
+    Never falls back silently to another model's rate.
     """
-    cleaned_model = (model or "").strip().lower()
-    rates = _DEFAULT_RATE
-    for key, rate in _MODEL_RATES.items():
-        if key in cleaned_model:
-            rates = rate
-            break
+    tier = get_model_rate(model, as_of_date=as_of_date)
+    if not tier:
+        return None, None
 
-    in_rate, out_rate = rates
-    if call_type == "embedding":
-        out_rate = 0.0
+    in_rate = float(tier["input_per_1m"])
+    out_rate = float(tier["output_per_1m"]) if call_type != "embedding" else 0.0
 
     cost_usd = (prompt_tokens / 1_000_000.0 * in_rate) + (completion_tokens / 1_000_000.0 * out_rate)
-    cost_inr = cost_usd * USD_TO_INR
+    usd_rate = getattr(get_settings(), "usd_to_inr", USD_TO_INR)
+    cost_inr = cost_usd * usd_rate
     return cost_usd, cost_inr
 
 
@@ -74,20 +136,14 @@ def record_usage(
     completion_tokens: int,
     session_id: str = "",
     tenant_id: str = "",
+    estimated: bool = False,
+    as_of_date: str | datetime | date | None = None,
 ) -> None:
     """Record LLM or embedding token usage into database and in-memory cache."""
-    # Automatically resolve session_id from request context if not explicitly provided
     if not session_id:
-        try:
-            from backend.app.core.security import _llm_actor
+        session_id = get_active_session()
 
-            actor = _llm_actor.get()
-            if actor:
-                session_id = actor[0]
-        except Exception:
-            pass
-
-    cost_usd, cost_inr = calculate_cost(model, prompt_tokens, completion_tokens, call_type)
+    cost_usd, cost_inr = calculate_cost(model, prompt_tokens, completion_tokens, call_type, as_of_date=as_of_date)
     total_tokens = prompt_tokens + completion_tokens
 
     record_dict = {
@@ -99,6 +155,7 @@ def record_usage(
         "total_tokens": total_tokens,
         "cost_usd": cost_usd,
         "cost_inr": cost_inr,
+        "estimated": estimated,
         "session_id": session_id,
         "tenant_id": tenant_id,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -107,7 +164,7 @@ def record_usage(
     with _lock:
         _in_memory_records.append(record_dict)
 
-    # Persist into DB asynchronously/safely without risking caller flow
+    # Persist into DB safely without risking caller flow
     try:
         from backend.app.models.db import SessionLocal
         from backend.app.models.entities import SessionRow, TokenUsageRow
@@ -124,31 +181,36 @@ def record_usage(
                 total_tokens=total_tokens,
                 cost_usd=cost_usd,
                 cost_inr=cost_inr,
+                estimated=estimated,
             )
             db.add(row)
 
-            # Also increment session llm_calls_used counter if active session
             if session_id:
                 srow = db.get(SessionRow, session_id)
                 if srow is not None:
                     srow.llm_calls_used = (srow.llm_calls_used or 0) + 1
             db.commit()
     except Exception as exc:
-        log.debug("Token usage DB write skipped (%s): %s", type(exc).__name__, exc)
+        log.warning("Token usage DB write failed: %s", type(exc).__name__)
 
 
-def get_usage_summary(db: Session | None = None, initial_budget_inr: float = 500.0) -> dict[str, Any]:
-    """Compile token usage, INR cost, and 3-month forecast for admin view."""
+def get_usage_summary(db: Session | None = None, initial_budget_inr: float | None = None) -> dict[str, Any]:
+    """Compile token usage, INR cost, and projections for admin view."""
+    settings = get_settings()
+    if initial_budget_inr is None:
+        initial_budget_inr = settings.usage_budget_inr
+
     total_calls = 0
     total_prompt_tokens = 0
     total_completion_tokens = 0
     total_tokens = 0
     total_cost_usd = 0.0
     total_cost_inr = 0.0
+    sample_size = 0
+    total_session_cost_inr = 0.0
     by_model: dict[str, dict[str, Any]] = {}
     recent_calls: list[dict[str, Any]] = []
 
-    # Attempt query from database
     db_queried = False
     if db is not None:
         try:
@@ -160,8 +222,28 @@ def get_usage_summary(db: Session | None = None, initial_budget_inr: float = 500
                 total_prompt_tokens = db.scalar(select(func.sum(TokenUsageRow.prompt_tokens))) or 0
                 total_completion_tokens = db.scalar(select(func.sum(TokenUsageRow.completion_tokens))) or 0
                 total_tokens = db.scalar(select(func.sum(TokenUsageRow.total_tokens))) or 0
-                total_cost_usd = float(db.scalar(select(func.sum(TokenUsageRow.cost_usd))) or 0.0)
-                total_cost_inr = float(db.scalar(select(func.sum(TokenUsageRow.cost_inr))) or 0.0)
+                total_cost_usd = float(
+                    db.scalar(select(func.sum(TokenUsageRow.cost_usd)).where(TokenUsageRow.cost_usd.is_not(None))) or 0.0
+                )
+                total_cost_inr = float(
+                    db.scalar(select(func.sum(TokenUsageRow.cost_inr)).where(TokenUsageRow.cost_inr.is_not(None))) or 0.0
+                )
+
+                sample_size = (
+                    db.scalar(
+                        select(func.count(func.distinct(TokenUsageRow.session_id))).where(TokenUsageRow.session_id != "")
+                    )
+                    or 0
+                )
+
+                total_session_cost_inr = float(
+                    db.scalar(
+                        select(func.sum(TokenUsageRow.cost_inr)).where(
+                            TokenUsageRow.session_id != "", TokenUsageRow.cost_inr.is_not(None)
+                        )
+                    )
+                    or 0.0
+                )
 
                 # Recent 15 calls
                 recent_rows = db.scalars(
@@ -173,8 +255,9 @@ def get_usage_summary(db: Session | None = None, initial_budget_inr: float = 500
                         "model": r.model,
                         "call_type": r.call_type,
                         "tokens": r.total_tokens,
-                        "cost_inr": f"₹{r.cost_inr:.4f}",
-                        "cost_usd": f"${r.cost_usd:.5f}",
+                        "cost_inr": f"₹{r.cost_inr:.4f}" if r.cost_inr is not None else "rate unknown",
+                        "cost_usd": f"${r.cost_usd:.5f}" if r.cost_usd is not None else "rate unknown",
+                        "estimated": bool(r.estimated),
                         "session_id": r.session_id[:8] if r.session_id else "-",
                     })
 
@@ -188,53 +271,85 @@ def get_usage_summary(db: Session | None = None, initial_budget_inr: float = 500
                     ).group_by(TokenUsageRow.model)
                 ).all()
                 for mg in model_groups:
-                    by_model[mg.model or "unknown"] = {
+                    m_name = mg.model or "unknown"
+                    has_cost = mg.inr is not None
+                    by_model[m_name] = {
                         "calls": mg.calls,
                         "tokens": mg.tokens or 0,
-                        "cost_inr": round(float(mg.inr or 0.0), 3),
+                        "cost_inr": round(float(mg.inr), 3) if has_cost else None,
+                        "rate_status": "known" if has_cost else "unknown",
                     }
                 db_queried = True
         except Exception as exc:
             log.debug("Database usage aggregation failed (%s): %s", type(exc).__name__, exc)
 
-    # Fallback / augment with in-memory records if DB empty
     if not db_queried or total_calls == 0:
         with _lock:
             total_calls = len(_in_memory_records)
+            sessions_seen: set[str] = set()
             for r in _in_memory_records:
                 total_prompt_tokens += r["prompt_tokens"]
                 total_completion_tokens += r["completion_tokens"]
                 total_tokens += r["total_tokens"]
-                total_cost_usd += r["cost_usd"]
-                total_cost_inr += r["cost_inr"]
+                if r["cost_usd"] is not None:
+                    total_cost_usd += r["cost_usd"]
+                if r["cost_inr"] is not None:
+                    total_cost_inr += r["cost_inr"]
+                    if r["session_id"]:
+                        total_session_cost_inr += r["cost_inr"]
+                if r["session_id"]:
+                    sessions_seen.add(r["session_id"])
 
                 m = r["model"] or "unknown"
                 if m not in by_model:
-                    by_model[m] = {"calls": 0, "tokens": 0, "cost_inr": 0.0}
+                    by_model[m] = {"calls": 0, "tokens": 0, "cost_inr": None, "rate_status": "unknown"}
                 by_model[m]["calls"] += 1
                 by_model[m]["tokens"] += r["total_tokens"]
-                by_model[m]["cost_inr"] = round(by_model[m]["cost_inr"] + r["cost_inr"], 3)
+                if r["cost_inr"] is not None:
+                    curr = by_model[m]["cost_inr"] or 0.0
+                    by_model[m]["cost_inr"] = round(curr + r["cost_inr"], 3)
+                    by_model[m]["rate_status"] = "known"
 
                 recent_calls.insert(0, {
                     "created_at": r["created_at"][:19].replace("T", " "),
                     "model": r["model"],
                     "call_type": r["call_type"],
                     "tokens": r["total_tokens"],
-                    "cost_inr": f"₹{r['cost_inr']:.4f}",
-                    "cost_usd": f"${r['cost_usd']:.5f}",
+                    "cost_inr": f"₹{r['cost_inr']:.4f}" if r["cost_inr"] is not None else "rate unknown",
+                    "cost_usd": f"${r['cost_usd']:.5f}" if r["cost_usd"] is not None else "rate unknown",
+                    "estimated": bool(r.get("estimated", False)),
                     "session_id": r["session_id"][:8] if r["session_id"] else "-",
                 })
+            sample_size = len(sessions_seen)
             recent_calls = recent_calls[:15]
 
-    balance_remaining_inr = max(0.0, initial_budget_inr - total_cost_inr)
-    percentage_used = round((total_cost_inr / initial_budget_inr) * 100, 2) if initial_budget_inr > 0 else 0.0
+    # Projections: strictly measured per-session averages with sample size n >= 20
+    projections_available = sample_size >= 20
+    if projections_available and sample_size > 0:
+        avg_session_cost_inr = total_session_cost_inr / sample_size
+        if initial_budget_inr is not None and avg_session_cost_inr > 0:
+            balance = max(0.0, initial_budget_inr - total_cost_inr)
+            sessions_remaining = int(balance / avg_session_cost_inr)
+            days_remaining = round(sessions_remaining / 30, 1)
+        else:
+            sessions_remaining = None
+            days_remaining = None
+    else:
+        sessions_remaining = None
+        days_remaining = None
 
-    # Capacity calculation:
-    # Typical customer consultation session consumes ~5,000 tokens ≈ ₹0.05
-    avg_session_cost_inr = 0.05
-    sessions_remaining = int(balance_remaining_inr / avg_session_cost_inr) if avg_session_cost_inr > 0 else 0
-    # Estimated days remaining assuming 30 client sessions/day
-    days_remaining = round(sessions_remaining / 30, 1)
+    if initial_budget_inr is not None:
+        balance_remaining_inr = max(0.0, initial_budget_inr - total_cost_inr)
+        percentage_used = round((total_cost_inr / initial_budget_inr) * 100, 2) if initial_budget_inr > 0 else 0.0
+        initial_budget_str = f"{initial_budget_inr:.2f}"
+        balance_remaining_str = f"{balance_remaining_inr:.2f}"
+        percentage_used_str = f"{percentage_used:.2f}"
+    else:
+        balance_remaining_inr = None
+        percentage_used = None
+        initial_budget_str = None
+        balance_remaining_str = None
+        percentage_used_str = None
 
     return {
         "total_calls": total_calls,
@@ -246,11 +361,13 @@ def get_usage_summary(db: Session | None = None, initial_budget_inr: float = 500
         "total_tokens_formatted": f"{total_tokens:,}",
         "cost_usd": f"{total_cost_usd:.4f}",
         "cost_inr": f"{total_cost_inr:.2f}",
-        "initial_budget_inr": f"{initial_budget_inr:.2f}",
-        "balance_remaining_inr": f"{balance_remaining_inr:.2f}",
-        "percentage_used": f"{percentage_used:.2f}",
-        "sessions_remaining": f"{sessions_remaining:,}",
-        "estimated_days_remaining": f"{days_remaining}",
+        "initial_budget_inr": initial_budget_str,
+        "balance_remaining_inr": balance_remaining_str,
+        "percentage_used": percentage_used_str,
+        "sample_size": sample_size,
+        "projections_available": projections_available,
+        "sessions_remaining": f"{sessions_remaining:,}" if sessions_remaining is not None else None,
+        "estimated_days_remaining": str(days_remaining) if days_remaining is not None else None,
         "by_model": by_model,
         "recent_calls": recent_calls,
     }

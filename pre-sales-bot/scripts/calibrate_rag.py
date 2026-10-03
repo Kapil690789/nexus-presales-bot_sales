@@ -113,12 +113,28 @@ def run_calibration(
                     pass
             return _offline_embed(chunk.content or chunk.title, dim=dim)
 
+        from backend.app.rag.store import _lexical_score, _stored_metadata
+
+        def _score_pair(q_text: str, ch: ChunkRow, query_v: list[float], target_svc: str | None = None) -> float:
+            c_v = _chunk_vec(ch)
+            vec_s = cosine(query_v, c_v)
+            lex_s = _lexical_score(q_text, ch.title or "", ch.content or "")
+            comb = vec_s
+            if lex_s >= 0.5:
+                comb = min(1.0, comb + 0.08)
+            elif lex_s > 0.2:
+                comb = min(1.0, comb + 0.04)
+            if target_svc:
+                meta = _stored_metadata(getattr(ch, "metadata_json", "{}"))
+                if meta.get("service") == target_svc:
+                    comb = min(1.0, comb + 0.05)
+            return round(comb, 4)
+
         # Relevant evaluation
         for doc_id in item.get("relevant_doc_ids", []):
             matching_chunks = chunks_by_doc_id.get(doc_id, [])
             for chunk in matching_chunks:
-                c_vec = _chunk_vec(chunk)
-                score = cosine(q_vec, c_vec)
+                score = _score_pair(query_text, chunk, q_vec, item.get("service"))
                 relevant_scores.append(score)
                 scores_by_type.setdefault(qtype, []).append(score)
 
@@ -126,8 +142,7 @@ def run_calibration(
         for doc_id in item.get("irrelevant_doc_ids", []):
             matching_chunks = chunks_by_doc_id.get(doc_id, [])
             for chunk in matching_chunks:
-                c_vec = _chunk_vec(chunk)
-                score = cosine(q_vec, c_vec)
+                score = _score_pair(query_text, chunk, q_vec, item.get("service"))
                 irrelevant_scores.append(score)
                 if qtype == "irrelevant":
                     scores_by_type.setdefault("irrelevant", []).append(score)

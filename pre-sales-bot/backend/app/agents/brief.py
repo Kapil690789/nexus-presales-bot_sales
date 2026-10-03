@@ -77,7 +77,7 @@ class ProjectBrief(BaseModel):
             if value in ("study_or_practice", "intern_or_student"):
                 self.decision_role = "intern_or_student"
             else:
-                self.decision_role = "founder_or_exec"
+                self.decision_role = None
             return
         if value in ("not_sure", "not_specified", "skipped") and field in {
             "timeline", "budget_band", "decision_role", "company_size", "users", "platforms"

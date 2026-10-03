@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+
 
 import yaml
 from sqlalchemy.orm import Session
+
+log = logging.getLogger(__name__)
+
 
 from backend.app.core.platform import get_platform
 from backend.app.documents.extract import extract_text
@@ -198,14 +203,23 @@ def ingest_tenant(db: Session, tenant: TenantRow) -> dict:
     return result
 
 
-def ingest_all(db: Session) -> list[dict]:
+def ingest_all(db: Session, max_seconds: float | None = None) -> list[dict]:
+    import time
     from backend.app.tenants.loader import ensure_tenant_row
 
     results = []
+    start_time = time.monotonic()
     for slug in list_tenant_slugs():
-        row = ensure_tenant_row(db, slug)
-        results.append(ingest_tenant(db, row))
+        if max_seconds is not None and (time.monotonic() - start_time) > max_seconds:
+            log.warning("Ingest exceeded time budget of %s seconds; stopping early", max_seconds)
+            break
+        try:
+            row = ensure_tenant_row(db, slug)
+            results.append(ingest_tenant(db, row))
+        except Exception:
+            log.exception("Ingest failed for tenant '%s'", slug)
     return results
+
 
 
 def main() -> None:

@@ -52,12 +52,13 @@ def password_matches(password: str, settings: Settings | None = None) -> bool:
 
 def is_admin_misconfigured(settings: Settings | None = None) -> bool:
     settings = settings or get_settings()
-    if settings.environment.strip().lower() != "production":
+    if not settings.is_production_like:
         return False
     if settings.admin_password_hash.strip():
         return False
     password = settings.admin_password.strip()
     return not password or password.lower() in DEFAULT_ADMIN_PASSWORDS
+
 
 
 def assert_admin_configured(settings: Settings | None = None) -> None:

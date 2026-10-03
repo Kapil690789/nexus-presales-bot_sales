@@ -50,6 +50,7 @@ class Hit:
     source_id: str = ""
     metadata: dict = field(default_factory=dict)
     nda_only: bool = False
+    lexical_only: bool = False
 
 
 FILTER_KEYS = ("doc_type", "topic", "industry", "service", "role")
@@ -362,7 +363,7 @@ def _search_once(
         for row in candidates:
             lex = _lexical_score(query, row.title or "", row.content or "")
             if lex > 0:
-                scored.append(_hit(row, lex))
+                scored.append(_hit(row, lex, lexical_only=True))
         scored.sort(key=lambda item: item.score, reverse=True)
         return _cap(scored, limit, platform.max_chunks_per_doc)
 
@@ -469,7 +470,7 @@ def count_stale_chunks(db: Session, tenant: TenantRow | None = None) -> int:
     return stale
 
 
-def _hit(row: ChunkRow, score: float) -> Hit:
+def _hit(row: ChunkRow, score: float, lexical_only: bool = False) -> Hit:
     try:
         metadata = json.loads(row.metadata_json or "{}")
     except json.JSONDecodeError:
@@ -484,6 +485,7 @@ def _hit(row: ChunkRow, score: float) -> Hit:
         source_id=getattr(row, "source_id", "") or "",
         metadata=metadata if isinstance(metadata, dict) else {},
         nda_only=row.nda_only,
+        lexical_only=lexical_only,
     )
 
 

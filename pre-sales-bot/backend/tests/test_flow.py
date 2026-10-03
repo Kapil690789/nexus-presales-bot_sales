@@ -16,9 +16,10 @@ def test_health_and_widget(client):
     health = client.get("/health")
     assert health.status_code == 200
     body = health.json()
-    assert body["status"] == "ok"
-    assert "demo" in body["tenants"]
-    assert body["embedding_backend"] == "hash"
+    assert body == {"status": "ok"}
+    admin_health = client.get("/admin/api/health", auth=("admin", "test-admin")).json()
+    assert "demo" in admin_health["tenants"]
+    assert admin_health["embedding_backend"] == "hash"
     widget = client.get("/widget/consultant.js")
     assert widget.status_code == 200
     assert "dataset.tenant" in widget.text
@@ -54,6 +55,7 @@ def test_postgres_url_strips_ssl_params():
 
 def test_vercel_always_uses_hash_embedder(monkeypatch):
     monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.setenv("ALLOW_EPHEMERAL_DB", "true")
     from backend.app.core.settings import get_settings
     from backend.app.rag.embeddings import embedding_backend
 
@@ -61,6 +63,7 @@ def test_vercel_always_uses_hash_embedder(monkeypatch):
         monkeypatch.setenv("EMBEDDING_BACKEND", choice)
         get_settings.cache_clear()
         assert embedding_backend() == "hash"
+
 
 
 def test_production_default_password_still_serves_public_routes(monkeypatch):
@@ -77,7 +80,7 @@ def test_production_default_password_still_serves_public_routes(monkeypatch):
     with TestClient(create_app()) as production:
         health = production.get("/health")
         assert health.status_code == 200
-        assert health.json()["admin"] == "disabled_misconfigured"
+        assert health.json()["status"] in ("ok", "degraded")
         widget = production.get("/widget/consultant.js")
         assert widget.status_code == 200
         assert "dataset.tenant" in widget.text
