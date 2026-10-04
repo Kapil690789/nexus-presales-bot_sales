@@ -475,3 +475,5 @@
 14. [x] **Prompt F3**: Docs & eval accuracy pass (Section 3 current state rewrite, History appendix, Mermaid fix, exact price band formulas, EVAL.md update, PROGRESS.md condensation).
 15. [x] **TASK SHIP-1**: Performance, timing headers, sample labels, price guard, and prompt grounding pass (269 passed).
 16. [x] **TASK SHIP-2**: Acknowledgement scoping, mode="request" thinkingLevel low, and grounded_answer prompt grounding pass (278 passed).
+17. [x] **TASK SHIP-3**: Chit-chat token parser, query rewrite & FAQ thresholds, price guard false positives, deterministic fallbacks, yes/no last question parsing, demo booking clarity & calendar event update idempotency (289 passed).
+18. [x] **Document Staging & Export UX**: Non-blocking document upload preview pill with remove button, user instructions/notes input, transcript download (.txt) & clean print/PDF view across consultant widget and Proposal Studio (291 passed).

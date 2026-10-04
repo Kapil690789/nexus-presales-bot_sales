@@ -699,6 +699,32 @@
     .send-btn:hover { background: var(--accent-hover); }
     .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
     .send-btn svg { width: 18px; height: 18px; color: #fff; }
+    .clip-btn {
+      width: 46px; height: 46px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      border: 1px solid var(--border-md);
+      color: var(--text-dim);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+    .clip-btn:hover { border-color: var(--accent); color: #fff; }
+    .clip-btn.has-attachment { border-color: var(--accent); color: var(--accent); background: rgba(37,99,235,0.12); }
+    .clip-btn svg { width: 20px; height: 20px; }
+    .studio-attachment-box { margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+    .studio-attachment-pill {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg-card); border: 1px solid var(--border-md);
+      border-radius: 8px; padding: 6px 12px; font-size: 12.5px; color: var(--text);
+    }
+    .studio-attachment-remove {
+      background: transparent; border: none; color: var(--text-dim);
+      cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px;
+    }
+    .studio-attachment-remove:hover { color: #ef4444; }
     .chat-hint { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
 
     @keyframes fadeIn {
@@ -1246,13 +1272,23 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
           Discovery Chat
         </div>
-        <span class="chat-stage-badge" id="stageBadge">discovery</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;height:26px;" onclick="downloadChatTranscript()" title="Export chat transcript">
+            Export Chat
+          </button>
+          <span class="chat-stage-badge" id="stageBadge">discovery</span>
+        </div>
       </div>
 
       <div class="chat-messages" id="chatMessages"></div>
 
       <div class="chat-input-area">
+        <div id="studioAttachmentBox" class="studio-attachment-box" style="display:none;"></div>
         <div class="chat-input-wrap">
+          <button class="clip-btn" id="uploadBtn" type="button" title="Attach document (.pdf, .docx, .txt)" onclick="document.getElementById('studioFileInput').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <input type="file" id="studioFileInput" style="display:none;" accept=".pdf,.doc,.docx,.txt,.md" onchange="handleStudioFileSelect(this)" />
           <textarea
             class="chat-input"
             id="chatInput"
@@ -1316,7 +1352,74 @@ async function createSession() {
   }
 }
 
+let studioStagedFile = null;
+
+function handleStudioFileSelect(input) {
+  if (!input.files || !input.files[0]) return;
+  studioStagedFile = input.files[0];
+  const box = document.getElementById('studioAttachmentBox');
+  const sizeKb = (studioStagedFile.size / 1024).toFixed(0);
+  box.innerHTML = `
+    <div class="studio-attachment-pill">
+      <span>📄</span>
+      <strong style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${studioStagedFile.name}</strong>
+      <span style="color:var(--text-dim);font-size:11px;">(${sizeKb} KB)</span>
+      <button class="studio-attachment-remove" title="Remove attachment" onclick="clearStudioStagedFile()">&times;</button>
+    </div>
+  `;
+  box.style.display = 'flex';
+  document.getElementById('uploadBtn').classList.add('has-attachment');
+  document.getElementById('chatInput').placeholder = 'Add instructions or click send...';
+  document.getElementById('chatInput').focus();
+}
+
+function clearStudioStagedFile() {
+  studioStagedFile = null;
+  const fi = document.getElementById('studioFileInput');
+  if (fi) fi.value = '';
+  const box = document.getElementById('studioAttachmentBox');
+  if (box) {
+    box.innerHTML = '';
+    box.style.display = 'none';
+  }
+  const btn = document.getElementById('uploadBtn');
+  if (btn) btn.classList.remove('has-attachment');
+  document.getElementById('chatInput').placeholder = 'Tell us about your project...';
+}
+
+function downloadChatTranscript() {
+  const msgs = document.querySelectorAll('#chatMessages .msg');
+  const lines = [
+    '# Nexus Proposal Studio — Chat Transcript',
+    'Date: ' + new Date().toLocaleString(),
+    'Session ID: ' + (sessionId || 'unassigned'),
+    '--------------------------------------------------------------------------------',
+    ''
+  ];
+  if (!msgs || msgs.length === 0) {
+    lines.push('(No messages recorded.)');
+  } else {
+    msgs.forEach(m => {
+      const sender = m.classList.contains('msg-user') ? 'You' : 'Nexus Advisor';
+      lines.push('[' + sender + ']');
+      lines.push(m.innerText.trim());
+      lines.push('');
+    });
+  }
+  lines.push('--------------------------------------------------------------------------------');
+  lines.push('Exported from Nexus Live Proposal Studio');
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'nexus-chat-' + (sessionId || 'transcript').slice(0, 8) + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
+}
+
 async function resetSession() {
+  clearStudioStagedFile();
   document.getElementById('chatMessages').innerHTML = '';
   sessionId = null;
   briefData = {};
@@ -1329,8 +1432,47 @@ async function sendMessage(text, chip) {
   if (isLoading) return;
   const input = document.getElementById('chatInput');
   const userText = text || (input ? input.value.trim() : '');
-  if (!userText && !chip) return;
+  if (!userText && !chip && !studioStagedFile) return;
   if (!sessionId) return;
+
+  if (!chip && studioStagedFile) {
+    const f = studioStagedFile;
+    const notes = userText;
+    clearStudioStagedFile();
+    if (input) {
+      input.value = '';
+      autoResize(input);
+    }
+    let displayMsg = '📎 Uploaded document: ' + f.name;
+    if (notes) displayMsg += '\n\n' + notes;
+    appendMessage('user', displayMsg);
+    disableChips();
+    setLoading(true);
+
+    try {
+      const fd = new FormData();
+      fd.append('file', f);
+      if (notes) fd.append('notes', notes);
+
+      const res = await fetch(`${API_BASE}/api/v1/sessions/${sessionId}/documents`, {
+        method: 'POST',
+        body: fd
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        appendMessage('assistant', err.detail || 'Failed to process document.');
+        return;
+      }
+      const data = await res.json();
+      appendMessage('assistant', data.message, data.chips);
+      updateFromResponse(data);
+    } catch(e) {
+      appendMessage('assistant', 'Connection error while uploading document.');
+    } finally {
+      setLoading(false);
+    }
+    return;
+  }
 
   if (!chip && input) {
     input.value = '';

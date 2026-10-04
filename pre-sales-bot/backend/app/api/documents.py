@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from backend.app.api.sessions import _add, _public, _session
@@ -48,6 +48,7 @@ async def upload_document(
     session_id: str,
     request: Request,
     file: UploadFile = File(...),
+    notes: str = Form(""),
     db: Session = Depends(get_db),
 ) -> dict:
     rate_limit_messages(request)
@@ -65,7 +66,8 @@ async def upload_document(
     if len(data) > 5_000_000:
         raise HTTPException(status_code=400, detail="File is too large")
     filename = Path(file.filename or "upload.txt").name
-    if looks_like_jailbreak(filename):
+    clean_notes = (notes or "").strip()
+    if looks_like_jailbreak(filename) or (clean_notes and looks_like_jailbreak(clean_notes)):
         return _refused_upload(db, session, config)
     try:
         excerpt = extract_text(filename, data)
@@ -86,19 +88,24 @@ async def upload_document(
         )
     )
     # Record user upload message in session history
-    _add(db, session.id, "user", f"📎 Uploaded document: {filename}", {"filename": filename, "kind": "upload"})
+    user_msg_text = f"📎 Uploaded document: {filename}"
+    if clean_notes:
+        user_msg_text += f"\n\n{clean_notes}"
+    _add(db, session.id, "user", user_msg_text, {"filename": filename, "kind": "upload", "notes": clean_notes})
 
     message = ""
     from backend.app.core.guard import UNTRUSTED_RULE, wrap_visitor
     from backend.app.core.llm import LLMError, complete_json, llm_available
 
     if llm_available():
+        notes_section = f"\nVisitor additional notes/instructions:\n{wrap_visitor(clean_notes)}\n" if clean_notes else ""
         prompt = (
             f"You are the senior pre-sales consultant at {config.brand.name}. "
             f"The visitor uploaded a project document/spec named '{filename}'. "
+            f"{notes_section}"
             f"Document excerpt:\n{wrap_visitor(excerpt[:2000])}\n\n"
             f"{UNTRUSTED_RULE} "
-            f"Provide a concise, professional 2-3 sentence assessment of the uploaded spec. "
+            f"Provide a concise, professional 2-3 sentence assessment of the uploaded spec taking into account any visitor instructions provided. "
             f"Acknowledge the key features or scope identified and invite them to generate an architectural estimate or book a discovery call. "
             f'Return JSON {{"message": "..."}}.'
         )
@@ -110,7 +117,10 @@ async def upload_document(
 
     if not message:
         clean_excerpt = excerpt[:300].strip().replace("\n", " ")
-        message = f"I've reviewed **{filename}**. Key notes extracted:\n\n> \"{clean_excerpt}...\"\n\nWould you like me to generate an indicative architecture and timeline estimate for this?"
+        message = f"I've reviewed **{filename}**"
+        if clean_notes:
+            message += f" and your instructions (\"{clean_notes}\")"
+        message += f". Key notes extracted:\n\n> \"{clean_excerpt}...\"\n\nWould you like me to generate an indicative architecture and timeline estimate for this?"
 
     chips = []
     if not session.nda_accepted:

@@ -30,6 +30,8 @@
     restart: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.5-6.4L21 8M21 3v5h-5M21 12a9 9 0 0 1-15.5 6.4L3 16M3 21v-5h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     info: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 16v-4M12 8h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     clip: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.2 7.2 8.4 14a3.1 3.1 0 0 0 4.4 4.4l7.1-7.2a5 5 0 0 0-7.1-7.1L6 11.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    download: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v13M12 16l4-4M12 16l-4-4M4 19h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    print: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="6" y="14" width="12" height="7" rx="1" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="12" r="1" fill="currentColor"/></svg>',
     send: '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12 20 5l-6.2 14-2.1-5.2L5 12Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m11.7 13.8 8.3-8.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     avatar: '<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="80" height="80" fill="#0A0A0A"/><circle cx="40" cy="30" r="14" fill="#EDEDED"/><path d="M16 72c4-16 16-24 24-24s20 8 24 24" fill="#EDEDED"/><rect x="28" y="48" width="24" height="18" rx="6" fill="#0A0A0A"/></svg>'
   };
@@ -110,6 +112,13 @@
     ".ps-compose form{display:flex;align-items:center;gap:4px;min-width:0}",
     ".ps-compose input[type=text]{flex:1;border:0;outline:0;background:transparent;padding:10px 4px;font:inherit;font-size:14px;color:#FFFFFF;min-width:0}",
     ".ps-compose input[type=text]::placeholder{color:#52525B}",
+    ".ps-attachment-box{padding:6px 4px 4px;display:flex;align-items:center;gap:6px;animation:ps-msg-in 140ms ease-out}",
+    ".ps-attachment-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:4px 8px;font-size:12px;color:#EDEDED;max-width:100%}",
+    ".ps-attachment-name{font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+    ".ps-attachment-size{color:#A1A1AA;font-size:11px}",
+    ".ps-attachment-remove{background:transparent;border:0;color:#A1A1AA;font-size:15px;line-height:1;cursor:pointer;padding:0 3px;border-radius:4px;display:grid;place-items:center}",
+    ".ps-attachment-remove:hover{color:#EF4444;background:rgba(239,68,68,0.15)}",
+    ".ps-icon-btn.has-attachment{color:#60A5FA;background:rgba(96,165,250,0.15)}",
     ".ps-hidden{position:absolute !important;width:1px !important;height:1px !important;padding:0 !important;margin:-1px !important;overflow:hidden !important;clip:rect(0,0,0,0) !important;white-space:nowrap !important;border:0 !important;opacity:0}",
     ".ps-icon-btn{width:34px;height:34px;border:0;background:transparent;color:#A1A1AA;display:grid;place-items:center;cursor:pointer;border-radius:8px;flex:0 0 34px;padding:0}",
     ".ps-icon-btn:hover{background:rgba(255,255,255,0.06);color:#FFFFFF}",
@@ -140,7 +149,8 @@
     ".ps-guide-ok{margin-top:16px;width:100%;background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background 150ms}",
     ".ps-guide-ok:hover{background:#1D4ED8}",
     "@media (max-width:520px){.ps-panel,.ps-panel.bottom-right,.ps-panel.bottom-left{width:100vw;height:100vh;height:100dvh;right:0 !important;left:0 !important;bottom:0 !important;border-radius:0}.ps-launcher.bottom-right,.ps-launcher.bottom-left{right:16px;bottom:16px;left:auto}.ps-compose input[type=text]{font-size:16px}.ps-compose{padding-bottom:max(12px, env(safe-area-inset-bottom))}}",
-    "@media (prefers-reduced-motion:reduce){.ps-launcher,.ps-panel.is-open,.ps-msg,.ps-card,.ps-chip,.ps-online-dot,.ps-shimmer-line{animation:none !important}}"
+    "@media (prefers-reduced-motion:reduce){.ps-launcher,.ps-panel.is-open,.ps-msg,.ps-card,.ps-chip,.ps-online-dot,.ps-shimmer-line{animation:none !important}}",
+    "@media print{body>*:not(#ps-widget-root){display:none !important}#ps-widget-root .ps-launcher{display:none !important}#ps-widget-root .ps-panel{display:block !important;position:static !important;width:100% !important;height:auto !important;max-height:none !important;border:none !important;box-shadow:none !important;background:#fff !important;color:#111 !important}#ps-widget-root .ps-header{border-bottom:1px solid #ddd !important;background:#f8fafc !important;color:#111 !important}#ps-widget-root .ps-header-actions,#ps-widget-root .ps-chips,#ps-widget-root .ps-compose,#ps-widget-root .ps-guide-overlay{display:none !important}#ps-widget-root .ps-thread{overflow:visible !important;height:auto !important;padding:16px 0 !important}#ps-widget-root .ps-msg{color:#111 !important;border:1px solid #e2e8f0 !important}#ps-widget-root .ps-msg.assistant{background:#f8fafc !important}#ps-widget-root .ps-msg.user{background:#eff6ff !important;border-color:#bfdbfe !important}#ps-widget-root .ps-card{background:#fff !important;border:1px solid #cbd5e1 !important;color:#111 !important}}"
   ].join("");
   document.head.appendChild(style);
 
@@ -172,6 +182,18 @@
   infoBtn.setAttribute("aria-label", "How Nexus Advisor works");
   infoBtn.innerHTML = ICONS.info;
 
+  var downloadBtn = el("button", "ps-header-btn");
+  downloadBtn.type = "button";
+  downloadBtn.title = "Download chat transcript";
+  downloadBtn.setAttribute("aria-label", "Download chat transcript");
+  downloadBtn.innerHTML = ICONS.download;
+
+  var printBtn = el("button", "ps-header-btn");
+  printBtn.type = "button";
+  printBtn.title = "Print conversation / PDF";
+  printBtn.setAttribute("aria-label", "Print conversation / PDF");
+  printBtn.innerHTML = ICONS.print;
+
   var restartBtn = el("button", "ps-header-btn");
   restartBtn.type = "button";
   restartBtn.title = "Start new conversation";
@@ -190,6 +212,8 @@
   close.innerHTML = ICONS.close;
 
   headerActions.appendChild(infoBtn);
+  headerActions.appendChild(downloadBtn);
+  headerActions.appendChild(printBtn);
   headerActions.appendChild(restartBtn);
   headerActions.appendChild(expandBtn);
   headerActions.appendChild(close);
@@ -201,6 +225,8 @@
   thread.id = "ps-log";
   var chipsBox = el("div", "ps-chips");
   var compose = el("div", "ps-compose");
+  var attachmentBox = el("div", "ps-attachment-box");
+  attachmentBox.style.display = "none";
   var form = el("form");
   var input = document.createElement("input");
   input.type = "text";
@@ -224,6 +250,7 @@
   form.appendChild(uploadBtn);
   form.appendChild(send);
   form.appendChild(file);
+  compose.appendChild(attachmentBox);
   compose.appendChild(form);
   panel.appendChild(header);
   panel.appendChild(thread);
@@ -554,10 +581,78 @@
       });
   }
 
+  var stagedFile = null;
+
+  function formatFileSize(bytes) {
+    if (!bytes) return "0 B";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1048576) return (bytes / 1024).toFixed(0) + " KB";
+    return (bytes / 1048576).toFixed(1) + " MB";
+  }
+
+  function clearStagedFile() {
+    stagedFile = null;
+    file.value = "";
+    attachmentBox.innerHTML = "";
+    attachmentBox.style.display = "none";
+    uploadBtn.classList.remove("has-attachment");
+    input.placeholder = brand.placeholder || "Type your message...";
+  }
+
+  file.onchange = function () {
+    if (!file.files || !file.files[0]) return;
+    stagedFile = file.files[0];
+    attachmentBox.innerHTML = [
+      '<div class="ps-attachment-pill">',
+        '<span class="ps-attachment-icon">📄</span>',
+        '<span class="ps-attachment-name" title="' + esc(stagedFile.name) + '">' + esc(stagedFile.name) + '</span>',
+        '<span class="ps-attachment-size">(' + formatFileSize(stagedFile.size) + ')</span>',
+        '<button type="button" class="ps-attachment-remove" title="Remove attachment" aria-label="Remove attachment">&times;</button>',
+      '</div>'
+    ].join("");
+    attachmentBox.style.display = "flex";
+    uploadBtn.classList.add("has-attachment");
+    input.placeholder = "Add instructions or press send...";
+    input.focus();
+
+    var removeBtn = attachmentBox.querySelector(".ps-attachment-remove");
+    if (removeBtn) {
+      removeBtn.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        clearStagedFile();
+      };
+    }
+  };
+
   form.onsubmit = function (event) {
     event.preventDefault();
     var value = input.value.trim();
-    if (!value || !sessionId || busy) return;
+    if (!sessionId || busy) return;
+
+    if (stagedFile) {
+      var f = stagedFile;
+      var notes = value;
+      clearStagedFile();
+      input.value = "";
+      setChips([]);
+
+      var userText = "📎 Uploaded document: " + f.name;
+      if (notes) userText += "\n\n" + notes;
+      say("user", userText);
+
+      if (!beginWait()) return;
+      var data = new FormData();
+      data.append("file", f);
+      if (notes) data.append("notes", notes);
+      fetch(api + "/api/v1/sessions/" + sessionId + "/documents", { method: "POST", body: data })
+        .then(function (res) { return res.json().then(function (body) { if (!res.ok) throw body; return body; }); })
+        .then(renderReply)
+        .catch(fail);
+      return;
+    }
+
+    if (!value) return;
     input.value = "";
     setChips([]);
     say("user", value);
@@ -565,19 +660,86 @@
     post("/api/v1/sessions/" + sessionId + "/messages", { content: value }).then(renderReply).catch(fail);
   };
 
-  file.onchange = function () {
-    if (!file.files || !file.files[0] || !sessionId || !beginWait()) return;
-    var f = file.files[0];
-    var data = new FormData();
-    data.append("file", f);
-    file.value = "";
-    setChips([]);
-    say("user", "📎 Uploaded document: " + f.name);
-    fetch(api + "/api/v1/sessions/" + sessionId + "/documents", { method: "POST", body: data })
-      .then(function (res) { return res.json().then(function (body) { if (!res.ok) throw body; return body; }); })
-      .then(renderReply)
-      .catch(fail);
-  };
+  function buildTranscriptText() {
+    var lines = [
+      "# " + (brand.widget_title || "Nexus Advisor") + " — Consultation Transcript",
+      "Date: " + new Date().toLocaleString(),
+      "Session: " + (sessionId || "unassigned"),
+      "--------------------------------------------------------------------------------",
+      ""
+    ];
+    var msgs = thread.querySelectorAll(".ps-msg, .ps-card");
+    if (!msgs || msgs.length === 0) {
+      lines.push("(No messages in this consultation yet.)");
+    } else {
+      for (var i = 0; i < msgs.length; i++) {
+        var m = msgs[i];
+        if (m.classList.contains("ps-msg")) {
+          var sender = m.classList.contains("user") ? "You" : (brand.widget_title || "Advisor");
+          var clone = m.cloneNode(true);
+          var thumbs = clone.querySelectorAll(".ps-thumb, .ps-thumb-btn");
+          for (var t = 0; t < thumbs.length; t++) thumbs[t].remove();
+          var txt = clone.innerText.trim();
+          lines.push("[" + sender + "]");
+          lines.push(txt);
+          lines.push("");
+        } else if (m.classList.contains("ps-card")) {
+          lines.push("--- [Card: " + (m.querySelector("h4") ? m.querySelector("h4").innerText : "Details") + "] ---");
+          lines.push(m.innerText.trim());
+          lines.push("");
+        }
+      }
+    }
+    lines.push("--------------------------------------------------------------------------------");
+    lines.push("Exported from " + (brand.widget_title || "Nexus Advisor") + " Consultation");
+    return lines.join("\n");
+  }
+
+  function downloadChat() {
+    var text = buildTranscriptText();
+    var blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "nexus-consultation-" + (sessionId || "transcript").slice(0, 8) + ".txt";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 200);
+  }
+
+  function printChat() {
+    var text = buildTranscriptText();
+    var printWin = window.open("", "_blank", "width=800,height=900");
+    if (printWin) {
+      var html = [
+        '<!DOCTYPE html><html><head><meta charset="utf-8">',
+        '<title>' + esc(brand.widget_title || "Nexus Advisor") + ' Consultation Transcript</title>',
+        '<style>',
+        'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:30px;color:#0f172a;line-height:1.6;font-size:13px}',
+        'h2{margin:0 0 6px;color:#0f172a;font-size:20px}',
+        '.meta{color:#64748b;font-size:12px;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #3b82f6}',
+        'pre{white-space:pre-wrap;word-break:break-word;background:#f8fafc;border:1px solid #e2e8f0;padding:16px;border-radius:8px;font-family:inherit;font-size:13px;line-height:1.6}',
+        '@media print{body{margin:15mm}pre{background:#fff;border:none;padding:0}}',
+        '</style>',
+        '</head><body>',
+        '<h2>' + esc(brand.widget_title || "Nexus Advisor") + ' — Consultation Transcript</h2>',
+        '<div class="meta">Exported on ' + new Date().toLocaleString() + ' &bull; Session: ' + esc(sessionId || "unassigned") + '</div>',
+        '<pre>' + esc(text) + '</pre>',
+        '<script>window.onload=function(){window.print();};<\/script>',
+        '</body></html>'
+      ].join("");
+      printWin.document.write(html);
+      printWin.document.close();
+    } else {
+      window.print();
+    }
+  }
+
+  downloadBtn.onclick = downloadChat;
+  printBtn.onclick = printChat;
 
   var isExpanded = false;
   expandBtn.onclick = function () {
