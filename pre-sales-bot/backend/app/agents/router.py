@@ -41,7 +41,7 @@ OUT_OF_SCOPE = ("shopify", "crypto", "web3", "homework", "student project")
 ACTION = {"show_portfolio", "booking_window", "booking_slot", "nda", "close_out"}
 
 import time
-import backend.app.rag.store as rag_store
+from backend.app.rag.embeddings import query_embedding_duration_ms
 
 GROUNDING_LINE = (
     "Answer only from the engine data and the provided notes. If the notes do not contain the answer, "
@@ -52,27 +52,37 @@ SOLUTION_SYSTEM_PROMPT = (
     "You are an expert enterprise pre-sales software consultant. Output JSON only. "
     + GROUNDING_LINE
 )
-ALWAYS_ACK_RE = re.compile(
-    r"^(hi|hello|hey|thanks|thank you)[\s.!,]*$",
-    re.IGNORECASE,
-)
-CONDITIONAL_ACK_RE = re.compile(
-    r"^(ok|okay|k|yes|no|yep|nope|haan|ha|theek hai|thik hai)[\s.!,]*$",
-    re.IGNORECASE,
-)
-PURE_ACK_RE = re.compile(
-    r"^(hi|hello|hey|ok|okay|k|thanks|thank you|yes|no|yep|nope|haan|ha|theek hai|thik hai)[\s.!,]*$",
-    re.IGNORECASE,
-)
+ACK_VOCAB = {
+    "cool", "thanks", "thank", "you", "ok", "okay", "great", "nice", "awesome", "perfect",
+    "got", "it", "sure", "fine", "good", "haan", "theek", "thik", "hai", "shukriya",
+    "dhanyavad", "so", "much", "very", "a", "lot", "hi", "hello", "hey", "yes", "no",
+}
+CONDITIONAL_ACK_WORDS = {"yes", "no", "ok", "okay", "haan", "theek", "thik"}
 
 
-def _is_ack(text: str, has_pending_discovery: bool) -> bool:
-    cleaned = (text or "").strip()
-    if ALWAYS_ACK_RE.match(cleaned):
-        return True
-    if CONDITIONAL_ACK_RE.match(cleaned):
-        return not has_pending_discovery
-    return False
+def _is_ack(text: str, has_pending_discovery: bool = False) -> bool:
+    cleaned = (text or "").lower()
+    words = [w.strip(".,!?:;\"'()[]{}~`") for w in cleaned.split()]
+    words = [w for w in words if w]
+    if not words or len(words) > 5:
+        return False
+    if not all(w in ACK_VOCAB for w in words):
+        return False
+    if has_pending_discovery and any(w in CONDITIONAL_ACK_WORDS for w in words):
+        return False
+    return True
+
+
+def _last_question_sentence(msg: str) -> str:
+    if not msg:
+        return ""
+    q_idx = msg.rfind("?")
+    if q_idx == -1:
+        return ""
+    before_q = msg[:q_idx]
+    parts = re.split(r"[.\n!]", before_q)
+    last_part = parts[-1] if parts else before_q
+    return (last_part + "?").strip().lower()
 
 
 def run_turn(
@@ -127,14 +137,19 @@ def run_turn(
         return _book(db, tenant, config, session, brief, contact, summary, str(value or ""))
 
     if field == "booking_window" or (text and not field and BOOK.search(text)):
-        slots, live = list_slots(tenant)
+        tz_name = getattr(config.brand, "timezone", "") or "Asia/Kolkata"
+        slots, live = list_slots(tenant, tz_name=tz_name)
+        pick_card = {"type": "booking", "title": "Pick a time", "live": live, "slots": slots}
+        if not live:
+            pick_card["disclaimer"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
+            pick_card["note"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
         return _finish(
             session, brief, contact, summary,
             message="Here are a few times for a short discovery call with our team:",
             stage="booking",
             route="booking",
             chips=[{"label": slot["label"], "field": "booking_slot", "value": slot["slot_iso"]} for slot in slots],
-            cards=[{"type": "booking", "title": "Pick a time", "live": live, "slots": slots}],
+            cards=[pick_card],
         )
 
     # Email capture (booking confirmation or lead capture)
@@ -153,6 +168,8 @@ def run_turn(
                         slot_iso,
                         f"Discovery call — {config.brand.name}",
                         email,
+                        event_id=booked.get("event_id"),
+                        tz_name=getattr(config.brand, "timezone", "") or "Asia/Kolkata",
                     )
                     if updated_booked:
                         booked.update(updated_booked)
@@ -174,7 +191,9 @@ def run_turn(
             )
             slot_label = booked.get("label") or slot_iso or "your scheduled discovery session"
             reply = f"Thank you! Your calendar invitation for **{slot_label}** has been dispatched to **{email}**."
-            if booked.get("meet_url"):
+            if not booked.get("live"):
+                reply += " Demo booking: no calendar invite is sent until Google Calendar is connected."
+            elif booked.get("meet_url"):
                 reply += f" Google Meet link: {booked['meet_url']}."
             reply += " Our solutions engineering team is looking forward to the discussion!"
 
@@ -183,13 +202,17 @@ def run_turn(
                 {"label": "Can I invite a colleague?", "field": "ask", "value": "Can I invite a colleague to the call?"},
                 {"label": "Can I reschedule the time?", "field": "booking_window", "value": "reschedule"},
             ]
+            confirm_card = {"type": "booking", "title": "Confirmed", **booked}
+            if not booked.get("live"):
+                confirm_card["disclaimer"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
+                confirm_card["note"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
             return _finish(
                 session, brief, contact, summary,
                 message=reply,
                 stage="handoff",
                 route="booking",
                 chips=post_chips,
-                cards=[{"type": "booking", "title": "Confirmed", **booked}],
+                cards=[confirm_card],
                 qualification=qual,
                 estimate=estimate,
                 booking=booked,
@@ -208,7 +231,12 @@ def run_turn(
                 tenant,
                 f"Lead email captured for {config.brand.name}: {email}",
             )
-            slots, live = list_slots(tenant)
+            tz_name = getattr(config.brand, "timezone", "") or "Asia/Kolkata"
+            slots, live = list_slots(tenant, tz_name=tz_name)
+            pick_card = {"type": "booking", "title": "Pick a time", "live": live, "slots": slots}
+            if not live:
+                pick_card["disclaimer"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
+                pick_card["note"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
             reply = f"Thank you! I've recorded your email ({email}) for the proposal. Here are a few times for a short discovery call with our team:"
             return _finish(
                 session, brief, contact, summary,
@@ -216,14 +244,33 @@ def run_turn(
                 stage="booking",
                 route="booking",
                 chips=[{"label": slot["label"], "field": "booking_slot", "value": slot["slot_iso"]} for slot in slots],
-                cards=[{"type": "booking", "title": "Pick a time", "live": live, "slots": slots}],
+                cards=[pick_card],
                 qualification=qual,
                 estimate=estimate,
                 handoff_summary=handoff,
             )
 
-    # Post-booking specific questions (colleague, agenda)
+    # Post-booking specific questions (colleague, agenda, or chit-chat ack)
     if session.booking_json and text:
+        if _is_ack(text):
+            try:
+                booked = json.loads(session.booking_json)
+            except Exception:
+                booked = {}
+            booking_label = booked.get("label") or booked.get("slot_iso") or "your scheduled session"
+            reply = f"You're welcome! You're all set for {booking_label}. I can share the agenda or help you reschedule."
+            post_chips = [
+                {"label": "What is on the agenda?", "field": "ask", "value": "What is on the agenda for our discovery call?"},
+                {"label": "Can I reschedule the time?", "field": "booking_window", "value": "reschedule"},
+            ]
+            return _finish(
+                session, brief, contact, summary,
+                message=reply,
+                stage=session.stage or "handoff",
+                route="ack",
+                chips=post_chips,
+                timings=timings,
+            )
         if re.search(r"\b(colleague|coworker|team member|partner|invite)\b", text.lower()):
             reply = (
                 "Yes, absolutely! Feel free to forward the calendar invitation or invite any team members, "
@@ -320,24 +367,29 @@ def run_turn(
             last_assistant_msg = ""
             for item in reversed(history):
                 if item.get("role") == "assistant" and item.get("content"):
-                    last_assistant_msg = str(item.get("content")).lower()
+                    last_assistant_msg = str(item.get("content"))
                     break
 
+            last_q = _last_question_sentence(last_assistant_msg)
             lowered_text = text.lower().strip()
             # Handle direct yes/no answers to specific discovery questions
-            if (pending == "integrations" or "integration" in last_assistant_msg) and lowered_text in (
+            # Use only the last question sentence of that message when it contains "integration" or "admin"
+            is_integration_q = "integration" in last_q or (pending == "integrations" and not last_q)
+            is_admin_q = "admin" in last_q or (pending == "admin" and not last_q)
+
+            if is_integration_q and lowered_text in (
                 "no", "none", "nope", "nah", "no integrations", "none needed", "not needed", "no need", "none on day one"
             ):
                 brief.integrations = ["none"]
                 _note_flags(brief)
                 filled = True
-            elif ("admin" in last_assistant_msg or pending == "admin") and lowered_text in (
+            elif is_admin_q and lowered_text in (
                 "yes", "yep", "yeah", "sure", "true", "1"
             ):
                 brief.admin = True
                 _note_flags(brief)
                 filled = True
-            elif ("admin" in last_assistant_msg or pending == "admin") and lowered_text in (
+            elif is_admin_q and lowered_text in (
                 "no", "nope", "nah", "false", "0"
             ):
                 brief.admin = False
@@ -349,9 +401,9 @@ def run_turn(
                 and not bool(session.estimate_json)
                 and (session.stage not in ("advising", "handoff", "disqualified"))
             )
-            # Skip LLM extractor for chip clicks and pure acknowledgements (yes/no/ok are acks only when nothing is pending)
+            # Skip LLM extractor for chip clicks and acknowledgements, or when booking exists and brief is ready
             is_ack = _is_ack(text, has_pending_discovery)
-            if is_chip_click or is_ack:
+            if is_chip_click or is_ack or (bool(session.booking_json) and brief_ready(brief)):
                 extracted = {}
             else:
                 t0_ext = time.perf_counter()
@@ -406,7 +458,13 @@ def run_turn(
     is_ack = _is_ack(text, has_pending_discovery)
     if not is_chip_click and is_ack:
         estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
-        reply_msg = fallback_message(config, brief, estimate, query=text)
+        if brief and brief_ready(brief):
+            reply_msg = (
+                f"Glad that aligns! If you'd like to talk through the technical architecture, team setup, or confirm the timeline, "
+                f"feel free to schedule a short discovery call with our team anytime."
+            )
+        else:
+            reply_msg = fallback_message(config, brief, estimate, query=text)
         extra = _continuation(brief, history)
         if extra:
             reply_msg = f"{reply_msg}\n\n{extra[0]}"
@@ -444,19 +502,30 @@ def run_turn(
     queries = [rewrite_query_with_brief(q, brief) for q in raw_queries]
     filters = query_filters(text, service=brief.service, industry=brief.industry)
 
-    orig_embed = rag_store.embed_query
-    def timed_embed(*args, **kwargs):
-        t0_emb = time.perf_counter()
-        try:
-            return orig_embed(*args, **kwargs)
-        finally:
-            timings["query_embedding"] += (time.perf_counter() - t0_emb) * 1000.0
-
-    rag_store.embed_query = timed_embed
+    query_embedding_duration_ms.set(0.0)
     t_ret_start = time.perf_counter()
     try:
         faq_hits = _merge(db, tenant, queries, "faq", session.nda_accepted, filters)
+        is_faq_eligible = False
         if faq_hits and faq_hits[0].score >= get_platform().faq_min_score:
+            top_hit = faq_hits[0]
+            msg_tokens = [w.strip("?,.!;:\"'()[]{}~`").lower() for w in text.split()]
+            msg_tokens = [w for w in msg_tokens if w]
+            is_q_or_long = bool(OPEN.search(text) or "?" in text or len(msg_tokens) >= 5)
+            if is_q_or_long:
+                if top_hit.score >= 0.80:
+                    is_faq_eligible = True
+                else:
+                    content_tokens_orig = {t for t in msg_tokens if t not in ROUTER_STOPWORDS and len(t) >= 2}
+                    faq_raw = f"{getattr(top_hit, 'title', '')} {top_hit.content}".lower()
+                    faq_tokens = set(re.findall(r"\b[a-z0-9]+\b", faq_raw))
+                    if bool(content_tokens_orig & faq_tokens):
+                        is_faq_eligible = True
+
+        if is_faq_eligible:
+            t_ret_total = (time.perf_counter() - t_ret_start) * 1000.0
+            timings["query_embedding"] = query_embedding_duration_ms.get()
+            timings["retrieval_db"] = max(0.0, t_ret_total - timings["query_embedding"])
             hit = faq_hits[0]
             message = hit.content
             extra = _continuation(brief, history)
@@ -483,8 +552,8 @@ def run_turn(
 
         hits = _merge(db, tenant, queries, "knowledge", session.nda_accepted, filters)
     finally:
-        rag_store.embed_query = orig_embed
         t_ret_total = (time.perf_counter() - t_ret_start) * 1000.0
+        timings["query_embedding"] = query_embedding_duration_ms.get()
         timings["retrieval_db"] = max(0.0, t_ret_total - timings["query_embedding"])
 
     decision, score = grade(queries[0], hits)
@@ -541,11 +610,13 @@ def run_turn(
 
 def _book(db, tenant, config, session, brief, contact, summary, slot_iso: str) -> dict:
     email = contact.get("email") or ""
+    tz_name = getattr(config.brand, "timezone", "") or "Asia/Kolkata"
     booked = confirm_slot(
         tenant,
         slot_iso,
         f"Discovery call — {config.brand.name}",
         email,
+        tz_name=tz_name,
     )
     qual = qualify(brief, config.qualification, config.services, has_email=bool(email))
     estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
@@ -562,17 +633,23 @@ def _book(db, tenant, config, session, brief, contact, summary, slot_iso: str) -
     if email:
         _lead(db, tenant, session, email, qual, estimate, handoff)
     message = f"You're booked for {booked.get('label') or slot_iso}."
+    if not booked.get("live"):
+        message += " Demo booking: no calendar invite is sent until Google Calendar is connected."
     if booked.get("meet_url"):
         message += f" Meet link: {booked['meet_url']}"
     if not email:
         message += " Reply with your work email so the invite has somewhere to go."
+    card = {"type": "booking", "title": "Booked", **booked}
+    if not booked.get("live"):
+        card["disclaimer"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
+        card["note"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
     return _finish(
         session, brief, contact, summary,
         message=message,
         stage="handoff",
         route="booking",
         chips=[],
-        cards=[{"type": "booking", "title": "Booked", **booked}],
+        cards=[card],
         qualification=qual,
         estimate=estimate,
         booking=booked,
@@ -858,7 +935,7 @@ def _service(text: str) -> str | None:
         return "staff_augmentation"
     if "design" in lowered or "ui/ux" in lowered or lowered.strip() in {"ui", "ux"}:
         return "ui_ux"
-    if "ai" in lowered:
+    if re.search(r"\b(ai|llm|gpt|chatgpt|openai|chatbot|machine\s+learning)\b", lowered):
         return "ai_product"
     if "web" in lowered or "saas" in lowered:
         return "web_app"
@@ -880,13 +957,38 @@ def _platforms(text: str) -> list[str] | None:
 
 def _timeline(text: str) -> str | None:
     lowered = text.lower()
-    if "asap" in lowered or "soon" in lowered or "next month" in lowered:
+    if "asap" in lowered or "soon" in lowered:
         return "asap"
     if "flex" in lowered or "no rush" in lowered:
         return "flexible"
-    if "3" in lowered and "6" in lowered:
+
+    month_match = re.search(r"(\d+)\s*(?:-\s*(\d+)|\s+to\s+(\d+))?\s*months?\b", lowered)
+    if month_match:
+        upper = month_match.group(3) or month_match.group(2) or month_match.group(1)
+        n = int(upper)
+        if n <= 3:
+            return "1_3_months"
+        elif 4 <= n <= 6:
+            return "3_6_months"
+        else:
+            return "flexible"
+
+    word_map = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "twelve": 12}
+    word_match = re.search(r"\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve)\s+months?\b", lowered)
+    if word_match:
+        n = word_map[word_match.group(1)]
+        if n <= 3:
+            return "1_3_months"
+        elif 4 <= n <= 6:
+            return "3_6_months"
+        else:
+            return "flexible"
+
+    if "quarter" in lowered or "next month" in lowered or "1 month" in lowered:
+        return "1_3_months"
+    if "3_6" in lowered or "3 to 6" in lowered:
         return "3_6_months"
-    if "1" in lowered or "quarter" in lowered or "month" in lowered:
+    if "1_3" in lowered or "1 to 3" in lowered:
         return "1_3_months"
     return None
 
@@ -895,19 +997,33 @@ def _budget(text: str) -> str | None:
     lowered = text.lower().replace(",", "")
     if "explor" in lowered or "not sure" in lowered:
         return "exploring"
-    if "under" in lowered or "below" in lowered or "10k" in lowered or "8k" in lowered:
+
+    if not re.search(r"(\$|usd|dollars?|\b\d+k\b)", lowered):
+        return None
+
+    vals = []
+    for m in re.finditer(r"\b(\d+(?:\.\d+)?)\s*k\b", lowered):
+        vals.append(float(m.group(1)) * 1000.0)
+
+    for m in re.finditer(r"(?:\$|usd\s*)\s*(\d+(?:\.\d+)?)\s*(k)?\b", lowered):
+        mult = 1000.0 if m.group(2) else 1.0
+        vals.append(float(m.group(1)) * mult)
+
+    for m in re.finditer(r"\b(\d+(?:\.\d+)?)\s*(?:dollars?|usd)\b", lowered):
+        vals.append(float(m.group(1)))
+
+    if not vals:
+        return None
+
+    upper = max(vals)
+    if upper < 15000:
         return "under_15k"
-    if "40" in lowered and "80" in lowered:
-        return "40_80k"
-    if "15" in lowered and "40" in lowered:
+    elif upper < 40000:
         return "15_40k"
-    if "80" in lowered or "100k" in lowered or "100000" in lowered:
+    elif upper < 80000:
+        return "40_80k"
+    else:
         return "80k_plus"
-    if "40" in lowered:
-        return "40_80k"
-    if "15" in lowered:
-        return "15_40k"
-    return None
 
 
 def _role(text: str) -> str | None:
@@ -916,40 +1032,39 @@ def _role(text: str) -> str | None:
         if re.search(r"\b(my\s+cousin|his|her|their|friend|my\s+friend|our\s+intern|my\s+brother|my\s+sister)\b.{0,30}\b(student|intern|college)\b", lowered):
             return None
         return "intern_or_student"
-    if "founder" in lowered or "ceo" in lowered or "exec" in lowered:
+    if re.search(r"\b(founder|ceo|exec|executive|cto|co-founder)\b", lowered):
         return "founder_or_exec"
-    if "product" in lowered or "ops" in lowered:
+    if re.search(r"\bproduct\s+(lead|manager|owner|head|director)\b|\b(lead|manager|owner)\s+of\s+product\b|\bops\b|\boperations\b", lowered):
         return "product_or_ops_lead"
-    if "agency" in lowered or "reseller" in lowered:
+    if re.search(r"\b(agency|reseller)\b", lowered):
         return "agency_or_reseller"
-    if "manager" in lowered:
+    if re.search(r"\bmanager\b", lowered):
         return "manager"
     return None
 
 
 def _size(text: str) -> str | None:
     lowered = text.lower()
-    if "enterprise" in lowered:
+    if re.search(r"\benterprise\b", lowered):
         return "enterprise"
-    if "mid" in lowered:
+    if re.search(r"\bmid\b|\bmid[- ]market\b", lowered):
         return "mid_market"
-    if "smb" in lowered or "small" in lowered:
+    if re.search(r"\b(smb|small)\b", lowered):
         return "smb"
-    if "startup" in lowered:
+    if re.search(r"\bstartup\b", lowered):
         return "startup"
     return None
 
 
 def _note_flags(brief: ProjectBrief) -> None:
     blob = " ".join([brief.goal or "", " ".join(brief.features or [])]).lower()
-    if any(word in blob for word in ("login", "auth", "account")):
+    if re.search(r"\b(login|log in|sign[ -]?in|sign[ -]?up|authentication|user accounts?)\b", blob):
         brief.auth = True
-    if "admin" in blob:
+    if re.search(r"\badmin\b", blob):
         brief.admin = True
-    if "marketplace" in blob:
+    if re.search(r"\bmarketplace\b", blob):
         brief.marketplace = True
-    # Match "realtime", "real-time", and "real time"
-    if "realtime" in blob or "real-time" in blob or "real time" in blob or "live chat" in blob or "live-chat" in blob:
+    if re.search(r"\b(realtime|real[- ]time|live[- ]chat)\b", blob):
         brief.realtime = True
 
 
@@ -973,22 +1088,57 @@ def _strong_hits(hits: list) -> list:
     return [hit for hit in hits if hit.score >= floor and hit.score >= top - 0.12]
 
 
+ROUTER_STOPWORDS = frozenset(
+    """
+    a about all also am an and any are as at be been being but by can cannot could did do does
+    doing done for from get got had has have having he her here hers him his how i if in into is
+    it its just me more most my no nor not of off on once only or other our out over own same she
+    should so some such than that the their them then there these they this those to too us very
+    was we were what when where which while who whom why will with would you your yours during
+    """.split()
+)
+
+
 def _merge(db, tenant, queries: list[str], kind: str, nda_accepted: bool, filters: dict | None = None):
     merged = {}
     for query in queries:
         if not query.strip():
             continue
         for hit in search(db, tenant, query, kind=kind, nda_accepted=nda_accepted, filters=filters):
+            score = hit.score
+            if kind == "faq":
+                q_words = [w.strip("?,.!;:\"'()[]{}~`").lower() for w in query.split()]
+                q_words = [w for w in q_words if w and w not in ROUTER_STOPWORDS and len(w) >= 3]
+                if q_words:
+                    text_blob = f"{getattr(hit, 'title', '')} {hit.content}".lower()
+                    overlap_ratio = sum(1 for w in q_words if w in text_blob) / len(q_words)
+                    if overlap_ratio >= 0.6:
+                        score = max(score, 0.82)
             current = merged.get(hit.doc_id)
-            if current is None or hit.score > current.score:
+            if current is None or score > current.score:
+                hit.score = score
                 merged[hit.doc_id] = hit
     return sorted(merged.values(), key=lambda item: item.score, reverse=True)
+
 
 
 def rewrite_query_with_brief(query: str, brief: ProjectBrief | None) -> str:
     if not brief or not query:
         return query or ""
+    if _is_ack(query):
+        return query
     cleaned = query.strip()
+    is_question_like = bool(OPEN.search(cleaned) or "?" in cleaned)
+    if not is_question_like:
+        return cleaned
+
+    tokens = [w.strip("?,.!;:\"'()[]{}~`").lower() for w in cleaned.split()]
+    tokens = [w for w in tokens if w]
+    rewrite_stopwords = frozenset({"a", "about", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "was", "with"})
+    non_stopwords = [t for t in tokens if t not in rewrite_stopwords]
+    if len(non_stopwords) < 3:
+        return cleaned
+
     words = cleaned.split()
     known_tech = {"web", "mobile", "ios", "android", "ai", "flutter", "react", "python", "ledgerly", "harvest", "atlas", "zephyr"}
     has_specific_tech = any(w.strip("?,.!").lower() in known_tech for w in words)

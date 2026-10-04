@@ -24,7 +24,7 @@ class BrandConfig(BaseModel):
     nda_text: str = "Some project stories are confidential."
     nda_version: str = "2026-01"
     currency: str = "USD"
-    timezone: str = "UTC"
+    timezone: str = "Asia/Kolkata"
 
 
 class FaqItem(BaseModel):

@@ -4,7 +4,7 @@ import re
 import unicodedata
 
 ZERO_WIDTH = re.compile(r"[\u200b\u200c\u200d\ufeff]")
-VISITOR_TAG = re.compile(r"</?\\s*visitor\\s*>", re.IGNORECASE)
+VISITOR_TAG = re.compile(r"<\s*/?\s*visitor\s*>", re.IGNORECASE)
 JAILBREAK_RE = re.compile(
     r"ignore\s+previous"
     r"|ignore\s+all\s+instructions"
@@ -20,7 +20,7 @@ JAILBREAK_RE = re.compile(
     r"|bypass\s+your\s+(?:instructions|rules|safety|filter)"
     r"|forget\s+(?:your\s+)?(?:previous\s+)?instructions"
     r"|do\s+anything\s+now"
-    r"|\bDAN\b",
+    r"|\bDAN\s+(?:mode|prompt|jailbreak|protocol|\d+)\b|\b(?:mode|protocol)\s+DAN\b|\bDAN(?:\s*:\s*|\s+says\s+)|\byou\s+are\s+(?:now\s+)?DAN\b",
     re.IGNORECASE,
 )
 LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "@": "a"})
@@ -56,8 +56,13 @@ _CURRENCY_PATTERNS = [
     re.compile(r"\b[0-9]+(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?(?:\s*(?:k|K|lakh|crore|thousand|million|billion))?\s*(?:USD|INR|dollars|rupees)\b", re.IGNORECASE),
     re.compile(r"\b[0-9]+(?:\s+thousand\s+dollars)\b", re.IGNORECASE),
     re.compile(r"\b[0-9]+(?:\s*(?:lakh|crore))\b", re.IGNORECASE),
-    re.compile(r"\b[0-9]+,[0-9]{3}\b"),
 ]
+
+_COMMA_NUMBER_RE = re.compile(r"\b[0-9]+,[0-9]{3}\b")
+_CURRENCY_INDICATOR_RE = re.compile(
+    r"(\$|₹|\b(?:usd|inr|rs\.?|rupee|rupees|dollar|dollars|lakh|crore|cost|costs|price|pricing|fee|fees|budget|budgets|quote|quotes)\b)",
+    re.IGNORECASE,
+)
 
 UNAUTHORIZED_PRICE_MESSAGE = "Exact pricing depends on scope; the indicative range above is the only figure I can confirm."
 
@@ -163,6 +168,10 @@ def sanitize_price_leaks(
         matches = []
         for pattern in _CURRENCY_PATTERNS:
             for m in pattern.finditer(sentence):
+                matches.append(m)
+
+        if _CURRENCY_INDICATOR_RE.search(sentence):
+            for m in _COMMA_NUMBER_RE.finditer(sentence):
                 matches.append(m)
 
         matches.sort(key=lambda m: (m.start(), -(m.end() - m.start())))

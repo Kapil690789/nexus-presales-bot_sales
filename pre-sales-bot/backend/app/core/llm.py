@@ -9,6 +9,9 @@ from backend.app.core.settings import get_settings
 
 log = logging.getLogger(__name__)
 
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 
 class LLMError(RuntimeError):
     pass
@@ -145,7 +148,11 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
     import httpx
 
     target_model = (model or "").strip() or "gemini-2.5-flash"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent?key={api_key.strip()}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent"
+    headers = {
+        "x-goog-api-key": api_key.strip(),
+        "Content-Type": "application/json",
+    }
     generation_config: dict[str, Any] = {
         "responseMimeType": "application/json",
         "temperature": 0.2,
@@ -175,13 +182,16 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
 
     start_time = time.monotonic()
     try:
-        with httpx.Client(timeout=per_call_timeout) as client:
+        with httpx.Client(timeout=per_call_timeout, headers=headers) as client:
             for attempt in range(max_retries + 1):
                 elapsed = time.monotonic() - start_time
                 if elapsed >= wall_budget:
                     raise LLMError(f"Gemini LLM exceeded time budget ({elapsed:.1f}s >= {wall_budget}s)")
 
-                resp = client.post(url, json=payload)
+                try:
+                    resp = client.post(url, json=payload, headers=headers)
+                except TypeError:
+                    resp = client.post(url, json=payload)
                 if resp.status_code == 200:
                     data = resp.json()
                     candidates = data.get("candidates", [])

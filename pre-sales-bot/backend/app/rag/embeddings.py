@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import logging
 import math
 import os
 import re
 import threading
+import time
 from functools import lru_cache
 from typing import Any, NamedTuple
 
 log = logging.getLogger(__name__)
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+query_embedding_duration_ms: contextvars.ContextVar[float] = contextvars.ContextVar("query_embedding_duration_ms", default=0.0)
 
 from backend.app.core.platform import get_platform
 from backend.app.core.settings import ROOT, get_settings
@@ -159,7 +166,12 @@ def model_source(model_id: str) -> str:
 
 
 def embed_query(query: str, model_id: str | None = None) -> EmbeddingBatch:
-    return embed_texts([query], model_id=model_id, mode="query")
+    t0 = time.perf_counter()
+    try:
+        return embed_texts([query], model_id=model_id, mode="query")
+    finally:
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        query_embedding_duration_ms.set(query_embedding_duration_ms.get() + elapsed_ms)
 
 
 def embed_texts(texts: list[str], model_id: str | None = None, mode: str = "ingest") -> EmbeddingBatch:

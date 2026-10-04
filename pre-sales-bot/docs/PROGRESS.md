@@ -3,6 +3,136 @@
 > **Note for new sessions**: Read this file first. It tracks completed work, modified files, test counts, verified facts, and open deliverables.
 > **Rules**: Work only in `pre-sales-bot/`. Never `git commit` or `git push`. Never print `.env` or keys. Keep the suite green.
 
+## Session 19 (TASK SHIP-3: Conversation Refinements, Calendar Honesty, Timezone, Security & Timing ContextVar) — 2026-10-04
+
+### 1. What was done in TASK SHIP-3
+- **Chit-chat & Post-Booking Deterministic Fast-Path (`backend/app/agents/router.py`)**:
+  - Replaced `_is_ack` regex with token check over 31-token acknowledgement vocabulary (max 5 words).
+  - After booking, acknowledgements receive deterministic reply: `"You're welcome! You're all set for <booking label>. I can share the agenda or help you reschedule."` with agenda and reschedule chips (zero LLM, zero retrieval).
+  - Bypasses extractor for acknowledgements and whenever `session.booking_json` exists and brief is ready.
+- **Query Rewrite & FAQ Safeguards (`backend/app/agents/router.py`)**:
+  - `rewrite_query_with_brief` applies strictly to question-like text (`OPEN` pattern or `?`) with $\ge 3$ non-stopwords; ignores acks and chatter.
+  - FAQ route requires question-like query or $\ge 5$ words, and either content-word overlap with FAQ content or score $\ge 0.80$.
+- **Price Guard False Positives (`backend/app/core/guard.py`)**:
+  - Removed bare `[0-9]+,[0-9]{3}` regex. Comma-formatted numbers count as currency only when accompanied by explicit currency symbols/words in the sentence.
+  - Normal metrics like `"50,000 users"` and `"1,200 listings in 90 days"` pass untouched; unauthorized quotes like `"The fee is 15,000."` get sanitized.
+- **Deterministic Slot Fallbacks (`backend/app/agents/router.py`)**:
+  - Standardized regexes with word boundaries and numeric parsing: `_service` (`\bai\b`, etc.), `_timeline` ($N \le 3 \to$ `1_3_months`, $4..6 \to$ `3_6_months`, $>6 \to$ `flexible`), `_budget` (currency-anchored upper-range parsing), `_role`, `_size`, and `_note_flags` (`auth` strictly requires login/account terms, preventing "accounting" false positives).
+- **Question-Scoped Yes/No Handler (`backend/app/agents/router.py`)**:
+  - Scoped yes/no extraction to the final question sentence (`_last_question_sentence`) only when it contains `"integration"` or `"admin"`. Feature listings containing "Admin" followed by visitor typing "no" no longer set admin to False.
+- **Booking Honesty & Event Update (`backend/app/engines/calendar.py`, `backend/app/agents/router.py`)**:
+  - In demo calendar mode (`live=False`), booking messages and cards carry the disclaimer: `"Demo booking: no calendar invite is sent until Google Calendar is connected."`
+  - Fixed `confirm_slot`: passing `event_id` uses Google Calendar `events().patch(...)` instead of `insert(...)`, eliminating duplicate calendar events when emails are captured post-booking.
+- **Brand Timezone Support (`backend/app/engines/calendar.py`, `backend/app/tenants/schema.py`, `backend/app/agents/router.py`)**:
+  - `list_slots` and `confirm_slot` use `brand.timezone` (defaults to `"Asia/Kolkata"`). A slot at 15:00 UTC formats as 20:30 IST.
+- **Security Hardening (`backend/app/core/llm.py`, `backend/app/core/guard.py`, `backend/app/rag/embeddings.py`)**:
+  - `_gemini` sends `x-goog-api-key` in HTTP headers and removes `?key=` from URL query parameters.
+  - Set `httpx` and `httpcore` loggers to `WARNING` to prevent URL leaks at INFO level.
+  - `VISITOR_TAG` regex handles whitespace in `</visitor>` tags case-insensitively (`r"<\s*/?\s*visitor\s*>"`); tightened `DAN` pattern to avoid false positives on visitor names like "Dan".
+- **Query Embedding Timing via ContextVar (`backend/app/rag/embeddings.py`, `backend/app/agents/router.py`)**:
+  - Introduced `query_embedding_duration_ms: ContextVar[float]` in `embeddings.py` wrapping `embed_query`.
+  - Removed all monkey-patching in `router.py`. Cleanly reads duration per context, thread-safe and task-safe.
+- **Test Suite Verification**:
+  - Added 11 regression tests in `backend/tests/test_ship3_requirements.py`.
+  - Suite status: **289 passed in 13.15s** (100% green).
+
+### 2. Files Changed in TASK SHIP-3
+| File | Change |
+|------|--------|
+| `backend/app/agents/router.py` | Token-based `_is_ack`, post-booking fast-path, rewrite & FAQ gating, deterministic fallbacks, question-scoped yes/no, demo honesty notices, ContextVar timing. |
+| `backend/app/core/guard.py` | Removed bare comma regex, currency-word context requirement for numbers, whitespace-tolerant `VISITOR_TAG`, tightened DAN pattern. |
+| `backend/app/core/llm.py` | Sent `x-goog-api-key` header, removed `?key=` query parameter, silenced httpx/httpcore loggers. |
+| `backend/app/engines/calendar.py` | Timezone formatting with `brand.timezone` (default `Asia/Kolkata`), Google Calendar `patch` when `event_id` present, demo disclaimer payload. |
+| `backend/app/tenants/schema.py` | Default `BrandConfig.timezone` to `Asia/Kolkata`. |
+| `backend/app/rag/embeddings.py` | `query_embedding_duration_ms` ContextVar around `embed_query`, silenced httpx/httpcore loggers. |
+| `backend/tests/test_ship3_requirements.py` | 11 comprehensive automated tests covering all SHIP-3 items. |
+| `docs/PROGRESS.md` | Session 19 running log entry. |
+
+---
+
+## Session 18 (TASK SHIP-2: Discovery Acknowledgement Scoping, Request Mode & Grounding) — 2026-10-04
+
+### 1. What was done in TASK SHIP-2
+- **Discovery Acknowledgement Scoping (`backend/app/agents/router.py`)**:
+  - Differentiated always-acknowledgements (`ALWAYS_ACK_RE`: `hi`, `hello`, `hey`, `thanks`, `shukriya`) from conditional acknowledgements (`CONDITIONAL_ACK_RE`: `yes`, `no`, `ok`, `haan`, `theek hai`).
+  - Implemented `has_pending_discovery`: True when discovery is ongoing (`not brief_ready(brief)` and no estimate generated, stage not in advising/handoff/disqualified).
+  - When `has_pending_discovery` is True, `yes`/`no`/`ok` bypass the fast deterministic acknowledgement and enter the standard extractor/slot path.
+  - Added deterministic free-text slot mapping in `_apply_free_text`: `"no"` after integrations sets `brief.integrations = ["none"]`; `"yes"` after admin question sets `brief.admin = True`.
+  - Maintained zero-LLM/zero-retrieval skip for `thanks`, `yes`, `no`, `ok` after estimate generation when discovery is inactive.
+- **Visitor Request Mode Enforcement (`backend/app/core/llm.py`, caller agents)**:
+  - Verified and ensured all visitor-facing LLM calls pass `mode="request"`: extractor (`router.py:382`), consult (`discovery_synth.py:65`), solution (`router.py:461`), fallback (`fallback.py:53`), and grounded answer (`grade.py:61`).
+  - In `core/llm.py`, when `mode="request"` and model starts with `gemini-3`, injects `thinkingConfig: {"thinkingLevel": settings.llm_thinking_level}` (default `"low"`).
+- **Grounding Prompt in `grounded_answer` (`backend/app/rag/grade.py`)**:
+  - Added exact grounding directive `GROUNDING_LINE` into `GROUNDED_SYSTEM_PROMPT`:
+    `"Answer only from the engine data and the provided notes. If the notes do not contain the answer, say you are not sure and offer to connect the team. Never invent clients, case studies, guarantees, delivery dates or prices."`
+- **Test Suite Expansion**:
+  - Added 9 dedicated regression tests in `backend/tests/test_ship2_requirements.py`.
+  - Suite status: **278 passed, 0 xfailed, 0 failed in 12.90s** (100% green).
+
+### 2. Files Changed in TASK SHIP-2
+| File | Change |
+|------|--------|
+| `backend/app/agents/router.py` | Distinguish always vs conditional ack, `has_pending_discovery` check, `_apply_free_text` yes/no mapping. |
+| `backend/app/rag/grade.py` | Injected `GROUNDING_LINE` into `GROUNDED_SYSTEM_PROMPT` for `grounded_answer` LLM call. |
+| `backend/app/core/llm.py` | Verified `mode="request"` thinking config payload construction for gemini-3. |
+| `backend/tests/test_ship2_requirements.py` | 9 automated tests for ack scoping, mode="request", and grounded_answer prompt. |
+
+---
+
+## Session 17 (TASK SHIP-1: Thinking Level, Timing Benchmarks, Bypass, Badges, Price Guard & Grounding) — 2026-10-04
+
+### 1. What was done in TASK SHIP-1
+- **LLM Thinking Level Control (`backend/app/core/settings.py`, `backend/app/core/llm.py`)**:
+  - Added `llm_thinking_level: str = "low"` (allowed: `low`, `medium`, `high`).
+  - Added validator rejecting `"minimal"` with explicit error because `gemini-3.8-flash` rejects minimal.
+  - Injected `thinkingConfig: {"thinkingLevel": settings.llm_thinking_level}` for `gemini-3` models in `mode="request"`. Documented in `.env.example`.
+- **Latency Timing & Server-Timing Header (`backend/app/api/sessions.py`)**:
+  - Wrapped each turn stage with `time.perf_counter()`: `extractor`, `query_embedding`, `retrieval_db`, `answer_llm`, `db_writes`, `total`.
+  - Emits single INFO log line per turn with stage durations in ms without visitor text.
+  - Added RFC-compliant `Server-Timing` HTTP response header.
+  - Benchmarked 10 scripted turns locally with real Gemini API key:
+    - Extractor: Median 2043 ms, Max 2315 ms.
+    - Query Embedding: Median 120 ms, Max 185 ms.
+    - Retrieval DB: Median 8 ms, Max 22 ms.
+    - Answer LLM: Median 1991 ms, Max 2250 ms.
+    - DB Writes: Median 4 ms, Max 12 ms.
+    - Total: Median 4210 ms, Max 4680 ms.
+- **Skip Pointless Work (`backend/app/agents/router.py`)**:
+  - Chip clicks bypass slot extractor via `is_chip_click`.
+  - Pure acknowledgements (`hi`, `hello`, `ok`, `thanks`, etc.) bypass query embedding and retrieval DB, returning deterministic fallback string.
+- **Bottleneck Analysis & Proposed Fix**:
+  - Single biggest cost identified: Sequential 2-call LLM architecture (extractor ~2043 ms + answer LLM ~1991 ms = ~4000 ms of 4200 ms total).
+  - Proposed fix: Collapse slot extraction and synthesis into a single structured LLM call when user provides free text during discovery.
+- **Sample Project Badging (`widget/consultant.js`, `public/studio.html`)**:
+  - Rendered `Sample project (demo data)` badge on portfolio/case-study cards from chunks with `is_sample=True`.
+  - Fallback/consultant citations prepend `"Sample case study:"` when citing sample data.
+- **Strict Sentence-Level Price Guard (`backend/app/core/guard.py`)**:
+  - Rewrote `sanitize_price_leaks` to replace whole sentence containing unauthorized figures with:
+    `"Exact pricing depends on scope; the indicative range above is the only figure I can confirm."`
+  - Added Indian currency expressions (`lakh`, `crore`, `₹`), lookbehinds `(?<!\bRs\.)`, and expanded budget bands.
+- **Grounding Directive (`backend/app/agents/fallback.py`, `backend/app/agents/discovery_synth.py`, `backend/app/agents/router.py`)**:
+  - Injected exact grounding line into fallback, consult, and solution system prompts.
+- **Test Suite**:
+  - Added 14 automated tests in `backend/tests/test_ship1_requirements.py`.
+  - Suite status: **269 passed, 0 xfailed, 0 failed in 12.30s**.
+
+### 2. Files Changed in TASK SHIP-1
+| File | Change |
+|------|--------|
+| `backend/app/core/settings.py` | Added `llm_thinking_level` setting and validator rejecting `"minimal"`. |
+| `backend/app/core/llm.py` | Added `thinkingConfig` payload injection for `gemini-3*` models in `mode="request"`. |
+| `backend/app/api/sessions.py` | Stage timers (`time.perf_counter`), INFO turn log line, `Server-Timing` header. |
+| `backend/app/agents/router.py` | Skip extractor on chip clicks, pure ack bypass, grounding line in solution prompt. |
+| `backend/app/agents/fallback.py` | Added grounding line in fallback prompt, cite sample cases as sample. |
+| `backend/app/agents/discovery_synth.py` | Added grounding line in consult system prompt. |
+| `backend/app/core/guard.py` | Sentence-level price leak sanitization, Indian currency support, expanded budget band regex. |
+| `widget/consultant.js` & `public/widget/consultant.js` | Added sample badge to portfolio cards. |
+| `public/studio.html` | Added sample badge to studio proposal cards. |
+| `.env.example` | Documented `LLM_THINKING_LEVEL=low`. |
+| `backend/tests/test_ship1_requirements.py` | 14 automated tests for SHIP-1 requirements. |
+
+---
+
 ## Session 16 (Live Deployment Hardening, UX Polish & Post-Booking Flow) — 2026-10-03
 
 ### 1. What was done in Session 16

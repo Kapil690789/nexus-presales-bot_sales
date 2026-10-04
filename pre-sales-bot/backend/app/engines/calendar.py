@@ -13,40 +13,75 @@ def google_ready(tenant: TenantRow) -> bool:
     return bool(settings.google_client_id.strip() and settings.google_client_secret.strip() and token)
 
 
-def dummy_slots(now: datetime | None = None) -> list[dict]:
+def _format_slot_label(dt: datetime, tz_name: str = "Asia/Kolkata") -> str:
+    from zoneinfo import ZoneInfo
+    try:
+        tz = ZoneInfo(tz_name.strip() if tz_name else "Asia/Kolkata")
+    except Exception:
+        tz = timezone.utc
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    local = dt.astimezone(tz)
+    tz_str = local.strftime("%Z")
+    if not tz_str or tz_str.startswith(("+", "-")):
+        tz_str = tz_name
+    return local.strftime(f"%a %b %d, %H:%M {tz_str}")
+
+
+def dummy_slots(now: datetime | None = None, tz_name: str = "Asia/Kolkata") -> list[dict]:
     origin = now or datetime.now(timezone.utc)
     slots: list[dict] = []
     day = origin + timedelta(days=1)
     while len(slots) < 3:
         if day.weekday() < 5:
             when = day.replace(hour=15, minute=0, second=0, microsecond=0)
-            slots.append({"slot_iso": when.isoformat(), "label": when.strftime("%a %b %d, %H:%M UTC")})
+            slots.append({"slot_iso": when.isoformat(), "label": _format_slot_label(when, tz_name)})
         day += timedelta(days=1)
     return slots
 
 
-def list_slots(tenant: TenantRow) -> tuple[list[dict], bool]:
+def list_slots(tenant: TenantRow, tz_name: str = "Asia/Kolkata") -> tuple[list[dict], bool]:
     if google_ready(tenant):
         try:
-            return _google_slots(tenant), True
+            return _google_slots(tenant, tz_name=tz_name), True
         except Exception:
-            return dummy_slots(), False
-    return dummy_slots(), False
+            return dummy_slots(tz_name=tz_name), False
+    return dummy_slots(tz_name=tz_name), False
 
 
-def confirm_slot(tenant: TenantRow, slot_iso: str, summary: str, attendee: str) -> dict:
-    label = slot_iso
-    for slot in dummy_slots():
+def confirm_slot(
+    tenant: TenantRow,
+    slot_iso: str,
+    summary: str,
+    attendee: str,
+    event_id: str | None = None,
+    tz_name: str = "Asia/Kolkata",
+) -> dict:
+    try:
+        start_dt = datetime.fromisoformat(slot_iso)
+        label = _format_slot_label(start_dt, tz_name)
+    except Exception:
+        label = slot_iso
+    for slot in dummy_slots(tz_name=tz_name):
         if slot["slot_iso"] == slot_iso:
             label = slot["label"]
     if google_ready(tenant):
         try:
-            booked = _google_book(tenant, slot_iso, summary, attendee)
+            booked = _google_book(tenant, slot_iso, summary, attendee, event_id=event_id, tz_name=tz_name)
             booked["live"] = True
             return booked
         except Exception:
             pass
-    return {"slot_iso": slot_iso, "label": label, "live": False, "meet_url": "", "html_link": ""}
+    return {
+        "slot_iso": slot_iso,
+        "label": label,
+        "live": False,
+        "meet_url": "",
+        "html_link": "",
+        "event_id": event_id or "",
+        "disclaimer": "Demo booking: no calendar invite is sent until Google Calendar is connected.",
+        "note": "Demo booking: no calendar invite is sent until Google Calendar is connected.",
+    }
 
 
 def _credentials(tenant: TenantRow):
@@ -73,7 +108,7 @@ def _calendar_id(tenant: TenantRow) -> str:
     return (tenant.google_calendar_id or "primary").strip() or "primary"
 
 
-def _google_slots(tenant: TenantRow) -> list[dict]:
+def _google_slots(tenant: TenantRow, tz_name: str = "Asia/Kolkata") -> list[dict]:
     duration = get_platform().calendar.duration_minutes
     now = datetime.now(timezone.utc)
     end = now + timedelta(days=10)
@@ -98,12 +133,19 @@ def _google_slots(tenant: TenantRow) -> list[dict]:
                     clash = True
                     break
             if not clash:
-                slots.append({"slot_iso": iso, "label": cursor.strftime("%a %b %d, %H:%M UTC")})
+                slots.append({"slot_iso": iso, "label": _format_slot_label(cursor, tz_name)})
         cursor += timedelta(hours=1)
-    return slots or dummy_slots()
+    return slots or dummy_slots(tz_name=tz_name)
 
 
-def _google_book(tenant: TenantRow, slot_iso: str, summary: str, attendee: str) -> dict:
+def _google_book(
+    tenant: TenantRow,
+    slot_iso: str,
+    summary: str,
+    attendee: str,
+    event_id: str | None = None,
+    tz_name: str = "Asia/Kolkata",
+) -> dict:
     duration = get_platform().calendar.duration_minutes
     start = datetime.fromisoformat(slot_iso)
     if start.tzinfo is None:
@@ -116,16 +158,24 @@ def _google_book(tenant: TenantRow, slot_iso: str, summary: str, attendee: str) 
         "attendees": [{"email": attendee}] if attendee else [],
         "conferenceData": {"createRequest": {"requestId": slot_iso.replace(":", "")[:40]}},
     }
-    created = (
-        _service(tenant)
-        .events()
-        .insert(calendarId=_calendar_id(tenant), body=event, conferenceDataVersion=1)
-        .execute()
-    )
+    svc = _service(tenant)
+    cal_id = _calendar_id(tenant)
+    if event_id:
+        res = (
+            svc.events()
+            .patch(calendarId=cal_id, eventId=event_id, body=event)
+            .execute()
+        )
+    else:
+        res = (
+            svc.events()
+            .insert(calendarId=cal_id, body=event, conferenceDataVersion=1)
+            .execute()
+        )
     return {
         "slot_iso": slot_iso,
-        "label": start.strftime("%a %b %d, %H:%M UTC"),
-        "meet_url": created.get("hangoutLink") or "",
-        "html_link": created.get("htmlLink") or "",
-        "event_id": created.get("id") or "",
+        "label": _format_slot_label(start, tz_name),
+        "meet_url": res.get("hangoutLink") or "",
+        "html_link": res.get("htmlLink") or "",
+        "event_id": res.get("id") or event_id or "",
     }
