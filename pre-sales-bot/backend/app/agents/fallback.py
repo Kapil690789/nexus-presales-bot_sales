@@ -56,10 +56,13 @@ def fallback_message(
 
     if is_ack:
         if not (brief and brief_ready(brief)):
+            _goal_hint = ""
+            if brief and (brief.goal or brief.service):
+                _g = (brief.goal or brief.service or "").replace("_", " ").strip()
+                _goal_hint = f" Looks like you're building around '{_g}' — let's keep scoping that out."
             return (
-                f"I'm {name}'s assistant and pre-sales consultant. We specialize in custom web applications, "
-                f"cross-platform mobile apps (iOS & Android), and AI solutions. "
-                f"I'd love to learn more about what you're looking to build so we can tailor the right approach."
+                f"I'm {name}'s pre-sales consultant, focused on custom web, mobile, and AI software.{_goal_hint} "
+                f"What's the next thing on your mind?"
             )
         return (
             f"Glad that aligns! If you'd like to talk through the technical architecture, team setup, or confirm the timeline, "
@@ -136,22 +139,32 @@ def fallback_message(
                 pass
 
     if not brief_ready(brief):
+        _partial_ctx = ""
+        if brief:
+            _parts_ctx = []
+            if brief.goal or brief.service:
+                _parts_ctx.append((brief.goal or brief.service or "").replace("_", " ").strip())
+            if brief.platforms:
+                _parts_ctx.append(" + ".join(brief.platforms))
+            if _parts_ctx:
+                _partial_ctx = f" So far we've scoped: {', '.join(_parts_ctx)}."
         return (
-            f"I'm {name}'s assistant and pre-sales consultant. We specialize in custom web applications, "
-            f"cross-platform mobile apps (iOS & Android), and AI solutions. "
-            f"I'd love to learn more about what you're looking to build so we can tailor the right approach."
+            f"I'm {name}'s pre-sales consultant, focused on bespoke web, mobile, and AI software.{_partial_ctx} "
+            f"What else would you like to know or build out?"
         )
 
     if is_ack:
+        _goal_ctx = (brief.goal or brief.service or "your project").replace("_", " ").strip() if brief else "your project"
         return (
-            f"Glad that aligns! If you'd like to talk through the technical architecture, team setup, or confirm the timeline, "
-            f"feel free to schedule a short discovery call with our team anytime."
+            f"Sounds like we're aligned on '{_goal_ctx}'. "
+            f"When you're ready, book a short call with the team to lock in architecture and delivery."
         )
 
     parts = []
     if estimate:
+        _goal_label = (brief.goal or brief.service or "this scope").replace("_", " ").strip() if brief else "this scope"
         parts.append(
-            f"Based on what you've shared, our indicative range is **{estimate['range_label']}** over about {estimate['timeline_weeks']} weeks."
+            f"Based on what you've shared for '{_goal_label}', our indicative range is **{estimate['range_label']}** over about {estimate['timeline_weeks']} weeks."
         )
     parts.append("The best next step is a short discovery call with our engineering team to review your specific requirements.")
     return " ".join(parts)

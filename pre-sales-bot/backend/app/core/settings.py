@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:8010,http://127.0.0.1:8010"
     llm_provider: str = "gemini"
     llm_api_key: str = ""
-    llm_model: str = "gemini-2.5-flash"
+    llm_model: str = "gemini-3.8-flash"
     llm_base_url: str = ""
     embedding_backend: str = "gemini"
     embedding_model: str = "gemini-embedding-001"

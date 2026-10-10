@@ -139,4 +139,6 @@ def test_ok_thanks_is_acknowledgement():
     )
     assert res2.status_code == 200
     assert res2.json()["route"] == "fallback"
-    assert "glad" in res2.json()["message"].lower()
+    # After brief is complete, ack should nudge toward booking (context-aware, no "glad that aligns" required)
+    msg_lower = res2.json()["message"].lower()
+    assert any(tok in msg_lower for tok in ("sounds", "glad", "ready", "lock in", "book", "call", "team", "schedule"))

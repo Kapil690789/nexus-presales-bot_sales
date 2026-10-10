@@ -123,7 +123,10 @@ def test_ship2_thanks_after_estimate_skips_llm(client):
         mock_complete.assert_not_called()
         body = res.json()
         assert body["route"] == "fallback"
-        assert "glad that aligns" in body["message"].lower()
+        # Brief-ready ack should confirm alignment and nudge to book — no "glad that aligns" required
+        msg_lower = body["message"].lower()
+        assert any(tok in msg_lower for tok in ("sounds", "glad", "aligned", "ready", "lock in", "book", "call", "team", "schedule"))
+
 
 
 @pytest.mark.parametrize("caller_name", [

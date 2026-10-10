@@ -341,7 +341,30 @@ def run_turn(
             except Exception:
                 booked = {}
             booking_label = booked.get("label") or booked.get("slot_iso") or "your scheduled session"
-            reply = f"You're welcome! You're all set for {booking_label}. I can share the agenda or help you reschedule."
+            _goal_ctx = (brief.goal or brief.service or "your project").rstrip(".").strip()
+            _plat_ctx = (", ".join(brief.platforms) if brief.platforms else "")
+            _goal_str = f"{_goal_ctx}" + (f" on {_plat_ctx}" if _plat_ctx else "")
+            _dur = get_platform().calendar.duration_minutes
+            _synth_reply: str | None = None
+            if llm_available():
+                try:
+                    _pb = (
+                        f"You are Alex, a warm senior solutions consultant. "
+                        f"The client just booked a {_dur}-minute discovery call at {booking_label!r} for their project: '{_goal_str}'. "
+                        f"Write a single warm, confident sentence (no emoji) confirming they're all set and teasing what the team will cover — "
+                        f"mention the project context, not generic filler. "
+                        f'Return JSON {{"message": "..."}}.'
+                    )
+                    _pd = complete_json(SOLUTION_SYSTEM_PROMPT, _pb)
+                    _m = str(_pd.get("message") or "").strip()
+                    if _m and len(_m) <= 280:
+                        _synth_reply = _m
+                except LLMError:
+                    pass
+            reply = _synth_reply or (
+                f"You're all set for {booking_label} — the team will come prepared with the scope for '{_goal_str}' "
+                f"so you won't need to repeat a thing."
+            )
             post_chips = [
                 {"label": "What is on the agenda?", "field": "ask", "value": "What is on the agenda for our discovery call?"},
                 {"label": "Can I reschedule the time?", "field": "booking_window", "value": "reschedule"},
@@ -494,14 +517,36 @@ def run_turn(
                 extracted = extract_slots(text, pending, brief)
                 timings["extractor"] += (time.perf_counter() - t0_ext) * 1000.0
             if extracted.get("is_off_topic"):
+                _offtopic_msg: str | None = None
+                if llm_available():
+                    try:
+                        _svc = (brief.service or "").replace("_", " ")
+                        _svc_hint = f" They have mentioned interest in: {_svc}." if _svc else ""
+                        _op = (
+                            f"You are Alex, the senior pre-sales consultant at {config.brand.name}. "
+                            f"A visitor asked something off-topic.{_svc_hint} "
+                            f"Write 1–2 warm, professional sentences gracefully redirecting them. "
+                            f"Acknowledge you can't help with that topic, briefly state {config.brand.name}'s focus "
+                            f"(bespoke web, mobile, AI software), and invite them back to their project scope. "
+                            f"Be specific and human, not robotic. "
+                            f'Return JSON {{"message": "..."}}.'
+                        )
+                        _od = complete_json(SOLUTION_SYSTEM_PROMPT, _op)
+                        _om = str(_od.get("message") or "").strip()
+                        if _om and len(_om) <= 320:
+                            _offtopic_msg = _om
+                    except LLMError:
+                        pass
+                if not _offtopic_msg:
+                    _svc_label = (brief.service or "").replace("_", " ") or "custom software"
+                    _offtopic_msg = (
+                        f"That's a bit outside my scope as {config.brand.name}'s project consultant — "
+                        f"I'm focused on scoping, architecture, and estimation for {_svc_label} and digital products. "
+                        f"Happy to keep building out your project estimate or answer any technical questions about what we can build for you."
+                    )
                 return _finish(
                     session, brief, contact, summary,
-                    message=(
-                        f"I'm {config.brand.name}'s project consultant, specializing in custom software scoping, "
-                        f"architecture, and estimation for web and mobile applications. "
-                        f"While I can't assist with general trivia or standalone coding questions, I'd love to help if you're exploring "
-                        f"building a digital product or application! What type of project are you considering?"
-                    ),
+                    message=_offtopic_msg,
                     stage=session.stage or "discovery",
                     route="off_topic",
                     chips=_next_chips(brief, has_booking=bool(session.booking_json)),
@@ -544,9 +589,28 @@ def run_turn(
     if not is_chip_click and is_ack:
         estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
         if brief and brief_ready(brief):
-            reply_msg = (
-                f"Glad that aligns! If you'd like to talk through the technical architecture, team setup, or confirm the timeline, "
-                f"feel free to schedule a short discovery call with our team anytime."
+            _goal_ctx = (brief.goal or brief.service or "the project").rstrip(".").strip()
+            _dur = get_platform().calendar.duration_minutes
+            _ack_synth: str | None = None
+            if llm_available():
+                try:
+                    _ap = (
+                        f"You are Alex, the senior solutions consultant at {config.brand.name}. "
+                        f"The client acknowledged the scope for: '{_goal_ctx}'. "
+                        f"Write one warm, confident sentence (no emoji) acknowledging their confirmation and naturally "
+                        f"inviting them to book a {_dur}-minute call to review architecture and timeline — "
+                        f"mention their project context, not generic phrases like 'Glad that aligns'. "
+                        f'Return JSON {{"message": "..."}}.'
+                    )
+                    _ad = complete_json(SOLUTION_SYSTEM_PROMPT, _ap)
+                    _am = str(_ad.get("message") or "").strip()
+                    if _am and len(_am) <= 280:
+                        _ack_synth = _am
+                except LLMError:
+                    pass
+            reply_msg = _ack_synth or (
+                f"Sounds good — whenever you're ready to lock in architecture and delivery for '{_goal_ctx}', "
+                f"book a {_dur}-minute call with the team and we'll take it from there."
             )
         else:
             reply_msg = fallback_message(config, brief, estimate, query=text)
