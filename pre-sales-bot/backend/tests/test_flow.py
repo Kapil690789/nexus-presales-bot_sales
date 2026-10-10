@@ -367,7 +367,7 @@ def test_tenant_isolation(client, auth):
     try:
         session = client.post("/api/v1/sessions", json={"tenant": "acme"})
         assert session.status_code == 200
-        assert session.json()["message"].startswith("I'm Acme's assistant")
+        assert "Acme's AI project advisor" in session.json()["message"]
         reply = client.post(
             f"/api/v1/sessions/{session.json()['session_id']}/messages",
             json={"content": ZEPHYR},
@@ -427,7 +427,7 @@ def test_suggestion_chips_cover_open_questions(client, monkeypatch):
     monkeypatch.setattr("backend.app.agents.suggestions.llm_available", lambda: True)
 
     session = client.post("/api/v1/sessions", json={"tenant": "demo"}).json()
-    assert {chip["field"] for chip in session["chips"]} == {"service"}
+    assert {chip["field"] for chip in session["chips"]} == {"ask", "booking_window"}
     assert calls == []
     sid = session["session_id"]
 

@@ -1117,7 +1117,7 @@
         </div>
 
         <div class="guide-footer-callout">
-          <strong>Ready for Stakeholders?</strong> Click <strong>"Download PDF"</strong> at any point to generate an executive-formatted document, or book a live 30-minute technical architecture session directly with our solutions engineering pod.
+          <strong>Ready for Stakeholders?</strong> Click <strong>"Download PDF"</strong> at any point to generate an executive-formatted document, or book a live technical architecture session directly with our solutions engineering pod.
         </div>
       </div>
     </div>
@@ -1268,11 +1268,19 @@
     <!-- RIGHT: CHAT -->
     <div class="chat-panel">
       <div class="chat-panel-header">
-        <div class="chat-panel-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          Discovery Chat
+        <div class="chat-panel-title" style="display:flex;align-items:center;gap:8px;">
+          <div style="width:28px;height:28px;border-radius:50%;background:#3B82F6;color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;">A</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;">
+              <span>Alex · AI project advisor</span>
+              <span style="width:6px;height:6px;border-radius:50%;background:#10B981;box-shadow:0 0 6px #10B981;display:inline-block;" title="Online"></span>
+            </div>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;height:26px;color:#60A5FA;" onclick="sendMessage('Talk to a human', {label:'Talk to a human', field:'booking_window', value:'this_week'})" title="Connect with team">
+            Talk to a human
+          </button>
           <button class="btn btn-secondary" style="padding:4px 8px;font-size:11px;height:26px;" onclick="downloadChatTranscript()" title="Export chat transcript">
             Export Chat
           </button>
@@ -1576,7 +1584,10 @@ function appendMessage(role, text, chips) {
       const btn = document.createElement('button');
       btn.className = 'chip';
       btn.textContent = c.label;
-      btn.onclick = () => sendMessage(c.label, { field: c.field, value: c.value, label: c.label });
+      btn.onclick = () => {
+        const textToSend = (c.field === 'ask' && c.value) ? c.value : c.label;
+        sendMessage(textToSend, { field: c.field, value: c.value, label: c.label });
+      };
       chipRow.appendChild(btn);
     });
     container.appendChild(chipRow);
@@ -1803,7 +1814,7 @@ function updateNextSteps(data) {
 
   const isBooked = data.stage === 'handoff';
   const steps = [
-    { num: 1, text: isBooked ? '✅ Discovery call booked — invitation dispatched.' : 'Schedule a 30-minute discovery workshop with our solutions engineering team.' },
+    { num: 1, text: isBooked ? '✅ Discovery call booked — invitation dispatched.' : 'Schedule a discovery workshop with our solutions engineering team.' },
     { num: 2, text: 'Nexus prepares a detailed technical milestone specification within 3 business days.' },
     { num: 3, text: 'Confirm sprint cadence, design deliverables, and architecture sign-off.' },
     { num: 4, text: 'Kick off implementation with dedicated pod (Designer, Engineers, QA, Delivery Lead).' },

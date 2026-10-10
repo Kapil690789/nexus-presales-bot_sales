@@ -38,7 +38,7 @@ EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 OPEN = re.compile(r"\?|^(what|how|who|why|when|where|can|do|does|is|are|have)\b", re.IGNORECASE)
 BOOK = re.compile(r"\b(book|schedule|reschedule)\b.{0,40}\b(call|meeting|consultation|time)\b|\breschedule\b", re.IGNORECASE)
 OUT_OF_SCOPE = ("shopify", "crypto", "web3", "homework", "student project")
-ACTION = {"show_portfolio", "booking_window", "booking_slot", "nda", "close_out"}
+ACTION = {"show_portfolio", "booking_window", "booking_slot", "nda", "close_out", "view_mvp", "email_instead", "continue_discovery", "sharpen_estimate"}
 
 import time
 from backend.app.rag.embeddings import query_embedding_duration_ms
@@ -68,9 +68,25 @@ def _is_ack(text: str, has_pending_discovery: bool = False) -> bool:
         return False
     if not all(w in ACK_VOCAB for w in words):
         return False
-    if has_pending_discovery and any(w in CONDITIONAL_ACK_WORDS for w in words):
+    if has_pending_discovery and all(w in CONDITIONAL_ACK_WORDS for w in words):
         return False
     return True
+
+
+QUESTION_OR_COMMAND_START = re.compile(
+    r"^\s*(what|how|who|why|when|where|can|do|does|is|are|have|will|should|tell|show|explain|describe|list|give|share)\b",
+    re.IGNORECASE,
+)
+KNOWN_CASE_STUDIES = {"zephyr", "harbor", "atlas", "ledgerly", "harvest", "northstar"}
+
+
+def _is_question_like(text: str) -> bool:
+    cleaned = (text or "").strip()
+    if "?" in cleaned:
+        return True
+    if any(k in cleaned.lower() for k in KNOWN_CASE_STUDIES):
+        return True
+    return bool(QUESTION_OR_COMMAND_START.match(cleaned))
 
 
 def _last_question_sentence(msg: str) -> str:
@@ -111,7 +127,9 @@ def run_turn(
         "answer_llm": 0.0,
         "db_writes": 0.0,
     }
-    is_chip_click = bool(chip and (chip.get("field") or chip.get("value") or chip.get("label")))
+    is_chip_click = bool(field or value)
+    brief_track_fields = ("service", "goal", "platforms", "features", "timeline", "budget_band", "decision_role", "company_size", "integrations")
+    initial_brief_state = {f: getattr(brief, f) for f in brief_track_fields}
     found = EMAIL.search(text)
     if found:
         contact["email"] = found.group(0).rstrip(".")
@@ -133,28 +151,93 @@ def run_turn(
             chips=_next_chips(brief),
         )
 
+    if field == "view_mvp":
+        mvp_res = recommend_mvp(brief)
+        cards = [
+            {
+                "type": "mvp",
+                "title": "MVP breakdown",
+                "mvp": mvp_res["mvp"],
+                "later": mvp_res["later"],
+                "rationale": mvp_res["rationale"],
+            }
+        ]
+        msg = f"Here is how we recommend staging the MVP release to keep initial timeline and budget focused: {mvp_res['rationale']}"
+        chips = [
+            {"label": "Book a call", "field": "booking_window", "value": "this_week"},
+            {"label": "See sample projects", "field": "show_portfolio", "value": "yes"},
+        ]
+        return _finish(
+            session, brief, contact, summary,
+            message=msg,
+            stage="advising",
+            route="mvp",
+            chips=chips,
+            cards=cards,
+            mvp=mvp_res,
+        )
+
+    if field in ("continue_discovery", "sharpen_estimate"):
+        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings)
+
+    if field == "email_instead":
+        contact["prefers_email"] = True
+        session.contact_json = json.dumps(contact)
+        return _finish(
+            session, brief, contact, summary,
+            message="Sure. What's the best email?",
+            stage="email_capture",
+            route="email_capture",
+            chips=[],
+        )
+
     if field == "booking_slot":
         return _book(db, tenant, config, session, brief, contact, summary, str(value or ""))
 
     if field == "booking_window" or (text and not field and BOOK.search(text)):
         tz_name = getattr(config.brand, "timezone", "") or "Asia/Kolkata"
         slots, live = list_slots(tenant, tz_name=tz_name)
+        duration_min = get_platform().calendar.duration_minutes
+        handoff_text = getattr(config.brand, "booking_handoff_text", None) or "The team will see this whole conversation, so you won't need to repeat anything."
         pick_card = {"type": "booking", "title": "Pick a time", "live": live, "slots": slots}
         if not live:
             pick_card["disclaimer"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
             pick_card["note"] = "Demo booking: no calendar invite is sent until Google Calendar is connected."
+        chips = [{"label": slot["label"], "field": "booking_slot", "value": slot["slot_iso"]} for slot in slots]
+        chips.append({"label": "Email me instead", "field": "email_instead", "value": "prefers_email"})
         return _finish(
             session, brief, contact, summary,
-            message="Here are a few times for a short discovery call with our team:",
+            message=f"Here are a few times for a short {duration_min}-minute discovery call with our team. {handoff_text}",
             stage="booking",
             route="booking",
-            chips=[{"label": slot["label"], "field": "booking_slot", "value": slot["slot_iso"]} for slot in slots],
+            chips=chips,
             cards=[pick_card],
         )
 
-    # Email capture (booking confirmation or lead capture)
     if found:
         email = contact["email"]
+        if contact.get("prefers_email"):
+            qual = qualify(brief, config.qualification, config.services, has_email=True)
+            estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
+            handoff = _handoff(config, brief, contact, qual, estimate, None)
+            session.handoff_summary = handoff
+            _lead(db, tenant, session, email, qual, estimate, handoff)
+            notify_slack(
+                db,
+                session.id,
+                tenant,
+                f"Lead email captured (prefers email) for {config.brand.name}: {email}",
+            )
+            return _finish(
+                session, brief, contact, summary,
+                message="Thanks, the team will email you the summary.",
+                stage="handoff",
+                route="email_capture",
+                chips=[PORTFOLIO_CHIP],
+                qualification=qual,
+                estimate=estimate,
+                handoff_summary=handoff,
+            )
         if session.booking_json:
             try:
                 booked = json.loads(session.booking_json)
@@ -289,8 +372,9 @@ def run_turn(
                 chips=post_chips,
             )
         if re.search(r"\b(agenda|what to expect|discuss on the call|happen on the call)\b", text.lower()):
+            duration_min = get_platform().calendar.duration_minutes
             reply = (
-                "Our 30-minute discovery call agenda covers:\n"
+                f"Our {duration_min}-minute discovery call agenda covers:\n"
                 "1. **Requirements & Scope**: Deep-dive into your core user workflows and product goals.\n"
                 "2. **Technical Architecture**: Aligning on stack, security, APIs, and key integrations.\n"
                 "3. **Delivery & Team Sizing**: Reviewing sprint roadmap, squad composition, and MVP boundaries.\n"
@@ -447,7 +531,8 @@ def run_turn(
                     )
 
     if filled or (field and field not in ACTION):
-        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings)
+        changed_fields = [f for f in brief_track_fields if getattr(brief, f) != initial_brief_state[f] and getattr(brief, f)]
+        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings, changed_fields=changed_fields)
 
     # Skip embedding and retrieval for pure acknowledgements
     has_pending_discovery = (
@@ -497,6 +582,10 @@ def run_turn(
             route="objection",
             chips=_next_chips(brief, has_booking=bool(session.booking_json)),
         )
+
+    if has_pending_discovery and text and not _is_question_like(text):
+        changed_fields = [f for f in brief_track_fields if getattr(brief, f) != initial_brief_state[f] and getattr(brief, f)]
+        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings, changed_fields=changed_fields)
 
     raw_queries = lookup_queries(text, summary, previous[-3:]) or [text]
     queries = [rewrite_query_with_brief(q, brief) for q in raw_queries]
@@ -707,7 +796,119 @@ def _field_asked_count(history: list[dict], field: str | None) -> int:
     return count
 
 
-def _after_brief(session, config, brief, contact, summary, user_text: str = "", history: list[dict] | None = None, timings: dict | None = None) -> dict:
+def format_shape_message(arch: dict, mvp_res: dict) -> str:
+    channels = ", ".join(arch.get("frontend") or ["Web / Mobile"])
+    flow = "; ".join((mvp_res.get("mvp") or [])[:3])
+    backend = ", ".join(arch.get("backend") or ["API + Database"])
+    lines = [
+        "Here is the architectural shape based on what you've shared:",
+        f"• Channels and UX: {channels}",
+        f"• Core flow: {flow}",
+        f"• Backend and APIs: {backend}",
+    ]
+    return "\n".join(lines)
+
+
+def build_shape_card(arch: dict, mvp_res: dict) -> dict:
+    return {
+        "type": "shape",
+        "title": "Channels, core flow, and architecture",
+        "channels_ux": list(arch.get("frontend") or []),
+        "core_flow": list((mvp_res.get("mvp") or [])[:3]),
+        "backend_apis": list(arch.get("backend") or []),
+    }
+
+
+def budget_fit_line(
+    band: str | None,
+    estimate: dict | None,
+    ranges: dict | None,
+) -> str:
+    if not band or not ranges or not estimate:
+        return ""
+    if band == "exploring" or band not in ranges:
+        return ""
+    band_range = ranges.get(band)
+    if not band_range or not isinstance(band_range, (list, tuple)) or len(band_range) < 2:
+        return ""
+
+    band_min, band_max = band_range[0], band_range[1]
+    est_low = estimate.get("low")
+    est_high = estimate.get("high")
+
+    if est_low is None or est_high is None:
+        nums = [int(n.replace(",", "")) for n in re.findall(r"([0-9,]+)", estimate.get("range_label", ""))]
+        if len(nums) >= 2:
+            est_low, est_high = nums[0], nums[1]
+        elif len(nums) == 1:
+            est_low = est_high = nums[0]
+        else:
+            return ""
+
+    if band_max is not None and band_max < est_low:
+        return "Your budget band sits below this first-pass range. The usual lever is a leaner scope; I can show a Core-only cut."
+    if band_min is not None and band_min > est_high:
+        return "Your budget band is above this first-pass range, so there is room to add scope."
+    return "Your budget band overlaps this first-pass range."
+
+
+def recap_line_from_brief(config: TenantConfig, brief: ProjectBrief) -> str:
+    service_label = ""
+    if brief.service and config.services and brief.service in config.services.in_scope:
+        service_label = config.services.in_scope[brief.service].label
+    elif brief.service:
+        service_label = brief.service.replace("_", " ").title()
+    else:
+        service_label = "Custom Software"
+
+    platforms_str = ", ".join(brief.platforms) if brief.platforms else "Web"
+    features_list = (brief.features or [])[:4]
+    features_str = ", ".join(features_list) if features_list else "core features"
+
+    # Format timeline without duration numbers or weeks/months
+    t_clean = (brief.timeline or "flexible").lower()
+    if "asap" in t_clean:
+        timeline_str = "ASAP launch"
+    elif "flexible" in t_clean or "unknown" in t_clean:
+        timeline_str = "flexible target"
+    elif "1_3" in t_clean:
+        timeline_str = "near-term target"
+    elif "3_6" in t_clean:
+        timeline_str = "medium-term target"
+    else:
+        timeline_str = re.sub(r"[\$€£₹]|USD|\b(weeks?|months?|days?|\d+)\b", "", t_clean).strip() or "target milestone"
+
+    # Format budget band without currency symbols
+    b_clean = (brief.budget_band or "exploring").lower()
+    if "under_15" in b_clean:
+        budget_str = "starter tier"
+    elif "15_40" in b_clean:
+        budget_str = "growth tier"
+    elif "40_80" in b_clean:
+        budget_str = "scale tier"
+    elif "80k_plus" in b_clean or "80k" in b_clean:
+        budget_str = "enterprise tier"
+    elif "exploring" in b_clean:
+        budget_str = "exploring budget"
+    else:
+        budget_str = re.sub(r"[\$€£₹]|USD|\d+", "", b_clean).strip() or "exploring budget"
+
+    goal_str = (brief.goal or "core project")[:120].replace("\n", " ").strip()
+
+    return f"{service_label}, {platforms_str}, {features_str}, {timeline_str}, {budget_str}, {goal_str}"
+
+
+def _after_brief(
+    session,
+    config,
+    brief,
+    contact,
+    summary,
+    user_text: str = "",
+    history: list[dict] | None = None,
+    timings: dict | None = None,
+    changed_fields: list[str] | None = None,
+) -> dict:
     timings = timings or {}
     qual = qualify(brief, config.qualification, config.services, has_email=bool(contact.get("email")))
     if brief.role_unconfirmed:
@@ -749,16 +950,42 @@ def _after_brief(session, config, brief, contact, summary, user_text: str = "", 
     if field:
         brief.field_attempts[field] = attempts + 1
     t0_ans = time.perf_counter()
-    prompt_msg = prompt_for(brief, field, repeat=repeat) if repeat else synthesize_discovery_prompt(config, brief, field, user_text=user_text)
+    prompt_msg = (
+        prompt_for(brief, field, repeat=repeat)
+        if repeat
+        else synthesize_discovery_prompt(
+            config,
+            brief,
+            field,
+            user_text=user_text,
+            session_id=str(session.id or ""),
+            changed_fields=changed_fields,
+            attempt=attempts,
+        )
+    )
     if not repeat:
         timings["answer_llm"] = timings.get("answer_llm", 0.0) + (time.perf_counter() - t0_ans) * 1000.0
     chips = chips_for_field(field, brief, repeat=repeat) or ensure_chips(brief, prompt_msg)
+    cards = []
+    if (
+        brief.platforms
+        and (brief.features or brief.features_confirmed)
+        and not getattr(brief, "shape_shown", False)
+    ):
+        brief.shape_shown = True
+        arch = recommend_architecture(brief, config.services)
+        mvp_res = recommend_mvp(brief)
+        cards.append(build_shape_card(arch, mvp_res))
+        shape_text = format_shape_message(arch, mvp_res)
+        prompt_msg = f"{shape_text}\n\n{prompt_msg}"
+
     return _finish(
         session, brief, contact, summary,
         message=prompt_msg,
         stage="discovery",
         route="discovery",
         chips=chips,
+        cards=cards,
         qualification=qual,
         timings=timings,
     )
@@ -774,13 +1001,33 @@ def _estimate(session, config, brief, contact, summary, qual, timings: dict | No
     for c in cases:
         if is_sample or c.get("is_sample"):
             c["is_sample"] = True
-    t0_ans = time.perf_counter()
-    message = _synthesize_estimate_message(config, brief, estimate)
-    timings["answer_llm"] = timings.get("answer_llm", 0.0) + (time.perf_counter() - t0_ans) * 1000.0
-    chips = [BOOK_CHIP, PORTFOLIO_CHIP]
+
+    recap = recap_line_from_brief(config, brief)
+    fit_line = budget_fit_line(brief.budget_band, estimate, config.qualification.budget_band_ranges_usd)
+
+    parts = [
+        f"{recap}. If anything is off, tell me and I'll update the estimate.",
+        f"A first-pass indicative range for this scope is **{estimate['range_label']}** over about **{estimate['timeline_weeks']} weeks**.\n*{config.brand.disclaimer}*",
+        "That's a first-pass range based on typical scope for this kind of project.",
+    ]
+    if fit_line:
+        parts.append(fit_line)
     if not brief.company_size:
-        message += "\n\n" + DISCOVERY_PROMPTS["company_size"]
-        chips = chips_for_field("company_size") + chips
+        parts.append(DISCOVERY_PROMPTS["company_size"])
+
+    message = "\n\n".join(parts)
+
+    chips = []
+    if "leaner scope" in fit_line:
+        chips.append({"label": "Show a leaner cut", "field": "view_mvp", "value": "leaner_cut"})
+    chips.extend([
+        {"label": "Sharpen this estimate", "field": "sharpen_estimate", "value": "sharpen"},
+        {"label": "See the MVP", "field": "view_mvp", "value": "mvp"},
+        {"label": "See sample projects", "field": "show_portfolio", "value": "yes"},
+        {"label": "Book a call", "field": "booking_window", "value": "this_week"},
+        {"label": "Talk to a human", "field": "talk_human", "value": "human"},
+    ])
+
     cards = [
         {
             "type": "estimate",

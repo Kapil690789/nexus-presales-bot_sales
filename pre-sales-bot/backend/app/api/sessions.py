@@ -121,29 +121,64 @@ def create_session(body: SessionIn, db: Session = Depends(get_db)) -> dict:
         tenant_id=tenant.id,
         page_url=body.page_url[:500],
         page_title=body.page_title[:300],
-        path=body.path[:300] or "/",
+        path="/",
         stage="discovery",
         expires_at=_now() + timedelta(days=7),
     )
     db.add(session)
     db.commit()
     db.refresh(session)
-    prompt = DISCOVERY_PROMPTS["service"]
-    text = f"I'm {config.brand.name}'s assistant. {prompt}"
+
+    brand = config.brand
+    advisor_name = brand.advisor_name
+    advisor_title = brand.advisor_title
+    disclosure = f"Hi, I'm {advisor_name}, {brand.name}'s {advisor_title}."
+
+    clean_path = (body.path or "/").split("?")[0].split("#")[0]
+    matched_hint = None
+    for hint in brand.page_hints:
+        if clean_path.startswith(hint.match):
+            matched_hint = hint
+            break
+
+    if matched_hint and matched_hint.question:
+        question = matched_hint.question
+    elif brand.opening_variants:
+        import hashlib
+        idx = int(hashlib.md5(session.id.encode()).hexdigest(), 16) % len(brand.opening_variants)
+        question = brand.opening_variants[idx]
+    else:
+        question = "Tell me what you'd like to build in a sentence, or pick a starting point."
+
+    text = f"{disclosure} {question}".strip()
+
+    human_chip = {"label": brand.human_label, "field": "booking_window", "value": "this_week"}
+
+    if matched_hint and matched_hint.service:
+        from backend.app.agents.brief import ProjectBrief
+        brief = ProjectBrief(service=matched_hint.service)
+        session.brief_json = brief.model_dump_json()
+        db.add(session)
+        chips = [human_chip]
+    else:
+        starter_chips = [{"label": s.label, "field": "ask", "value": s.text} for s in brand.starters]
+        chips = starter_chips + [human_chip]
+
     message = _add(
         db,
         session.id,
         "assistant",
         text,
-        {"route": "discovery", "chips": chips_for_field("service"), "chunk_ids": []},
+        {"route": "discovery", "chips": chips, "chunk_ids": []},
     )
+    db.commit()
     return _public(
         session,
         message,
         {
             "message": text,
             "stage": "discovery",
-            "chips": chips_for_field("service"),
+            "chips": chips,
             "cards": [],
             "route": "discovery",
             "qualification": None,

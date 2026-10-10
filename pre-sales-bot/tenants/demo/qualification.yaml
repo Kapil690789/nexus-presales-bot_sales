@@ -42,3 +42,10 @@ book_requires:
   min_score: 70
   has_email: true
   not_disqualified: true
+budget_band_ranges_usd:
+  exploring: null
+  under_15k: [0, 15000]
+  "15_40k": [15000, 40000]
+  "40_80k": [40000, 80000]
+  "80k_plus": [80000, null]
+

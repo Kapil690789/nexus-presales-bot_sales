@@ -19,6 +19,22 @@ FALLBACK_SYSTEM_PROMPT = (
     + GROUNDING_LINE
 )
 
+from backend.app.core.platform import get_platform
+
+FALLBACK_RECOVERY_TEXT = "That's outside what I have on hand right now. I can connect you with the team, or keep scoping your estimate."
+
+
+def fallback_recovery() -> tuple[str, list[dict]]:
+    chips = [
+        {"label": "Book a call", "field": "booking_window", "value": "booking"},
+        {"label": "Continue estimate", "field": "continue_discovery", "value": "continue"},
+    ]
+    return FALLBACK_RECOVERY_TEXT, chips
+
+
+def fallback_recovery_message() -> str:
+    return FALLBACK_RECOVERY_TEXT
+
 
 def fallback_message(
     config: TenantConfig,
@@ -74,6 +90,7 @@ def fallback_message(
     if llm_available() and query:
         if brief and brief_ready(brief) and estimate:
             goal_str = brief.goal or brief.service or "custom software product"
+            duration_min = get_platform().calendar.duration_minutes
             prompt = (
                 f"You are the senior pre-sales software consultant at {name}. "
                 f"The client has already scoped their project ('{goal_str}') and received an indicative estimate of "
@@ -81,7 +98,7 @@ def fallback_message(
                 f"The client just said: {wrap_visitor(query)}. "
                 f"{UNTRUSTED_RULE} "
                 f"Write a warm, concise, professional reply (1-3 sentences max). "
-                f"Acknowledge their input, offer to answer any technical/stack questions or help them book a 30-minute discovery call with the engineering team. "
+                f"Acknowledge their input, offer to answer any technical/stack questions or help them book a {duration_min}-minute discovery call with the engineering team. "
                 f"Do not redundantly paste the full estimate range unless explicitly asked. "
                 f"{notes_instruction} "
                 f'Return JSON {{"message": "..."}}.'

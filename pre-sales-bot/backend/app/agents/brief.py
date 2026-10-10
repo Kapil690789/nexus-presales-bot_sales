@@ -61,6 +61,8 @@ class ProjectBrief(BaseModel):
     company_size: str | None = None
     out_of_scope: str | None = None
     field_attempts: dict[str, int] = Field(default_factory=dict)
+    recent_acks: list[str] = Field(default_factory=list)
+    shape_shown: bool = False
 
     def apply_chip(self, field: str, value: Any) -> None:
         if not field or field in {
@@ -70,6 +72,10 @@ class ProjectBrief(BaseModel):
             "booking_slot",
             "nda",
             "close_out",
+            "view_mvp",
+            "email_instead",
+            "continue_discovery",
+            "sharpen_estimate",
         }:
             return
         if field == "confirm_role":

@@ -21,6 +21,7 @@ from backend.app.tenants.schema import (
     QualificationConfig,
     ServicesConfig,
     TenantConfig,
+    VoiceConfig,
 )
 
 SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
@@ -57,14 +58,19 @@ def load_tenant(slug: str) -> TenantConfig:
     brand = BrandConfig.model_validate(brand_raw)
     faqs_raw = _read_yaml(folder / "faqs.yaml").get("items") or []
     faqs = [FaqItem.model_validate(item) for item in faqs_raw if isinstance(item, dict)]
+    portfolio = PortfolioConfig.model_validate(_read_yaml(folder / "portfolio.yaml") or {})
+    objections = ObjectionsConfig.model_validate(_read_yaml(folder / "objections.yaml") or {})
+    voice_raw = _read_yaml(folder / "voice.yaml")
+    voice = VoiceConfig.model_validate(voice_raw) if voice_raw else VoiceConfig()
     return TenantConfig(
         brand=brand,
         faqs=faqs,
         services=ServicesConfig.model_validate(_read_yaml(folder / "services.yaml") or {"in_scope": {}}),
         pricing=PricingConfig.model_validate(_read_yaml(folder / "pricing.yaml") or {"bases": {}}),
         qualification=QualificationConfig.model_validate(_read_yaml(folder / "qualification.yaml") or {}),
-        portfolio=PortfolioConfig.model_validate(_read_yaml(folder / "portfolio.yaml") or {}),
-        objections=ObjectionsConfig.model_validate(_read_yaml(folder / "objections.yaml") or {}),
+        portfolio=portfolio,
+        objections=objections,
+        voice=voice,
     )
 
 
@@ -139,4 +145,9 @@ def create_tenant_folder(slug: str, name: str, logo_text: str, primary: str) -> 
 
 def public_brand(config: TenantConfig) -> dict:
     brand = config.brand
-    return json.loads(brand.model_dump_json())
+    data = json.loads(brand.model_dump_json())
+    data.pop("starters", None)
+    data.pop("opening_variants", None)
+    data.pop("page_hints", None)
+    return data
+

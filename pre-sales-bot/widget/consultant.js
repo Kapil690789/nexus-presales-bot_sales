@@ -61,10 +61,14 @@
     ".ps-header{background:#0D0E12;border-bottom:1px solid rgba(255,255,255,0.08);color:#fff;padding:14px 14px 14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;position:relative;z-index:2}",
     ".ps-avatar{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.2);overflow:hidden;flex-shrink:0;background:#18181B}",
     ".ps-avatar svg{display:block;width:100%;height:100%}",
+    ".ps-avatar img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}",
+    ".ps-avatar-initials{display:grid;place-items:center;width:100%;height:100%;font-size:13px;font-weight:700;color:#fff;background:var(--ps-accent,#3B82F6);border-radius:50%}",
     ".ps-identity{flex:1;min-width:0;margin-left:2px}",
     ".ps-identity strong{display:block;font-size:14px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#FFFFFF}",
     ".ps-status{display:flex;align-items:center;gap:6px;margin:2px 0 0;font-size:11px;font-weight:500;color:#A1A1AA}",
     ".ps-online-dot{width:7px;height:7px;border-radius:50%;background:var(--ps-success);box-shadow:0 0 8px var(--ps-success)}",
+    ".ps-human-link{background:none;border:none;padding:0;color:#60A5FA;font-size:11px;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px;font-family:inherit;transition:color 150ms ease}",
+    ".ps-human-link:hover{color:#93C5FD}",
     ".ps-header-actions{display:flex;align-items:center;gap:4px;flex-shrink:0}",
     ".ps-header-btn{background:transparent;color:#A1A1AA;border:0;cursor:pointer;width:30px;height:30px;display:grid;place-items:center;border-radius:6px;padding:0;transition:all 150ms ease}",
     ".ps-header-btn:hover{color:#FFFFFF;background:rgba(255,255,255,.08)}",
@@ -170,10 +174,29 @@
   var dot = el("span", "ps-online-dot");
   dot.setAttribute("aria-hidden", "true");
   var statusEl = el("span");
+  var statusSep = el("span");
+  statusSep.textContent = " · ";
+  var humanLink = el("button", "ps-human-link");
+  humanLink.type = "button";
+  humanLink.setAttribute("aria-label", "Talk to a human");
   status.appendChild(dot);
   status.appendChild(statusEl);
+  status.appendChild(statusSep);
+  status.appendChild(humanLink);
   identity.appendChild(titleEl);
   identity.appendChild(status);
+
+  humanLink.onclick = function () {
+    if (!sessionId || busy) return;
+    setChips([]);
+    var label = brand.human_label || "Talk to a human";
+    say("user", label);
+    if (!beginWait()) return;
+    post("/api/v1/sessions/" + sessionId + "/messages", {
+      content: label,
+      chip: { label: label, field: "booking_window", value: "this_week" }
+    }).then(renderReply).catch(fail);
+  };
 
   var headerActions = el("div", "ps-header-actions");
   var infoBtn = el("button", "ps-header-btn");
@@ -350,13 +373,35 @@
     launcher.classList.remove("bottom-left", "bottom-right");
     launcher.classList.add(pos);
     panel.classList.remove("bottom-left", "bottom-right");
-    panel.classList.add(pos);
-    titleEl.textContent = brand.widget_title || "Nexus Advisor";
-    statusEl.textContent = brand.widget_subtitle || "Online";
+    var advName = brand.advisor_name || "Alex";
+    var advTitle = brand.advisor_title || "AI project advisor";
+    titleEl.textContent = advName + " · " + advTitle;
+    statusEl.textContent = "Online";
+    humanLink.textContent = brand.human_label || "Talk to a human";
+
+    avatar.innerHTML = "";
+    if (brand.advisor_avatar) {
+      var img = document.createElement("img");
+      img.src = brand.advisor_avatar;
+      img.alt = advName;
+      img.setAttribute("referrerpolicy", "no-referrer");
+      var fallbackInitials = el("div", "ps-avatar-initials", (advName.charAt(0) || "A").toUpperCase());
+      fallbackInitials.style.display = "none";
+      img.onerror = function () {
+        img.style.display = "none";
+        fallbackInitials.style.display = "grid";
+      };
+      avatar.appendChild(img);
+      avatar.appendChild(fallbackInitials);
+    } else {
+      var initials = el("div", "ps-avatar-initials", (advName.charAt(0) || "A").toUpperCase());
+      avatar.appendChild(initials);
+    }
+
     input.placeholder = brand.placeholder || "Type your message...";
     input.setAttribute("aria-label", brand.placeholder || "Message");
     launcher.setAttribute("aria-label", [brand.launcher_text, brand.launcher_subtitle].filter(Boolean).join(". "));
-    panel.setAttribute("aria-label", brand.widget_title || "Nexus Advisor");
+    panel.setAttribute("aria-label", advName + " · " + advTitle);
   }
 
   function scrollThread() {
@@ -431,9 +476,10 @@
       button.onclick = function () {
         if (!sessionId || busy) return;
         setChips([]);
-        say("user", chip.label || "");
+        var displayText = (chip.field === "ask" && typeof chip.value === "string" && chip.value) ? chip.value : (chip.label || "");
+        say("user", displayText);
         if (!beginWait()) return;
-        post("/api/v1/sessions/" + sessionId + "/messages", { content: chip.label || "", chip: chip }).then(renderReply).catch(fail);
+        post("/api/v1/sessions/" + sessionId + "/messages", { content: displayText, chip: chip }).then(renderReply).catch(fail);
       };
       chipsBox.appendChild(button);
     });
@@ -489,6 +535,17 @@
         if (item.outcome) html += "<br>" + esc(item.outcome);
         html += "</p>";
       });
+    } else if (card.type === "shape") {
+      html = "<h4>" + esc(card.title || "Project shape") + "</h4>";
+      if (card.channels_ux && card.channels_ux.length) {
+        html += "<strong>Channels &amp; UX</strong>" + list(card.channels_ux);
+      }
+      if (card.core_flow && card.core_flow.length) {
+        html += "<strong>Core flow</strong>" + list(card.core_flow);
+      }
+      if (card.backend_apis && card.backend_apis.length) {
+        html += "<strong>Backend &amp; APIs</strong>" + list(card.backend_apis);
+      }
     } else {
       html = "<h4>" + esc(card.title || card.type || "Details") + "</h4>";
     }

@@ -1,9 +1,48 @@
 from __future__ import annotations
 
+import re
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
+class Starter(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    label: str = Field(..., max_length=32)
+    text: str = Field(..., max_length=120)
+
+
+class PageHint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    match: str
+    service: str = ""
+    question: str = ""
+
+    @field_validator("match")
+    @classmethod
+    def validate_match(cls, v: str) -> str:
+        if not v or not v.startswith("/"):
+            raise ValueError("PageHint match must start with '/'")
+        return v
+
+    @field_validator("question")
+    @classmethod
+    def validate_question(cls, v: str) -> str:
+        if v and len(v.split()) > 25:
+            raise ValueError(f"PageHint question must be at most 25 words (got {len(v.split())})")
+        return v
+
+
+def _default_starters() -> list[Starter]:
+    return [
+        Starter(label="I have an app idea", text="I have an app idea"),
+        Starter(label="I need a web platform", text="I need a web platform"),
+        Starter(label="Add AI to my product", text="I want to add AI to my product"),
+        Starter(label="Just exploring costs", text="I'm just exploring costs"),
+    ]
+
+
 class BrandConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str = "Advisor"
     slug: str = "demo"
     logo_text: str = "Advisor"
@@ -25,6 +64,72 @@ class BrandConfig(BaseModel):
     nda_version: str = "2026-01"
     currency: str = "USD"
     timezone: str = "Asia/Kolkata"
+
+    # E1 fields
+    advisor_name: str = "Alex"
+    advisor_title: str = "AI project advisor"
+    advisor_avatar: str = ""
+    human_label: str = "Talk to a human"
+    starters: list[Starter] = Field(default_factory=_default_starters)
+    opening_variants: list[str] = Field(default_factory=list)
+    page_hints: list[PageHint] = Field(default_factory=list)
+    booking_handoff_text: str = "The team will see this whole conversation, so you won't need to repeat anything."
+
+    @field_validator("advisor_name")
+    @classmethod
+    def validate_advisor_name(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not (1 <= len(v) <= 30) or not re.match(r"^[a-zA-Z\s\-'.]+$", v):
+            raise ValueError("advisor_name must be 1-30 characters (letters, spaces, hyphen, apostrophe, period)")
+        return v
+
+    @field_validator("advisor_title")
+    @classmethod
+    def validate_advisor_title(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not re.search(r"\bAI\b", v):
+            raise ValueError("advisor_title must contain the standalone word 'AI'")
+        return v
+
+    @field_validator("advisor_avatar")
+    @classmethod
+    def validate_advisor_avatar(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not v:
+            return ""
+        if not v.startswith("https://") or len(v) > 300:
+            raise ValueError("advisor_avatar must be empty or an https:// URL up to 300 characters")
+        return v
+
+    @field_validator("human_label")
+    @classmethod
+    def validate_human_label(cls, v: str) -> str:
+        v = (v or "").strip()
+        if not (1 <= len(v) <= 32):
+            raise ValueError("human_label must be 1-32 characters")
+        return v
+
+    @field_validator("starters")
+    @classmethod
+    def validate_starters(cls, v: list[Starter]) -> list[Starter]:
+        if len(v) > 5:
+            raise ValueError(f"starters must contain at most 5 items (got {len(v)})")
+        return v
+
+    @field_validator("opening_variants")
+    @classmethod
+    def validate_opening_variants(cls, v: list[str]) -> list[str]:
+        for item in v:
+            words = item.split()
+            if len(words) > 25:
+                raise ValueError(f"opening_variant must be up to 25 words (got {len(words)})")
+            low = item.lower()
+            if any(sym in low for sym in ["$", "€", "eur", "₹", "rupee", "%"]):
+                raise ValueError("opening_variant must not contain $, EUR, rupee or percent signs")
+            emoji_count = len(re.findall(r"[\U00010000-\U0010ffff]", item))
+            if emoji_count > 1:
+                raise ValueError("opening_variant must contain at most one emoji")
+        return v
 
 
 class FaqItem(BaseModel):
@@ -117,6 +222,7 @@ class QualificationConfig(BaseModel):
     company_size_scores: dict[str, int] = Field(default_factory=dict)
     disqualify_if: list[str] = Field(default_factory=list)
     book_requires: dict[str, object] = Field(default_factory=dict)
+    budget_band_ranges_usd: dict[str, list[int | float | None] | None] = Field(default_factory=dict)
 
 
 class PortfolioCase(BaseModel):
@@ -145,6 +251,51 @@ class ObjectionsConfig(BaseModel):
     items: dict[str, ObjectionItem] = Field(default_factory=dict)
 
 
+VALID_ACK_PLACEHOLDERS = {"service_label", "goal_short", "platforms", "features_list", "timeline_label"}
+
+
+class VoiceConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    questions: dict[str, list[str]] = Field(default_factory=dict)
+    acks: dict[str, list[str]] = Field(default_factory=dict)
+    scope_coach: str = "That's a rich list. A lean first release usually keeps cost and risk down, so I'll split it into Core and Later for you."
+    banned_phrases: list[str] = Field(default_factory=list)
+    emoji_max: int = 1
+    max_chars: int = 320
+
+    @field_validator("questions")
+    @classmethod
+    def validate_questions(cls, v: dict[str, list[str]]) -> dict[str, list[str]]:
+        for field, variants in v.items():
+            if not isinstance(variants, list) or len(variants) < 2 or len(variants) > 3:
+                raise ValueError(
+                    f"field '{field}' questions must have 2 to 3 variants (got {len(variants) if isinstance(variants, list) else type(variants)})"
+                )
+            for variant in variants:
+                words = variant.split()
+                if len(words) > 30:
+                    raise ValueError(f"question variant '{variant}' must be up to 30 words (got {len(words)})")
+                if any(sym in variant for sym in ["$", "€", "£", "₹"]):
+                    raise ValueError(f"question variant '{variant}' contains currency symbols")
+                if re.search(r"\b\d+\s*(weeks?|months?|minutes?|hours?)\b", variant, re.IGNORECASE):
+                    raise ValueError(f"question variant '{variant}' contains digits followed by weeks/months/minutes/hours")
+        return v
+
+    @field_validator("acks")
+    @classmethod
+    def validate_acks(cls, v: dict[str, list[str]]) -> dict[str, list[str]]:
+        for field, templates in v.items():
+            if not isinstance(templates, list):
+                raise ValueError(f"acks for '{field}' must be a list of templates")
+            for template in templates:
+                placeholders = re.findall(r"\{([a-zA-Z0-9_]+)\}", template)
+                for ph in placeholders:
+                    if ph not in VALID_ACK_PLACEHOLDERS:
+                        raise ValueError(f"Unknown placeholder '{{{ph}}}' in ack template '{template}'. Allowed: {sorted(VALID_ACK_PLACEHOLDERS)}")
+        return v
+
+
 class TenantConfig(BaseModel):
     brand: BrandConfig
     faqs: list[FaqItem] = Field(default_factory=list)
@@ -153,8 +304,21 @@ class TenantConfig(BaseModel):
     qualification: QualificationConfig = Field(default_factory=QualificationConfig)
     portfolio: PortfolioConfig = Field(default_factory=PortfolioConfig)
     objections: ObjectionsConfig = Field(default_factory=ObjectionsConfig)
+    voice: VoiceConfig = Field(default_factory=VoiceConfig)
     semantic_chunking: bool = False
+
+    @model_validator(mode="after")
+    def validate_page_hints_service(self) -> TenantConfig:
+        if self.brand and self.brand.page_hints and self.services:
+            valid_services = set(self.services.in_scope.keys())
+            for hint in self.brand.page_hints:
+                if hint.service and hint.service not in valid_services:
+                    raise ValueError(
+                        f"PageHint service '{hint.service}' is not in tenant in_scope services: {sorted(valid_services)}"
+                    )
+        return self
 
     @property
     def slug(self) -> str:
         return self.brand.slug
+

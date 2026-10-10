@@ -1,0 +1,67 @@
+questions:
+  service:
+    - "What type of product are you planning to build — web, mobile, AI, or product design?"
+    - "To begin, what kind of digital software product are you looking to create?"
+  goal:
+    - "What primary problem or user workflow should this initial release solve?"
+    - "What core business outcome or user experience should this first launch deliver?"
+  platforms:
+    - "Which platforms should we target for the first launch — web, iOS, Android, or cross-platform mobile?"
+    - "Where will your target users primarily access this application — in a browser or on mobile devices?"
+  features:
+    - "Which core capabilities or features are essential for the launch? Pick from the chips or name your own."
+    - "What essential building blocks must be ready on day one for users?"
+  feature_detail:
+    - "Could you describe in a sentence what users will do within those core features?"
+    - "What specific actions or workflows should those initial features enable?"
+  user_flow:
+    - "If you already have a user journey in mind (sign-up, core action, result), sketch it for me, or skip this step."
+    - "How do you picture a visitor moving through the application from first screen to result? You can sketch it or skip."
+  users:
+    - "Who will be using this first — direct consumers, business clients, or internal team members?"
+    - "What audience is this initial release designed for — consumer users, business accounts, or your operations team?"
+  integrations:
+    - "Are there any external services or APIs this must connect with on day one, like payments or CRM?"
+    - "Will the first release need integrations with existing databases, auth providers, or third-party APIs?"
+  timeline:
+    - "What is your target launch horizon for getting this first release live?"
+    - "What timeframe are you aiming for to get this initial software product into users' hands?"
+  budget_band:
+    - "Which investment range should I size this initial build against for squad composition and architecture?"
+    - "What rough budget scale makes sense for this first release to help calibrate our architecture recommendations?"
+  decision_role:
+    - "What is your role on the project when architecture and delivery decisions are made?"
+    - "Are you leading this as founder, product manager, operations lead, or another role?"
+  company_size:
+    - "What size or stage is your organization today — early startup, growing business, or enterprise?"
+    - "Roughly what stage is the company — early-stage venture, mid-market business, or enterprise team?"
+
+acks:
+  goal:
+    - "A {service_label} for {goal_short}: that gives me a clear picture."
+    - "Building a {service_label} focused on {goal_short}: clear priority."
+  features:
+    - "{features_list} gives us a solid foundation for the first release."
+    - "Focusing on {features_list} establishes a clear core scope."
+  platforms:
+    - "{platforms}, noted."
+    - "Targeting {platforms} sets our technical architecture."
+  timeline:
+    - "Targeting {timeline_label} gives us a defined delivery window."
+    - "Working toward {timeline_label} sets the development pace."
+  service:
+    - "{service_label}, understood."
+    - "Focusing on {service_label}: noted."
+
+scope_coach: "That's a rich list. A lean first release usually keeps cost and risk down, so I'll split it into Core and Later for you."
+
+banned_phrases:
+  - "Love it"
+  - "Great idea"
+  - "Smart approach"
+  - "Awesome"
+  - "Exciting"
+  - "v1"
+
+emoji_max: 1
+max_chars: 320
