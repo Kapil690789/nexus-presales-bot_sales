@@ -12,6 +12,9 @@ log = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
+# Persistent httpx connection pool — avoids TCP handshake on every LLM call
+_gemini_client: "httpx.Client | None" = None  # type: ignore[name-defined]  # lazy import
+
 
 class LLMError(RuntimeError):
     pass
@@ -156,118 +159,131 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
     settings = get_settings()
 
     if mode == "request":
-        per_call_timeout = 15.0
+        # Real-time visitor turn: tight budget so fallback triggers fast
+        per_call_timeout = 8.0
         max_retries = 1
-        wall_budget = 12.0
-        backoffs = [3.0]
+        wall_budget = 9.0
+        backoffs = [2.0]
+        max_output_tokens = 512   # Discovery + synthesis replies never need more than ~150 tokens
     else:
         per_call_timeout = 15.0
         max_retries = 4
         wall_budget = 60.0
         backoffs = [3.0, 6.0, 12.0, 20.0]
+        max_output_tokens = 1024  # Background tasks (embeddings, summaries) may need more
 
     headers = {
         "x-goog-api-key": api_key.strip(),
         "Content-Type": "application/json",
     }
 
+    # Reuse a module-level connection pool to avoid TCP handshake on every call
+    global _gemini_client  # noqa: PLW0603
+    if _gemini_client is None:
+        _gemini_client = httpx.Client(
+            timeout=httpx.Timeout(per_call_timeout, connect=3.0),
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+            headers=headers,
+        )
+
     start_time = time.monotonic()
     try:
-        with httpx.Client(timeout=per_call_timeout, headers=headers) as client:
-            for m_idx, target_model in enumerate(models_to_try):
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent"
-                generation_config: dict[str, Any] = {
-                    "responseMimeType": "application/json",
-                    "temperature": 0.2,
+        for m_idx, target_model in enumerate(models_to_try):
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{target_model}:generateContent"
+            generation_config: dict[str, Any] = {
+                "responseMimeType": "application/json",
+                "temperature": 0.2,
+                "maxOutputTokens": max_output_tokens,
+            }
+            if target_model.startswith("gemini-3") and mode == "request":
+                generation_config["thinkingConfig"] = {
+                    "thinkingLevel": settings.llm_thinking_level,
                 }
-                if target_model.startswith("gemini-3") and mode == "request":
-                    generation_config["thinkingConfig"] = {
-                        "thinkingLevel": settings.llm_thinking_level,
-                    }
-                payload: dict[str, Any] = {
-                    "contents": [{"parts": [{"text": user}]}],
-                    "generationConfig": generation_config,
-                }
-                if system.strip():
-                    payload["systemInstruction"] = {"parts": [{"text": system.strip()}]}
+            payload: dict[str, Any] = {
+                "contents": [{"parts": [{"text": user}]}],
+                "generationConfig": generation_config,
+            }
+            if system.strip():
+                payload["systemInstruction"] = {"parts": [{"text": system.strip()}]}
 
-                is_last_model = m_idx == len(models_to_try) - 1
+            is_last_model = m_idx == len(models_to_try) - 1
 
-                for attempt in range(max_retries + 1):
-                    elapsed = time.monotonic() - start_time
-                    if elapsed >= wall_budget:
-                        raise LLMError(f"Gemini LLM exceeded time budget ({elapsed:.1f}s >= {wall_budget}s)")
+            for attempt in range(max_retries + 1):
+                elapsed = time.monotonic() - start_time
+                if elapsed >= wall_budget:
+                    raise LLMError(f"Gemini LLM exceeded time budget ({elapsed:.1f}s >= {wall_budget}s)")
 
+                try:
+                    resp = _gemini_client.post(url, json=payload, headers=headers)
+                except TypeError:
+                    resp = _gemini_client.post(url, json=payload)
+
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if not candidates:
+                        raise LLMError("Gemini returned no candidates")
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    text = parts[0].get("text", "") if parts else ""
                     try:
-                        resp = client.post(url, json=payload, headers=headers)
-                    except TypeError:
-                        resp = client.post(url, json=payload)
+                        from backend.app.core.usage import record_usage
 
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        candidates = data.get("candidates", [])
-                        if not candidates:
-                            raise LLMError("Gemini returned no candidates")
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        text = parts[0].get("text", "") if parts else ""
-                        try:
-                            from backend.app.core.usage import record_usage
-
-                            usage = data.get("usageMetadata", {})
-                            prompt_tokens = usage.get("promptTokenCount", 0)
-                            candidates_tokens = usage.get("candidatesTokenCount", 0)
-                            thoughts_tokens = usage.get("thoughtsTokenCount", 0)
-                            completion_tokens = candidates_tokens + thoughts_tokens
-                            if prompt_tokens == 0 and completion_tokens == 0:
-                                prompt_tokens = max(1, len(system + user) // 4)
-                                completion_tokens = max(1, len(text) // 4)
-                            record_usage(
-                                provider="gemini",
-                                model=target_model,
-                                call_type="llm",
-                                prompt_tokens=prompt_tokens,
-                                completion_tokens=completion_tokens,
-                            )
-                        except Exception:
-                            pass
-                        return _parse_json(text or "{}")
-
-                    if resp.status_code in (404, 400, 503) and not is_last_model:
-                        log.warning(
-                            "Gemini model '%s' returned %d, falling back to '%s'",
-                            target_model,
-                            resp.status_code,
-                            models_to_try[m_idx + 1],
+                        usage = data.get("usageMetadata", {})
+                        prompt_tokens = usage.get("promptTokenCount", 0)
+                        candidates_tokens = usage.get("candidatesTokenCount", 0)
+                        thoughts_tokens = usage.get("thoughtsTokenCount", 0)
+                        completion_tokens = candidates_tokens + thoughts_tokens
+                        if prompt_tokens == 0 and completion_tokens == 0:
+                            prompt_tokens = max(1, len(system + user) // 4)
+                            completion_tokens = max(1, len(text) // 4)
+                        record_usage(
+                            provider="gemini",
+                            model=target_model,
+                            call_type="llm",
+                            prompt_tokens=prompt_tokens,
+                            completion_tokens=completion_tokens,
                         )
-                        break
+                    except Exception:
+                        pass
+                    return _parse_json(text or "{}")
 
-                    if resp.status_code == 429:
-                        if attempt >= max_retries:
-                            if not is_last_model:
-                                log.warning(
-                                    "Gemini quota exceeded on '%s', falling back to '%s'",
-                                    target_model,
-                                    models_to_try[m_idx + 1],
-                                )
-                                break
-                            raise LLMError(f"Gemini quota exceeded after {max_retries} retries: {resp.text[:200]}")
-                        backoff = backoffs[min(attempt, len(backoffs) - 1)]
-                        if (time.monotonic() - start_time) + backoff >= wall_budget:
-                            raise LLMError(f"Gemini LLM budget exceeded before retry ({resp.status_code})")
-                        log.warning(
-                            "Gemini LLM rate limit hit (429), backing off for %.1fs (attempt %d/%d)",
-                            backoff,
-                            attempt + 1,
-                            max_retries,
-                        )
-                        time.sleep(backoff)
-                        continue
-
-                    if is_last_model:
-                        raise LLMError(f"Gemini API error {resp.status_code}: {resp.text[:200]}")
+                if resp.status_code in (404, 400, 503) and not is_last_model:
+                    log.warning(
+                        "Gemini model '%s' returned %d, falling back to '%s'",
+                        target_model,
+                        resp.status_code,
+                        models_to_try[m_idx + 1],
+                    )
                     break
+
+                if resp.status_code == 429:
+                    if attempt >= max_retries:
+                        if not is_last_model:
+                            log.warning(
+                                "Gemini quota exceeded on '%s', falling back to '%s'",
+                                target_model,
+                                models_to_try[m_idx + 1],
+                            )
+                            break
+                        raise LLMError(f"Gemini quota exceeded after {max_retries} retries: {resp.text[:200]}")
+                    backoff = backoffs[min(attempt, len(backoffs) - 1)]
+                    if (time.monotonic() - start_time) + backoff >= wall_budget:
+                        raise LLMError(f"Gemini LLM budget exceeded before retry ({resp.status_code})")
+                    log.warning(
+                        "Gemini LLM rate limit hit (429), backing off for %.1fs (attempt %d/%d)",
+                        backoff,
+                        attempt + 1,
+                        max_retries,
+                    )
+                    time.sleep(backoff)
+                    continue
+
+                if is_last_model:
+                    raise LLMError(f"Gemini API error {resp.status_code}: {resp.text[:200]}")
+                break
     except httpx.RequestError as exc:
         raise LLMError(f"Gemini connection error: {exc}") from exc
+
 
 
 def record_system_event(

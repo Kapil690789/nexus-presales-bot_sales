@@ -29,7 +29,8 @@ def grade(query: str, hits: list[Hit]) -> tuple[str, float]:
         return "low", top
 
     relevant: bool | None = None
-    if top >= platform.show_min_score and llm_available():
+    # Only invoke LLM for very high-confidence hits — avoids an extra round-trip for borderline scores
+    if top >= 0.88 and llm_available():
         snippets = "\n\n".join(f"{hit.title}: {hit.content[:500]}" for hit in hits[:3])
         try:
             data = complete_json(
@@ -42,6 +43,7 @@ def grade(query: str, hits: list[Hit]) -> tuple[str, float]:
                 relevant = bool(data.get("relevant"))
         except LLMError:
             relevant = None
+
     return classify(top, relevant), top
 
 

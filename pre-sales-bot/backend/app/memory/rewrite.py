@@ -10,7 +10,11 @@ PRONOUN = re.compile(r"\b(it|that|this|they|those|them|one|there)\b", re.IGNOREC
 
 def rewrite_query(text: str, summary: str, previous_user_texts: list[str]) -> str:
     cleaned = (text or "").strip()
+    # Skip rewrite if no pronouns, no prior context, or text is too short to be ambiguous
     if not cleaned or not PRONOUN.search(cleaned):
+        return cleaned
+    if len(cleaned.split()) < 6:
+        # Too short to rewrite meaningfully — LLM call cost not worth it
         return cleaned
     prior = previous_user_texts[-1].strip() if previous_user_texts else ""
     context = " ".join(part for part in [summary.strip(), prior] if part).strip()
@@ -28,6 +32,7 @@ def rewrite_query(text: str, summary: str, previous_user_texts: list[str]) -> st
         except LLMError:
             pass
     return f"Context: {context}\nQuestion: {cleaned}"
+
 
 
 def lookup_queries(text: str, summary: str, previous_user_texts: list[str]) -> list[str]:
