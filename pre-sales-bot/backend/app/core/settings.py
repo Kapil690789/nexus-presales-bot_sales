@@ -73,10 +73,10 @@ class Settings(BaseSettings):
     allow_ephemeral_db: bool = False
     usd_to_inr: float = 95.0
     usage_budget_inr: float | None = None
-    message_rate_limit: int = 20
+    message_rate_limit: int = 40
     message_rate_window_seconds: int = 60
-    llm_calls_per_session: int = 30
-    llm_calls_per_ip_per_hour: int = 80
+    llm_calls_per_session: int = 60
+    llm_calls_per_ip_per_hour: int = 160
 
 
     llm_thinking_level: str = "low"

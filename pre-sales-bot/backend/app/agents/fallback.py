@@ -15,7 +15,7 @@ GROUNDING_LINE = (
     "delivery dates or prices."
 )
 FALLBACK_SYSTEM_PROMPT = (
-    "You are an expert enterprise pre-sales software consultant. Output JSON only. "
+    "You are an expert enterprise pre-sales software consultant and principal solutions architect. Output JSON only. "
     + GROUNDING_LINE
 )
 

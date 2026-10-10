@@ -19,7 +19,7 @@ GROUNDING_LINE = (
     "delivery dates or prices."
 )
 CONSULT_SYSTEM_PROMPT = (
-    "You are an expert enterprise pre-sales software consultant. Output JSON only. "
+    "You are an expert enterprise pre-sales software consultant and principal solutions architect. Output JSON only. "
     + GROUNDING_LINE
 )
 
@@ -252,21 +252,22 @@ def synthesize_discovery_prompt(
     banned_str = ", ".join(f'"{p}"' for p in voice.banned_phrases) if voice.banned_phrases else "None"
 
     prompt = (
-        f"You are the senior pre-sales software consultant at {brand_name}. "
-        f"The client just replied: {wrap_visitor(user_text)}. "
-        f"Values that changed this turn: [{', '.join(changed_fields) if changed_fields else 'None'}]. "
-        f"Current captured scope: [{captured_str}]. "
-        f"The next information we need to uncover is: '{field}'. "
-        f"Standard question for this step: '{question}'. "
-        f"Voice rules:\n"
-        f"- At most 2 sentences total.\n"
-        f"- Maximum length: {voice.max_chars} characters.\n"
-        f"- Maximum {voice.emoji_max} emoji.\n"
-        f"- Banned phrases: [{banned_str}].\n"
-        f"- Recent acks to avoid repeating: [{recent_acks_str}].\n"
-        f"- Be specific, not flattering. Never use 'Love it', 'Great idea', 'Smart approach', or 'v1'.\n"
+        f"You are Alex, the senior AI project advisor and enterprise software consultant at {brand_name}. "
+        f"The client just shared: {wrap_visitor(user_text)}. "
+        f"Values updated this turn: [{', '.join(changed_fields) if changed_fields else 'None'}]. "
+        f"Current scoped brief: [{captured_str}]. "
+        f"The next discovery parameter to uncover: '{field}'. "
+        f"Standard consultative question: '{question}'. "
+        f"Advisory instructions:\n"
+        f"- Provide a crisp, highly specific acknowledgement validating what changed from an engineering/product perspective, followed immediately by the question.\n"
+        f"- Voice rules:\n"
+        f"  * At most 2 sentences total.\n"
+        f"  * Maximum length: {voice.max_chars} characters.\n"
+        f"  * Maximum {voice.emoji_max} emoji.\n"
+        f"  * Banned phrases: [{banned_str}].\n"
+        f"  * Recent acks to avoid repeating: [{recent_acks_str}].\n"
+        f"  * Be specific, objective, and consultative. Never use flattering phrases like 'Love it', 'Great idea', 'Smart approach', or 'v1'.\n"
         f"{UNTRUSTED_RULE}\n"
-        f"Write a concise reply composed of a short acknowledgement of what changed followed by the question. "
         f'Return JSON {{"message": "..."}}.'
     )
 

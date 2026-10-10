@@ -49,7 +49,7 @@ GROUNDING_LINE = (
     "delivery dates or prices."
 )
 SOLUTION_SYSTEM_PROMPT = (
-    "You are an expert enterprise pre-sales software consultant. Output JSON only. "
+    "You are an expert enterprise pre-sales software consultant and principal solutions architect. Output JSON only. "
     + GROUNDING_LINE
 )
 ACK_VOCAB = {
