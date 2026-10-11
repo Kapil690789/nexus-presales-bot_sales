@@ -153,6 +153,7 @@ def run_turn(
     is_chip_click = bool(field or value)
     brief_track_fields = ("service", "goal", "platforms", "features", "timeline", "budget_band", "decision_role", "company_size", "integrations")
     initial_brief_state = {f: getattr(brief, f) for f in brief_track_fields}
+    initial_pending = _pending(brief)
     found = EMAIL.search(text)
     if found:
         contact["email"] = found.group(0).rstrip(".")
@@ -557,7 +558,12 @@ def run_turn(
 
     if filled or (field and field not in ACTION):
         changed_fields = [f for f in brief_track_fields if getattr(brief, f) != initial_brief_state[f] and getattr(brief, f)]
-        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings, changed_fields=changed_fields)
+        if changed_fields and any(f in changed_fields for f in ("platforms", "timeline", "budget_band", "decision_role")):
+            if brief.feature_detail is None:
+                brief.feature_detail = "not_specified"
+            if brief.user_flow is None:
+                brief.user_flow = "not_specified"
+        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings, changed_fields=changed_fields, prev_pending=initial_pending)
 
     # Skip embedding and retrieval for pure acknowledgements
     has_pending_discovery = (
@@ -607,7 +613,19 @@ def run_turn(
 
     if has_pending_discovery and text and not _is_question_like(text):
         changed_fields = [f for f in brief_track_fields if getattr(brief, f) != initial_brief_state[f] and getattr(brief, f)]
-        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings, changed_fields=changed_fields)
+        greetings = ("hello", "hi", "hey", "umm", "thanks", "ok", "cool", "good morning", "good evening")
+        is_filler = any(text.lower().strip().startswith(g) for g in greetings) or len(text.split()) < 3
+        if not changed_fields and not brief.goal and not is_filler:
+            from backend.app.screening.slots import goal_short as _clean_goal
+            cleaned_g = _clean_goal(text) or text.strip()[:120]
+            brief.goal = cleaned_g
+            changed_fields = ["goal"]
+        if changed_fields and any(f in changed_fields for f in ("platforms", "timeline", "budget_band", "decision_role")):
+            if brief.feature_detail is None:
+                brief.feature_detail = "not_specified"
+            if brief.user_flow is None:
+                brief.user_flow = "not_specified"
+        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings, changed_fields=changed_fields, prev_pending=initial_pending)
 
     raw_queries = lookup_queries(text, summary, previous[-3:]) or [text]
     queries = [rewrite_query_with_brief(q, brief) for q in raw_queries]
@@ -743,9 +761,10 @@ def _book(db, tenant, config, session, brief, contact, summary, slot_iso: str) -
     )
     if email:
         _lead(db, tenant, session, email, qual, estimate, handoff)
-    message = f"You're booked for {booked.get('label') or slot_iso}."
     if not booked.get("live"):
-        message += " Demo booking: no calendar invite is sent until Google Calendar is connected."
+        message = f"You're booked for {booked.get('label') or slot_iso} — Demo booking: no calendar invite is sent until Google Calendar is connected."
+    else:
+        message = f"You're booked for {booked.get('label') or slot_iso}."
     if booked.get("meet_url"):
         message += f" Meet link: {booked['meet_url']}"
     if not email:
@@ -819,16 +838,10 @@ def _field_asked_count(history: list[dict], field: str | None) -> int:
 
 
 def format_shape_message(arch: dict, mvp_res: dict) -> str:
-    channels = ", ".join(arch.get("frontend") or ["Web / Mobile"])
-    flow = "; ".join((mvp_res.get("mvp") or [])[:3])
-    backend = ", ".join(arch.get("backend") or ["API + Database"])
-    lines = [
-        "Here is the architectural shape based on what you've shared:",
-        f"• Channels and UX: {channels}",
-        f"• Core flow: {flow}",
-        f"• Backend and APIs: {backend}",
-    ]
-    return "\n".join(lines)
+    channels = (arch.get("frontend") or ["Web / Mobile"])[0]
+    flow = "Core user flows"
+    backend = (arch.get("backend") or ["API + Database"])[0]
+    return f"Here is the architectural shape: {channels} for Channels and UX, {flow} for the Core flow, and {backend} for Backend and APIs."
 
 
 def build_shape_card(arch: dict, mvp_res: dict) -> dict:
@@ -935,6 +948,7 @@ def _after_brief(
     history: list[dict] | None = None,
     timings: dict | None = None,
     changed_fields: list[str] | None = None,
+    prev_pending: str | None = None,
 ) -> dict:
     timings = timings or {}
     qual = qualify(brief, config.qualification, config.services, has_email=bool(contact.get("email")))
@@ -1003,6 +1017,19 @@ def _after_brief(
                 timings=timings,
             )
 
+    if changed_fields and prev_pending and prev_pending not in changed_fields:
+        # Rule 4c: If something was captured but not the pending field,
+        # acknowledge what was captured and ask the next missing field;
+        # never repeat the pending question as if nothing happened.
+        if prev_pending in ("feature_detail", "user_flow"):
+            setattr(brief, prev_pending, "not_specified")
+        elif prev_pending in {"users", "integrations", "company_size"}:
+            defaults = {"users": "business", "integrations": ["none"], "company_size": "startup"}
+            if not getattr(brief, prev_pending):
+                setattr(brief, prev_pending, defaults.get(prev_pending, "not_specified"))
+        if prev_pending != "service":
+            brief.field_attempts[prev_pending] = 99
+
     for _ in range(15):
         if brief_ready(brief):
             return _estimate(session, config, brief, contact, summary, qual, timings=timings)
@@ -1036,7 +1063,7 @@ def _after_brief(
                     brief.goal = "Custom software project"
             elif field == "service":
                 if not brief.service:
-                    brief.service = "custom_software"
+                    brief.service = "mobile_app" if (brief.platforms and any(p in ("ios", "android") for p in brief.platforms)) else "web_app"
             brief.field_attempts[field] = 99
             continue
         break
@@ -1047,8 +1074,8 @@ def _after_brief(
     attempts = brief.field_attempts.get(field or "", 0)
     repeat = attempts >= 1
     if field:
-        if changed_fields and field in changed_fields:
-            brief.field_attempts[field] = 0
+        if changed_fields:
+            brief.field_attempts[field] = 1
             repeat = False
         else:
             brief.field_attempts[field] = attempts + 1
@@ -1080,7 +1107,8 @@ def _after_brief(
         mvp_res = recommend_mvp(brief)
         cards.append(build_shape_card(arch, mvp_res))
         shape_text = format_shape_message(arch, mvp_res)
-        prompt_msg = f"{shape_text}\n\n{prompt_msg}"
+        prompt_q = prompt_for(brief, field, repeat=repeat)
+        prompt_msg = f"{shape_text} {prompt_q}"
 
     return _finish(
         session, brief, contact, summary,

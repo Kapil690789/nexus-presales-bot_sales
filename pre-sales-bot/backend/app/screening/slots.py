@@ -120,7 +120,7 @@ DISCOVERY_PROMPTS = {
     "users": "Who is the first person this should work well for?",
     "integrations": "Any systems this needs to talk to on day one?",
     "timeline": "When would you like the initial version in users' hands?",
-    "budget_band": "Which budget range should I size this against? It's only a first pass, not a quote.",
+    "budget_band": "Which budget range should I size this against for this initial pass?",
     "decision_role": "What's your role when this decision gets made?",
     "company_size": "Roughly how large is the company?",
 }
@@ -157,9 +157,9 @@ def _feature_names(brief: ProjectBrief | None) -> str:
 
 def prompt_for(brief: ProjectBrief | None, field: str | None, repeat: bool = False) -> str:
     if field == "features" and brief and named_features(brief) and not brief.features_confirmed:
-        return f"Got it: {_feature_names(brief)}. Any other features for the launch, or ready to continue?"
+        return "Any other features for the launch, or ready to continue?"
     if field == "feature_detail":
-        return f"You mentioned {_feature_names(brief)}. What should each of those do in the first version?"
+        return f"What should each of {_feature_names(brief)} do in the first version?"
     if repeat and field in REPHRASED_PROMPTS:
         return REPHRASED_PROMPTS[field]
     return DISCOVERY_PROMPTS.get(field or "", "What should we confirm next?")

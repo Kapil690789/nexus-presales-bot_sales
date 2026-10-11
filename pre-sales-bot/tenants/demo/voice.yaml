@@ -9,14 +9,14 @@ questions:
     - "Which platforms should we target for the first launch — web, iOS, Android, or cross-platform mobile?"
     - "Where will your target users primarily access this application — in a browser or on mobile devices?"
   features:
-    - "Which core capabilities or features are essential for the launch? Pick from the chips or name your own."
+    - "Which core capabilities or features are essential for the launch?"
     - "What essential building blocks must be ready on day one for users?"
   feature_detail:
     - "Could you describe in a sentence what users will do within those initial capabilities?"
     - "What specific actions or workflows should those initial features enable?"
   user_flow:
     - "If you already have a user journey in mind (sign-up, core action, result), sketch it for me, or skip this step."
-    - "How do you picture a visitor moving through the application from first screen to result? You can sketch it or skip."
+    - "How do you picture a visitor moving through the application from first screen to result (sketch it or skip)?"
   users:
     - "Who will be using this first — direct consumers, business clients, or internal team members?"
     - "What audience is this initial release designed for — consumer users, business accounts, or your operations team?"

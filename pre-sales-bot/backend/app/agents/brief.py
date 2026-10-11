@@ -167,6 +167,11 @@ def needs_feature_detail(brief: ProjectBrief) -> bool:
 def next_discovery_field(brief: ProjectBrief) -> str | None:
     missing = brief.missing_discovery()
     head = missing[0] if missing else None
+    if head == "service" and brief.goal and brief.field_attempts.get("service", 0) >= 1:
+        if not brief.platforms:
+            return "platforms"
+        if not brief.features_confirmed:
+            return "features"
     if head in {"service", "goal"}:
         return head
     if brief.goal and not brief.features_confirmed:
