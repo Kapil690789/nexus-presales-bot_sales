@@ -58,9 +58,11 @@ def _heuristic_extract(text: str, pending_field: str | None = None, brief: Proje
     # Check question
     is_q_start = bool(re.match(r"^(how|what|who|why|when|where|can|do|does|is|are|have|tell me about)\b", lowered))
     has_question_mark = "?" in lowered
+    is_q_inquiry = bool(re.search(r"\b(i\s+want\s+to\s+know|i'?d\s+like\s+to\s+know|i\s+would\s+like\s+to\s+know|i\s+would\s+like\s+to\s+understand|want\s+to\s+understand|wondering|curious|need\s+more\s+(info|information|details)|looking\s+for\s+(info|information|details)|more\s+about)\b", lowered))
+    is_your_noun = bool(re.match(r"^\s*your\s+[a-z0-9_-]+(\s+[a-z0-9_-]+){0,4}\s*$", lowered))
     is_brief_inquiry = any(k in lowered for k in ("we need", "i am", "founder", "budget is", "timeline is", "looking to build", "want to build", "building a", "need a"))
 
-    if (is_q_start or has_question_mark) and not is_brief_inquiry and len(text.split()) < 15:
+    if (is_q_start or has_question_mark or is_q_inquiry or is_your_noun) and not is_brief_inquiry and len(text.split()) < 15:
         res["is_question"] = True
         return res
 
@@ -81,15 +83,25 @@ def _heuristic_extract(text: str, pending_field: str | None = None, brief: Proje
         res["company_size"] = "enterprise"
 
     # Platforms
-    platforms = []
-    if "ios" in lowered:
-        platforms.append("ios")
-    if "android" in lowered:
-        platforms.append("android")
-    if "web" in lowered or "saas" in lowered or "portal" in lowered:
-        platforms.append("web")
-    if platforms:
-        res["platforms"] = platforms
+    has_web_p = "web" in lowered or "browser" in lowered
+    has_ios_p = "ios" in lowered or "iphone" in lowered
+    has_android_p = "android" in lowered
+    has_mobile_p = "mobile" in lowered or "both" in lowered or "phone" in lowered
+
+    if (has_web_p and (has_mobile_p or (has_ios_p and has_android_p))) or ("web and mobile" in lowered or "mobile and web" in lowered):
+        res["platforms"] = ["web", "ios", "android"]
+    elif has_web_p and has_ios_p:
+        res["platforms"] = ["web", "ios"]
+    elif has_web_p and has_android_p:
+        res["platforms"] = ["web", "android"]
+    elif (has_ios_p and has_android_p) or has_mobile_p:
+        res["platforms"] = ["ios", "android"]
+    elif has_ios_p:
+        res["platforms"] = ["ios"]
+    elif has_android_p:
+        res["platforms"] = ["android"]
+    elif has_web_p or "saas" in lowered or "portal" in lowered:
+        res["platforms"] = ["web"]
 
     # AI detection regex with word boundary
     has_ai = bool(re.search(r"\b(ai|llm|gpt|chatgpt|openai|chatbot|chat bot|machine learning|nlp)\b", lowered))
@@ -108,12 +120,28 @@ def _heuristic_extract(text: str, pending_field: str | None = None, brief: Proje
         if resolved_service and resolved_service != "ai_product":
             res["ai_features"] = ["AI chat"] if "chat" in lowered else ["AI features"]
 
+    # Features (comma or 'and' separated list when features pending or goal exists)
+    if (pending_field == "features" or (brief and not brief.features and brief.goal)) and ("," in text or " and " in text):
+        clean_msg = text
+        for prefix in ("features:", "for the first release we just need", "we just need", "we need"):
+            if prefix in clean_msg.lower():
+                idx_p = clean_msg.lower().find(prefix) + len(prefix)
+                clean_msg = clean_msg[idx_p:]
+        raw_items = [re.sub(r"^(and\s+|a\s+|an\s+|the\s+)", "", part.strip(), flags=re.IGNORECASE).strip() for part in re.split(r",|\band\b", clean_msg)]
+        valid_items = [
+            it.rstrip(".,!?;:") for it in raw_items
+            if it and 1 <= len(it.split()) <= 6
+            and not any(k in it.lower() for k in ("budget", "month", "founder", "ios", "android", "dollar", "timeline"))
+        ]
+        if len(valid_items) >= 2:
+            res["features"] = valid_items
+
     # Timeline
     if any(term in lowered for term in ("urgently", "asap", "immediate", "rush", "this month")):
         res["timeline"] = "asap"
-    elif any(term in lowered for term in ("2 months", "1 month", "3 months", "2-3 months", "60 days", "8 weeks", "two months", "one month")):
+    elif any(term in lowered for term in ("2 months", "1 month", "3 months", "2-3 months", "2 to 3 months", "60 days", "8 weeks", "two months", "one month")):
         res["timeline"] = "1_3_months"
-    elif any(term in lowered for term in ("4 months", "5 months", "6 months", "3-6 months", "half year")):
+    elif any(term in lowered for term in ("4 months", "5 months", "6 months", "3-6 months", "3 to 6 months", "half year")):
         res["timeline"] = "3_6_months"
     elif "flexible" in lowered:
         res["timeline"] = "flexible"
@@ -145,11 +173,13 @@ def _heuristic_extract(text: str, pending_field: str | None = None, brief: Proje
     if is_brief_inquiry or (pending_field == "goal" and not (is_q_start or has_question_mark)):
         sentences = [s.strip() for s in text.replace("\n", ". ").split(".") if s.strip()]
         for s in sentences:
-            if any(w in s.lower() for w in ("need", "build", "want", "app for", "platform for", "startup", "product")):
+            if any(w in s.lower() for w in ("need", "build", "want", "app for", "platform for", "startup", "product", "marketplace", "clinic", "system")):
                 res["goal"] = s[:120].strip()
                 break
         if "goal" not in res and sentences and not (is_q_start or has_question_mark):
-            res["goal"] = sentences[0][:120].strip()
+            first_sent = sentences[0].strip()
+            if len(first_sent.split()) >= 2 and not any(k in first_sent.lower() for k in ("hi", "hello", "thanks", "ok")):
+                res["goal"] = first_sent[:120].strip()
 
     return res
 

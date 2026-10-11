@@ -1,12 +1,120 @@
-from __future__ import annotations
+import re
 
 from backend.app.agents.brief import ProjectBrief, named_features
+
+LEADING_GOAL_PREFIXES = re.compile(
+    r"^(i\s+am\s+building|i'?m\s+building|we\s+are\s+building|we'?re\s+building|"
+    r"i\s+am|i'?m|we\s+are|we'?re|we\s+want\s+to\s+build|we\s+want|we\s+need\s+to\s+build|we\s+need|"
+    r"i\s+want\s+to\s+build|i\s+want|i\s+need\s+to\s+build|i\s+need|"
+    r"looking\s+to\s+build|looking\s+to|planning\s+to\s+build|planning\s+to|"
+    r"building|to\s+build|a|an|the)\b\s*",
+    re.IGNORECASE,
+)
+TRAILING_FRAGMENTS = frozenset({"and", "for", "to", "of", "with", "in", "on", "the", "a", "an", "at", "by"})
+
+
+def display_platforms(platforms: list[str] | None) -> str:
+    if not platforms:
+        return ""
+    clean = [p.strip().lower() for p in platforms if p and p.strip()]
+    has_web = "web" in clean
+    has_ios = "ios" in clean or "both" in clean
+    has_android = "android" in clean or "both" in clean
+
+    if has_web and has_ios and has_android:
+        return "web, iOS and Android"
+    if has_ios and has_android:
+        return "iOS and Android"
+    if has_web and has_ios:
+        return "web and iOS"
+    if has_web and has_android:
+        return "web and Android"
+    if has_ios:
+        return "iOS"
+    if has_android:
+        return "Android"
+    if has_web:
+        return "web"
+    return ", ".join(platforms)
+
+
+def goal_short(goal: str | None) -> str | None:
+    if not goal:
+        return None
+    cleaned = goal.strip().rstrip(".,!?;:")
+    while True:
+        match = LEADING_GOAL_PREFIXES.match(cleaned)
+        if match:
+            cleaned = cleaned[match.end():].strip().lstrip(".,!?;:")
+        else:
+            break
+    if not cleaned or len(cleaned) < 3:
+        return None
+    words = cleaned.split()
+    if len(words) > 8:
+        words = words[:8]
+    while words and words[-1].lower().strip(".,!?;:") in TRAILING_FRAGMENTS:
+        words.pop()
+    if not words:
+        return None
+    res = " ".join(words).strip().rstrip(".,!?;:")
+    if len(res) < 3:
+        return None
+    return res
+
+
+def timeline_label(timeline: str | None) -> str:
+    if not timeline:
+        return ""
+    t = timeline.strip().lower()
+    if t == "asap":
+        return "as soon as possible"
+    if t in ("1_3_months", "1_3"):
+        return "1 to 3 months"
+    if t in ("3_6_months", "3_6"):
+        return "3 to 6 months"
+    if t == "flexible":
+        return "flexible timing"
+    return timeline.strip()
+
+
+def budget_label(budget_band: str | None) -> str:
+    if not budget_band:
+        return ""
+    b = budget_band.strip().lower()
+    if b in ("under_15k", "under_15"):
+        return "under $15k"
+    if b in ("15_40k", "15_40"):
+        return "$15k to $40k"
+    if b in ("40_80k", "40_80"):
+        return "$40k to $80k"
+    if b in ("80k_plus", "80k+"):
+        return "$80k or more"
+    if b == "exploring":
+        return "still exploring"
+    return budget_band.strip()
+
+
+def service_label_clean(service: str | None, in_scope_map: dict | None = None) -> str:
+    if not service:
+        return "digital product"
+    if in_scope_map and service in in_scope_map:
+        return in_scope_map[service].label.lower()
+    return service.replace("_", " ").lower()
+
+
+def service_article(label: str) -> str:
+    cleaned = label.strip().lower()
+    if cleaned and cleaned[0] in "aeiou":
+        return "an"
+    return "a"
+
 
 DISCOVERY_PROMPTS = {
     "service": "What are you looking to build — mobile, web, AI, or design?",
     "goal": "What should this first version actually do for people?",
-    "features": "Which core features do you want for the initial launch? Pick any that matter, or type your own list.",
-    "feature_detail": "What should those core features accomplish in the initial release?",
+    "features": "Which core capabilities or features do you want for the initial launch? Pick any that matter, or type your own list.",
+    "feature_detail": "What should those initial capabilities accomplish in the initial release?",
     "user_flow": "If you already have a user journey (sign up, core action, result), sketch it. You can skip this.",
     "platforms": "Which platforms matter for the first release?",
     "users": "Who is the first person this should work well for?",
@@ -18,7 +126,7 @@ DISCOVERY_PROMPTS = {
 }
 
 REPHRASED_PROMPTS = {
-    "service": "No problem! What type of product or application are you hoping to create?",
+    "service": "I want to make sure I got that right: what type of digital product or application are you looking to create?",
     "goal": "To help us picture this, what is the main problem this first version will solve for users?",
     "features": "What essential building blocks or capabilities do you envision for the initial release?",
     "feature_detail": "Could you describe in simple terms what users will do in this feature?",
@@ -190,9 +298,12 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
             {"label": "Enterprise", "field": "company_size", "value": "enterprise"},
         ]
 
-    if repeat and chips and not any(c.get("label") == "Not sure yet" for c in chips):
+    if repeat and chips:
         skip_val = [] if field in ("platforms", "features", "integrations") else "not_sure"
-        chips.append({"label": "Not sure yet", "field": field, "value": skip_val})
+        if not any(c.get("label") == "Not sure yet" for c in chips):
+            chips.append({"label": "Not sure yet", "field": field, "value": skip_val})
+        if not any(c.get("label") == "Not sure, suggest" for c in chips):
+            chips.append({"label": "Not sure, suggest", "field": field, "value": skip_val})
 
     return chips
 

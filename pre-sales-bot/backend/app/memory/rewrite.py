@@ -5,26 +5,33 @@ import re
 from backend.app.core.guard import UNTRUSTED_RULE, wrap_visitor
 from backend.app.core.llm import LLMError, complete_json, llm_available
 
-PRONOUN = re.compile(r"\b(it|that|this|they|those|them|one|there)\b", re.IGNORECASE)
+REWRITE_TRIGGERS = re.compile(
+    r"\b(it|its|that|this|they|them|those|these|there|also|and|same|other|instead|too|what\s+about|how\s+about)\b",
+    re.IGNORECASE,
+)
+PRONOUN = REWRITE_TRIGGERS
 
 
 def rewrite_query(text: str, summary: str, previous_user_texts: list[str]) -> str:
     cleaned = (text or "").strip()
-    # Skip rewrite if no pronouns, no prior context, or text is too short to be ambiguous
-    if not cleaned or not PRONOUN.search(cleaned):
+    if not cleaned:
+        return ""
+    words = cleaned.split()
+    # Skip LLM rewrite only when message has at least 4 words AND contains none of the trigger words
+    if len(words) >= 4 and not REWRITE_TRIGGERS.search(cleaned):
         return cleaned
-    if len(cleaned.split()) < 6:
-        # Too short to rewrite meaningfully — LLM call cost not worth it
-        return cleaned
+
     prior = previous_user_texts[-1].strip() if previous_user_texts else ""
     context = " ".join(part for part in [summary.strip(), prior] if part).strip()
     if not context:
         return cleaned
+
     if llm_available():
         try:
             data = complete_json(
                 f"Rewrite the visitor question so it stands alone. {UNTRUSTED_RULE} Return JSON {{\"query\": \"...\"}}.",
                 f"Context:\n{wrap_visitor(context)}\n\nQuestion:\n{wrap_visitor(cleaned)}",
+                mode="request",
             )
             rewritten = str(data.get("query") or "").strip()
             if rewritten:
@@ -34,11 +41,10 @@ def rewrite_query(text: str, summary: str, previous_user_texts: list[str]) -> st
     return f"Context: {context}\nQuestion: {cleaned}"
 
 
-
 def lookup_queries(text: str, summary: str, previous_user_texts: list[str]) -> list[str]:
     rewritten = rewrite_query(text, summary, previous_user_texts)
     queries = [rewritten]
-    if PRONOUN.search(text or "") and previous_user_texts:
+    if REWRITE_TRIGGERS.search(text or "") and previous_user_texts:
         prior = previous_user_texts[-1].strip()
         if prior and prior not in queries:
             queries.append(prior)

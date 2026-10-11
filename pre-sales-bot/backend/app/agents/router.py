@@ -54,7 +54,7 @@ SOLUTION_SYSTEM_PROMPT = (
 )
 ACK_VOCAB = {
     "cool", "thanks", "thank", "you", "ok", "okay", "great", "nice", "awesome", "perfect",
-    "got", "it", "sure", "fine", "good", "haan", "theek", "thik", "hai", "shukriya",
+    "got", "it", "sure", "fine", "good", "sounds", "haan", "theek", "thik", "hai", "shukriya",
     "dhanyavad", "so", "much", "very", "a", "lot", "hi", "hello", "hey", "yes", "no",
 }
 CONDITIONAL_ACK_WORDS = {"yes", "no", "ok", "okay", "haan", "theek", "thik"}
@@ -77,6 +77,23 @@ QUESTION_OR_COMMAND_START = re.compile(
     r"^\s*(what|how|who|why|when|where|can|do|does|is|are|have|will|should|tell|show|explain|describe|list|give|share)\b",
     re.IGNORECASE,
 )
+QUESTION_INQUIRY_PATTERNS = re.compile(
+    r"\b("
+    r"i\s+want\s+to\s+know|"
+    r"i'?d\s+like\s+to\s+know|"
+    r"i\s+would\s+like\s+to\s+know|"
+    r"i\s+would\s+like\s+to\s+understand|"
+    r"i'?d\s+like\s+to\s+understand|"
+    r"want\s+to\s+understand|"
+    r"wondering|"
+    r"curious|"
+    r"need\s+more\s+(info|information|details)|"
+    r"looking\s+for\s+(info|information|details)|"
+    r"more\s+about"
+    r")\b",
+    re.IGNORECASE,
+)
+YOUR_NOUN_PHRASE = re.compile(r"^\s*your\s+[a-z0-9_-]+(\s+[a-z0-9_-]+){0,4}\s*$", re.IGNORECASE)
 KNOWN_CASE_STUDIES = {"zephyr", "harbor", "atlas", "ledgerly", "harvest", "northstar"}
 
 
@@ -86,7 +103,13 @@ def _is_question_like(text: str) -> bool:
         return True
     if any(k in cleaned.lower() for k in KNOWN_CASE_STUDIES):
         return True
-    return bool(QUESTION_OR_COMMAND_START.match(cleaned))
+    if QUESTION_OR_COMMAND_START.match(cleaned):
+        return True
+    if QUESTION_INQUIRY_PATTERNS.search(cleaned):
+        return True
+    if YOUR_NOUN_PHRASE.match(cleaned):
+        return True
+    return False
 
 
 def _last_question_sentence(msg: str) -> str:
@@ -341,30 +364,8 @@ def run_turn(
             except Exception:
                 booked = {}
             booking_label = booked.get("label") or booked.get("slot_iso") or "your scheduled session"
-            _goal_ctx = (brief.goal or brief.service or "your project").rstrip(".").strip()
-            _plat_ctx = (", ".join(brief.platforms) if brief.platforms else "")
-            _goal_str = f"{_goal_ctx}" + (f" on {_plat_ctx}" if _plat_ctx else "")
-            _dur = get_platform().calendar.duration_minutes
-            _synth_reply: str | None = None
-            if llm_available():
-                try:
-                    _pb = (
-                        f"You are Alex, a warm senior solutions consultant. "
-                        f"The client just booked a {_dur}-minute discovery call at {booking_label!r} for their project: '{_goal_str}'. "
-                        f"Write a single warm, confident sentence (no emoji) confirming they're all set and teasing what the team will cover — "
-                        f"mention the project context, not generic filler. "
-                        f'Return JSON {{"message": "..."}}.'
-                    )
-                    _pd = complete_json(SOLUTION_SYSTEM_PROMPT, _pb)
-                    _m = str(_pd.get("message") or "").strip()
-                    if _m and len(_m) <= 280:
-                        _synth_reply = _m
-                except LLMError:
-                    pass
-            reply = _synth_reply or (
-                f"You're all set for {booking_label} — the team will come prepared with the scope for '{_goal_str}' "
-                f"so you won't need to repeat a thing."
-            )
+            handoff = getattr(config.brand, "booking_handoff_text", "The team will see this whole conversation, so you won't need to repeat anything.")
+            reply = f"You're all set for {booking_label}. {handoff}"
             post_chips = [
                 {"label": "What is on the agenda?", "field": "ask", "value": "What is on the agenda for our discovery call?"},
                 {"label": "Can I reschedule the time?", "field": "booking_window", "value": "reschedule"},
@@ -517,33 +518,12 @@ def run_turn(
                 extracted = extract_slots(text, pending, brief)
                 timings["extractor"] += (time.perf_counter() - t0_ext) * 1000.0
             if extracted.get("is_off_topic"):
-                _offtopic_msg: str | None = None
-                if llm_available():
-                    try:
-                        _svc = (brief.service or "").replace("_", " ")
-                        _svc_hint = f" They have mentioned interest in: {_svc}." if _svc else ""
-                        _op = (
-                            f"You are Alex, the senior pre-sales consultant at {config.brand.name}. "
-                            f"A visitor asked something off-topic.{_svc_hint} "
-                            f"Write 1–2 warm, professional sentences gracefully redirecting them. "
-                            f"Acknowledge you can't help with that topic, briefly state {config.brand.name}'s focus "
-                            f"(bespoke web, mobile, AI software), and invite them back to their project scope. "
-                            f"Be specific and human, not robotic. "
-                            f'Return JSON {{"message": "..."}}.'
-                        )
-                        _od = complete_json(SOLUTION_SYSTEM_PROMPT, _op)
-                        _om = str(_od.get("message") or "").strip()
-                        if _om and len(_om) <= 320:
-                            _offtopic_msg = _om
-                    except LLMError:
-                        pass
-                if not _offtopic_msg:
-                    _svc_label = (brief.service or "").replace("_", " ") or "custom software"
-                    _offtopic_msg = (
-                        f"That's a bit outside my scope as {config.brand.name}'s project consultant — "
-                        f"I'm focused on scoping, architecture, and estimation for {_svc_label} and digital products. "
-                        f"Happy to keep building out your project estimate or answer any technical questions about what we can build for you."
-                    )
+                _svc_label = (brief.service or "").replace("_", " ") or "custom software"
+                _offtopic_msg = (
+                    f"That's a bit outside my scope as {config.brand.name}'s project consultant — "
+                    f"I'm focused on scoping, architecture, and estimation for {_svc_label} and digital products. "
+                    f"Happy to keep building out your project estimate or answer any technical questions about what we can build for you."
+                )
                 return _finish(
                     session, brief, contact, summary,
                     message=_offtopic_msg,
@@ -555,7 +535,7 @@ def run_turn(
             if extracted and not extracted.get("is_question") and apply_extracted_slots(brief, extracted, pending):
                 _note_flags(brief)
                 filled = True
-            elif not OPEN.search(text) and pending and _apply_free_text(brief, pending, text):
+            elif not extracted.get("is_question") and not _is_question_like(text) and not OPEN.search(text) and pending and _apply_free_text(brief, pending, text):
                 # 2. Fallback to deterministic regex matching
                 _note_flags(brief)
                 filled = True
@@ -589,29 +569,7 @@ def run_turn(
     if not is_chip_click and is_ack:
         estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
         if brief and brief_ready(brief):
-            _goal_ctx = (brief.goal or brief.service or "the project").rstrip(".").strip()
-            _dur = get_platform().calendar.duration_minutes
-            _ack_synth: str | None = None
-            if llm_available():
-                try:
-                    _ap = (
-                        f"You are Alex, the senior solutions consultant at {config.brand.name}. "
-                        f"The client acknowledged the scope for: '{_goal_ctx}'. "
-                        f"Write one warm, confident sentence (no emoji) acknowledging their confirmation and naturally "
-                        f"inviting them to book a {_dur}-minute call to review architecture and timeline — "
-                        f"mention their project context, not generic phrases like 'Glad that aligns'. "
-                        f'Return JSON {{"message": "..."}}.'
-                    )
-                    _ad = complete_json(SOLUTION_SYSTEM_PROMPT, _ap)
-                    _am = str(_ad.get("message") or "").strip()
-                    if _am and len(_am) <= 280:
-                        _ack_synth = _am
-                except LLMError:
-                    pass
-            reply_msg = _ack_synth or (
-                f"Sounds good — whenever you're ready to lock in architecture and delivery for '{_goal_ctx}', "
-                f"book a {_dur}-minute call with the team and we'll take it from there."
-            )
+            reply_msg = "Sounds good. When you're ready, book a call and the team will take it from here."
         else:
             reply_msg = fallback_message(config, brief, estimate, query=text)
         extra = _continuation(brief, history)
@@ -917,49 +875,54 @@ def budget_fit_line(
 
 
 def recap_line_from_brief(config: TenantConfig, brief: ProjectBrief) -> str:
-    service_label = ""
-    if brief.service and config.services and brief.service in config.services.in_scope:
-        service_label = config.services.in_scope[brief.service].label
+    from backend.app.screening.slots import (
+        budget_label,
+        display_platforms,
+        goal_short,
+        service_article,
+        service_label_clean,
+        timeline_label,
+    )
+
+    s_clean = service_label_clean(brief.service, config.services.in_scope if config.services else None)
+    art = service_article(s_clean)
+    g_short = goal_short(brief.goal)
+    plats = display_platforms(brief.platforms)
+
+    if g_short:
+        main_part = f"{art} {s_clean} for {g_short}" if brief.service else f"a project for {g_short}"
     elif brief.service:
-        service_label = brief.service.replace("_", " ").title()
+        main_part = f"{art} {s_clean}"
     else:
-        service_label = "Custom Software"
+        main_part = "your project"
 
-    platforms_str = ", ".join(brief.platforms) if brief.platforms else "Web"
-    features_list = (brief.features or [])[:4]
-    features_str = ", ".join(features_list) if features_list else "core features"
+    parts = [main_part]
+    if plats:
+        parts.append(f"on {plats}")
 
-    # Format timeline without duration numbers or weeks/months
-    t_clean = (brief.timeline or "flexible").lower()
-    if "asap" in t_clean:
-        timeline_str = "ASAP launch"
-    elif "flexible" in t_clean or "unknown" in t_clean:
-        timeline_str = "flexible target"
-    elif "1_3" in t_clean:
-        timeline_str = "near-term target"
-    elif "3_6" in t_clean:
-        timeline_str = "medium-term target"
-    else:
-        timeline_str = re.sub(r"[\$€£₹]|USD|\b(weeks?|months?|days?|\d+)\b", "", t_clean).strip() or "target milestone"
+    if brief.features:
+        named = [str(f).strip() for f in brief.features if str(f).strip()]
+        if len(named) > 4:
+            first_four = ", ".join(named[:4])
+            rem = len(named) - 4
+            parts.append(f"with {first_four}, and {rem} more")
+        elif len(named) == 1:
+            parts.append(f"with {named[0]}")
+        elif len(named) > 1:
+            parts.append(f"with {', '.join(named)}")
 
-    # Format budget band without currency symbols
-    b_clean = (brief.budget_band or "exploring").lower()
-    if "under_15" in b_clean:
-        budget_str = "starter tier"
-    elif "15_40" in b_clean:
-        budget_str = "growth tier"
-    elif "40_80" in b_clean:
-        budget_str = "scale tier"
-    elif "80k_plus" in b_clean or "80k" in b_clean:
-        budget_str = "enterprise tier"
-    elif "exploring" in b_clean:
-        budget_str = "exploring budget"
-    else:
-        budget_str = re.sub(r"[\$€£₹]|USD|\d+", "", b_clean).strip() or "exploring budget"
+    t_lbl = timeline_label(brief.timeline)
+    b_lbl = budget_label(brief.budget_band)
 
-    goal_str = (brief.goal or "core project")[:120].replace("\n", " ").strip()
+    if t_lbl and b_lbl:
+        parts.append(f"aiming for {t_lbl} with a budget of {b_lbl}")
+    elif t_lbl:
+        parts.append(f"aiming for {t_lbl}")
+    elif b_lbl:
+        parts.append(f"with a budget of {b_lbl}")
 
-    return f"{service_label}, {platforms_str}, {features_str}, {timeline_str}, {budget_str}, {goal_str}"
+    recap_body = ", ".join(parts)
+    return f"Here's what I understood: {recap_body}."
 
 
 def _after_brief(
@@ -1006,13 +969,89 @@ def _after_brief(
             qualification=qual,
             timings=timings,
         )
+    # Check consistency between service and platforms (Rule 4e)
+    if brief.service == "mobile_app" and brief.platforms and not any(p in ("ios", "android") for p in brief.platforms):
+        if not brief.platform_service_clarified:
+            brief.platform_service_clarified = True
+            return _finish(
+                session, brief, contact, summary,
+                message="You mentioned a mobile app earlier, but web as the platform. Should we build this as a mobile app (iOS/Android), a web app, or both?",
+                stage="discovery",
+                route="discovery",
+                chips=[
+                    {"label": "Mobile app", "field": "platforms", "value": ["ios", "android"]},
+                    {"label": "Web app", "field": "service", "value": "web_app"},
+                    {"label": "Both web & mobile", "field": "platforms", "value": ["web", "ios", "android"]},
+                ],
+                qualification=qual,
+                timings=timings,
+            )
+    elif brief.service == "web_app" and brief.platforms and not ("web" in [p.lower() for p in brief.platforms]):
+        if not brief.platform_service_clarified:
+            brief.platform_service_clarified = True
+            return _finish(
+                session, brief, contact, summary,
+                message="You mentioned a web app earlier, but mobile as the platform. Should we target web, mobile, or both?",
+                stage="discovery",
+                route="discovery",
+                chips=[
+                    {"label": "Web app", "field": "platforms", "value": ["web"]},
+                    {"label": "Mobile app", "field": "service", "value": "mobile_app"},
+                    {"label": "Both web & mobile", "field": "platforms", "value": ["web", "ios", "android"]},
+                ],
+                qualification=qual,
+                timings=timings,
+            )
+
+    for _ in range(15):
+        if brief_ready(brief):
+            return _estimate(session, config, brief, contact, summary, qual, timings=timings)
+        field = next_discovery_field(brief)
+        if not field:
+            break
+        attempts = brief.field_attempts.get(field, 0)
+        if attempts >= 2:
+            # The same field is asked at most twice (Rule 4d).
+            # On third time, leave slot unknown and move on.
+            if field == "features":
+                brief.features = brief.features or []
+                brief.features_confirmed = True
+            elif field == "feature_detail":
+                brief.feature_detail = "not_specified"
+            elif field == "user_flow":
+                brief.user_flow = "not_specified"
+            elif field in {"timeline", "budget_band", "decision_role", "company_size", "users", "platforms"}:
+                defaults = {
+                    "timeline": "flexible",
+                    "budget_band": "exploring",
+                    "decision_role": "founder_or_exec",
+                    "company_size": "startup",
+                    "users": "business",
+                    "platforms": ["web"],
+                }
+                if not getattr(brief, field):
+                    setattr(brief, field, defaults.get(field, "unknown"))
+            elif field == "goal":
+                if not brief.goal:
+                    brief.goal = "Custom software project"
+            elif field == "service":
+                if not brief.service:
+                    brief.service = "custom_software"
+            brief.field_attempts[field] = 99
+            continue
+        break
+
     if brief_ready(brief):
         return _estimate(session, config, brief, contact, summary, qual, timings=timings)
-    field = next_discovery_field(brief)
+
     attempts = brief.field_attempts.get(field or "", 0)
     repeat = attempts >= 1
     if field:
-        brief.field_attempts[field] = attempts + 1
+        if changed_fields and field in changed_fields:
+            brief.field_attempts[field] = 0
+            repeat = False
+        else:
+            brief.field_attempts[field] = attempts + 1
     t0_ans = time.perf_counter()
     prompt_msg = (
         prompt_for(brief, field, repeat=repeat)
@@ -1070,14 +1109,12 @@ def _estimate(session, config, brief, contact, summary, qual, timings: dict | No
     fit_line = budget_fit_line(brief.budget_band, estimate, config.qualification.budget_band_ranges_usd)
 
     parts = [
-        f"{recap}. If anything is off, tell me and I'll update the estimate.",
+        f"{recap} If anything is off, tell me and I'll update the estimate.",
         f"A first-pass indicative range for this scope is **{estimate['range_label']}** over about **{estimate['timeline_weeks']} weeks**.\n*{config.brand.disclaimer}*",
         "That's a first-pass range based on typical scope for this kind of project.",
     ]
     if fit_line:
         parts.append(fit_line)
-    if not brief.company_size:
-        parts.append(DISCOVERY_PROMPTS["company_size"])
 
     message = "\n\n".join(parts)
 
@@ -1255,13 +1292,24 @@ def _service(text: str) -> str | None:
 
 def _platforms(text: str) -> list[str] | None:
     lowered = text.lower()
-    if "ios" in lowered and "android" in lowered or "both" in lowered:
+    has_web = "web" in lowered or "browser" in lowered
+    has_ios = "ios" in lowered or "iphone" in lowered or "ipad" in lowered
+    has_android = "android" in lowered
+    has_mobile = "mobile" in lowered or "both" in lowered or "phone" in lowered or ("app" in lowered and "web and app" in lowered)
+
+    if (has_web and (has_mobile or (has_ios and has_android))) or ("web and mobile" in lowered or "mobile and web" in lowered):
+        return ["web", "ios", "android"]
+    if has_web and has_ios:
+        return ["web", "ios"]
+    if has_web and has_android:
+        return ["web", "android"]
+    if (has_ios and has_android) or has_mobile:
         return ["ios", "android"]
-    if "ios" in lowered or "iphone" in lowered:
+    if has_ios:
         return ["ios"]
-    if "android" in lowered:
+    if has_android:
         return ["android"]
-    if "web" in lowered:
+    if has_web:
         return ["web"]
     return None
 

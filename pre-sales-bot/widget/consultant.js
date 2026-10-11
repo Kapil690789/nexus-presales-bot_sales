@@ -473,6 +473,10 @@
     (chips || []).forEach(function (chip) {
       var button = el("button", "ps-chip", chip.label || "");
       button.type = "button";
+      // Support special chips: "Email me instead", "Show a leaner cut"
+      if (chip.label === "Email me instead" || chip.label === "Show a leaner cut") {
+        button.setAttribute("data-chip", chip.label);
+      }
       button.onclick = function () {
         if (!sessionId || busy) return;
         setChips([]);

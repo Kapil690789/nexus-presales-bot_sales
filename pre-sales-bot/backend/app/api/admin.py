@@ -100,6 +100,8 @@ def admin_health_api(db: Session = Depends(get_db), _: str = Depends(require_adm
         "llm": llm_health,
         "llm_failures": llm_health["failures_1h"],
         "llm_degraded": llm_health["degraded"],
+        "configured_model": settings.llm_model,
+        "last_used_model": llm_health.get("last_used_model", settings.llm_model),
         "stale_chunks": stale_count,
     }
 

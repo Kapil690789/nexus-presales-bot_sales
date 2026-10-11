@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"
     llm_api_key: str = ""
     llm_model: str = "gemini-3.8-flash"
+    llm_model_fallbacks: str = ""
     llm_base_url: str = ""
     embedding_backend: str = "gemini"
     embedding_model: str = "gemini-embedding-001"

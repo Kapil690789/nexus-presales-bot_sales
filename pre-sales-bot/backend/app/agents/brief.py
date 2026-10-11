@@ -63,6 +63,7 @@ class ProjectBrief(BaseModel):
     field_attempts: dict[str, int] = Field(default_factory=dict)
     recent_acks: list[str] = Field(default_factory=list)
     shape_shown: bool = False
+    platform_service_clarified: bool = False
 
     def apply_chip(self, field: str, value: Any) -> None:
         if not field or field in {

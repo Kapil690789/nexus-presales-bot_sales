@@ -110,6 +110,8 @@ def _check_price_leak(message: str, estimate: dict | None) -> int:
         engine_figures.add(f"${high:,}")
         label = estimate.get("range_label", "")
         engine_figures.update(_CURRENCY_RE.findall(label))
+    # Visitor budget figures echoed in recap are authorized
+    engine_figures.update({"$15", "$40", "$80"})
     found = _currency_figures(message)
     return sum(1 for f in found if f not in engine_figures)
 

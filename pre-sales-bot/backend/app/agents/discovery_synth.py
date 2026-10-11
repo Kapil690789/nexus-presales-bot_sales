@@ -78,35 +78,44 @@ def ack_from_brief(
     template = templates[chosen_idx]
 
     # Compute formatting placeholders strictly from present brief values
+    from backend.app.screening.slots import (
+        budget_label,
+        display_platforms,
+        goal_short as _get_goal_short,
+        service_article,
+        service_label_clean,
+        timeline_label as _get_timeline_label,
+    )
+
     features_list = ", ".join(brief.features[:3]) if brief.features else ""
-    goal_short = brief.goal[:60].strip() if brief.goal else ""
-    platforms = " and ".join(brief.platforms) if brief.platforms else ""
-    timeline_map = {
-        "asap": "ASAP",
-        "1_3_months": "1 to 3 months",
-        "3_6_months": "3 to 6 months",
-        "flexible": "flexible",
-    }
-    timeline_label = timeline_map.get(brief.timeline or "", brief.timeline or "")
+    g_short = _get_goal_short(brief.goal)
+    platforms = display_platforms(brief.platforms)
+    timeline_lbl = _get_timeline_label(brief.timeline)
 
-    service_label = ""
-    if brief.service:
-        if services_config and brief.service in services_config.in_scope:
-            service_label = services_config.in_scope[brief.service].label
-        else:
-            service_label = brief.service.replace("_", " ")
+    s_clean = service_label_clean(brief.service, services_config.in_scope if services_config else None)
+    art = service_article(s_clean)
 
-    # Ensure template does not mention absent values
+    # Adjust template if goal_short is absent
+    if not g_short and "{goal_short}" in template:
+        template = template.replace(" for {goal_short}", "").replace(" focused on {goal_short}", "")
+
+    # Ensure template does not mention absent service
     if "{service_label}" in template and not brief.service:
         template = template.replace("A {service_label} for ", "").replace("Building a {service_label} focused on ", "Focusing on ")
+    elif "{service_label}" in template:
+        # Format service with appropriate article
+        if template.startswith("A {service_label}"):
+            template = f"{art.capitalize()} {{service_label}}" + template[len("A {service_label}"):]
+        elif "a {service_label}" in template:
+            template = template.replace("a {service_label}", f"{art} {{service_label}}")
 
     try:
         ack_text = template.format(
-            service_label=service_label,
-            goal_short=goal_short,
+            service_label=s_clean,
+            goal_short=g_short or "",
             platforms=platforms,
             features_list=features_list,
-            timeline_label=timeline_label,
+            timeline_label=timeline_lbl,
         )
     except KeyError:
         return None

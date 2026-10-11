@@ -1353,7 +1353,7 @@ async function createSession() {
     });
     const data = await res.json();
     sessionId = data.session_id;
-    appendMessage('assistant', data.message, data.chips);
+    appendMessage('assistant', data.message, data.chips, data.cards);
     updateFromResponse(data);
   } catch(e) {
     appendMessage('assistant', "I'm having trouble connecting right now. Please refresh to try again.");
@@ -1472,7 +1472,7 @@ async function sendMessage(text, chip) {
         return;
       }
       const data = await res.json();
-      appendMessage('assistant', data.message, data.chips);
+      appendMessage('assistant', data.message, data.chips, data.cards);
       updateFromResponse(data);
     } catch(e) {
       appendMessage('assistant', 'Connection error while uploading document.');
@@ -1524,7 +1524,7 @@ async function sendMessage(text, chip) {
     }
 
     const data = await res.json();
-    appendMessage('assistant', data.message, data.chips);
+    appendMessage('assistant', data.message, data.chips, data.cards);
     updateFromResponse(data);
 
   } catch(e) {
@@ -1566,7 +1566,46 @@ function setLoading(on) {
   }
 }
 
-function appendMessage(role, text, chips) {
+function renderStudioCard(card) {
+  if (!card) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'studio-card ' + (card.type || '');
+  wrap.style.cssText = 'background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:12px;margin:8px 0;font-size:13px;color:#eee;';
+
+  const title = document.createElement('h4');
+  title.style.cssText = 'margin:0 0 8px;font-size:14px;color:#fff;';
+  title.textContent = card.title || (card.type === 'shape' ? 'Project shape' : card.type || 'Details');
+  wrap.appendChild(title);
+
+  if (card.type === 'shape') {
+    const addSection = (secTitle, items) => {
+      if (!items || !items.length) return;
+      const h = document.createElement('div');
+      h.style.cssText = 'font-weight:600;margin-top:6px;color:#ccc;';
+      h.textContent = secTitle;
+      wrap.appendChild(h);
+      const ul = document.createElement('ul');
+      ul.style.cssText = 'margin:4px 0 8px 18px;padding:0;color:#bbb;';
+      items.forEach(it => {
+        const li = document.createElement('li');
+        li.textContent = it;
+        ul.appendChild(li);
+      });
+      wrap.appendChild(ul);
+    };
+    addSection('Channels & UX', card.channels_ux);
+    addSection('Core flow', card.core_flow);
+    addSection('Backend & APIs', card.backend_apis);
+  } else if (card.type === 'estimate') {
+    const range = document.createElement('div');
+    range.style.cssText = 'font-size:16px;font-weight:700;color:#10b981;margin-bottom:6px;';
+    range.textContent = card.range || '';
+    wrap.appendChild(range);
+  }
+  return wrap;
+}
+
+function appendMessage(role, text, chips, cards) {
   const container = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = `msg ${role}`;
@@ -1577,6 +1616,13 @@ function appendMessage(role, text, chips) {
   div.appendChild(bubble);
   container.appendChild(div);
 
+  if (cards && cards.length > 0 && role === 'assistant') {
+    cards.forEach(card => {
+      const cardEl = renderStudioCard(card);
+      if (cardEl) container.appendChild(cardEl);
+    });
+  }
+
   if (chips && chips.length > 0 && role === 'assistant') {
     const chipRow = document.createElement('div');
     chipRow.className = 'chip-row';
@@ -1584,6 +1630,10 @@ function appendMessage(role, text, chips) {
       const btn = document.createElement('button');
       btn.className = 'chip';
       btn.textContent = c.label;
+      // Support special chips: "Email me instead", "Show a leaner cut"
+      if (c.label === "Email me instead" || c.label === "Show a leaner cut") {
+        btn.setAttribute("data-chip", c.label);
+      }
       btn.onclick = () => {
         const textToSend = (c.field === 'ask' && c.value) ? c.value : c.label;
         sendMessage(textToSend, { field: c.field, value: c.value, label: c.label });
@@ -1632,6 +1682,7 @@ function updateFromResponse(data) {
   const archCard = cards.find(c => c.type === 'architecture');
   const mvpCard = cards.find(c => c.type === 'mvp');
   const portfolioCard = cards.find(c => c.type === 'portfolio');
+  const shapeCard = cards.find(c => c.type === 'shape');
 
   if (estimateCard) updateEstimateSection(estimateCard);
   if (archCard) updateArchSection(archCard);

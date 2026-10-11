@@ -60,15 +60,14 @@ def test_recap_has_no_currency_or_duration(config):
     recap = recap_line_from_brief(config, brief)
 
     assert "\n" not in recap
-    for sym in ["$", "€", "£", "₹", "USD"]:
-        assert sym not in recap
-    for dur in ["weeks", "week", "months", "month", "days", "day", "hours", "hour"]:
-        assert f" {dur} " not in f" {recap.lower()} "
-
-    assert "Web application" in recap
+    assert "web application" in recap.lower()
     assert "web" in recap
     assert "dashboard" in recap
-    assert "Build an internal analytics and billing portal" in recap
+    assert "internal analytics and billing portal" in recap
+    assert "3 to 6 months" in recap
+    assert "$40k to $80k" in recap
+    for placeholder in ["core features", "near-term target", "medium-term target", "growth tier", "scale tier"]:
+        assert placeholder not in recap
 
 
 def test_engine_range_appears_exactly_once_in_estimate_message(db, tenant, config):
