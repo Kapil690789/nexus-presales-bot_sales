@@ -120,7 +120,7 @@ DISCOVERY_PROMPTS = {
     "users": "Who is the first person this should work well for?",
     "integrations": "Any systems this needs to talk to on day one?",
     "timeline": "When would you like the initial version in users' hands?",
-    "budget_band": "Which budget range should I size this against for this initial pass?",
+    "budget_band": "A rough ballpark helps me size this, no commitment — which budget range makes sense?",
     "decision_role": "What's your role when this decision gets made?",
     "company_size": "Roughly how large is the company?",
 }
@@ -135,7 +135,7 @@ REPHRASED_PROMPTS = {
     "users": "Who do you picture using this first — end consumers, business clients, or your own team?",
     "integrations": "Will this connect with any outside systems, like payments, email, or a CRM?",
     "timeline": "Is there a target milestone or launch timeframe you have in mind?",
-    "budget_band": "What rough budget range or scale makes sense for this initial phase?",
+    "budget_band": "A rough ballpark helps me size this, no commitment: what investment scale are you aiming for?",
     "decision_role": "What is your role or involvement in deciding on this project?",
     "company_size": "Roughly what size or stage is your organization right now?",
 }
@@ -157,7 +157,7 @@ def _feature_names(brief: ProjectBrief | None) -> str:
 
 def prompt_for(brief: ProjectBrief | None, field: str | None, repeat: bool = False) -> str:
     if field == "features" and brief and named_features(brief) and not brief.features_confirmed:
-        return "Any other features for the launch, or ready to continue?"
+        return f"Added {_feature_names(brief)} — any other features for the launch, or ready to continue?"
     if field == "feature_detail":
         return f"What should each of {_feature_names(brief)} do in the first version?"
     if repeat and field in REPHRASED_PROMPTS:

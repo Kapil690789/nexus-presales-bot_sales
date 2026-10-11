@@ -3,442 +3,123 @@
 > **Note for new sessions**: Read this file first. It tracks completed work, modified files, test counts, verified facts, and open deliverables.
 > **Rules**: Work only in `pre-sales-bot/`. Never `git commit` or `git push`. Never print `.env` or keys. Keep the suite green.
 
-## Session 19 (TASK SHIP-3: Conversation Refinements, Calendar Honesty, Timezone, Security & Timing ContextVar) — 2026-10-04
+## Session 22 (Autonomous Queue: QA-2, E6, E5, SHIP-3B, SHIP-4, Docs Refresh) — 2026-10-11
 
-### 1. What was done in TASK SHIP-3
-- **Chit-chat & Post-Booking Deterministic Fast-Path (`backend/app/agents/router.py`)**:
-  - Replaced `_is_ack` regex with token check over 31-token acknowledgement vocabulary (max 5 words).
-  - After booking, acknowledgements receive deterministic reply: `"You're welcome! You're all set for <booking label>. I can share the agenda or help you reschedule."` with agenda and reschedule chips (zero LLM, zero retrieval).
-  - Bypasses extractor for acknowledgements and whenever `session.booking_json` exists and brief is ready.
-- **Query Rewrite & FAQ Safeguards (`backend/app/agents/router.py`)**:
-  - `rewrite_query_with_brief` applies strictly to question-like text (`OPEN` pattern or `?`) with $\ge 3$ non-stopwords; ignores acks and chatter.
-  - FAQ route requires question-like query or $\ge 5$ words, and either content-word overlap with FAQ content or score $\ge 0.80$.
-- **Price Guard False Positives (`backend/app/core/guard.py`)**:
-  - Removed bare `[0-9]+,[0-9]{3}` regex. Comma-formatted numbers count as currency only when accompanied by explicit currency symbols/words in the sentence.
-  - Normal metrics like `"50,000 users"` and `"1,200 listings in 90 days"` pass untouched; unauthorized quotes like `"The fee is 15,000."` get sanitized.
-- **Deterministic Slot Fallbacks (`backend/app/agents/router.py`)**:
-  - Standardized regexes with word boundaries and numeric parsing: `_service` (`\bai\b`, etc.), `_timeline` ($N \le 3 \to$ `1_3_months`, $4..6 \to$ `3_6_months`, $>6 \to$ `flexible`), `_budget` (currency-anchored upper-range parsing), `_role`, `_size`, and `_note_flags` (`auth` strictly requires login/account terms, preventing "accounting" false positives).
-- **Question-Scoped Yes/No Handler (`backend/app/agents/router.py`)**:
-  - Scoped yes/no extraction to the final question sentence (`_last_question_sentence`) only when it contains `"integration"` or `"admin"`. Feature listings containing "Admin" followed by visitor typing "no" no longer set admin to False.
-- **Booking Honesty & Event Update (`backend/app/engines/calendar.py`, `backend/app/agents/router.py`)**:
-  - In demo calendar mode (`live=False`), booking messages and cards carry the disclaimer: `"Demo booking: no calendar invite is sent until Google Calendar is connected."`
-  - Fixed `confirm_slot`: passing `event_id` uses Google Calendar `events().patch(...)` instead of `insert(...)`, eliminating duplicate calendar events when emails are captured post-booking.
-- **Brand Timezone Support (`backend/app/engines/calendar.py`, `backend/app/tenants/schema.py`, `backend/app/agents/router.py`)**:
-  - `list_slots` and `confirm_slot` use `brand.timezone` (defaults to `"Asia/Kolkata"`). A slot at 15:00 UTC formats as 20:30 IST.
-- **Security Hardening (`backend/app/core/llm.py`, `backend/app/core/guard.py`, `backend/app/rag/embeddings.py`)**:
-  - `_gemini` sends `x-goog-api-key` in HTTP headers and removes `?key=` from URL query parameters.
-  - Set `httpx` and `httpcore` loggers to `WARNING` to prevent URL leaks at INFO level.
-  - `VISITOR_TAG` regex handles whitespace in `</visitor>` tags case-insensitively (`r"<\s*/?\s*visitor\s*>"`); tightened `DAN` pattern to avoid false positives on visitor names like "Dan".
-- **Query Embedding Timing via ContextVar (`backend/app/rag/embeddings.py`, `backend/app/agents/router.py`)**:
-  - Introduced `query_embedding_duration_ms: ContextVar[float]` in `embeddings.py` wrapping `embed_query`.
-  - Removed all monkey-patching in `router.py`. Cleanly reads duration per context, thread-safe and task-safe.
-- **Test Suite Verification**:
-  - Added 11 regression tests in `backend/tests/test_ship3_requirements.py`.
-  - Suite status: **289 passed in 13.15s** (100% green).
+### 1. What was done in Session 22
+- **TASK Q1 (QA-2 Conversation Quality)**:
+  - Eliminated placeholder words ("Placeholder", "Lorem", "TODO", "TBD") across all prompts and templates.
+  - Eliminated mid-word truncations in text generation.
+  - Ensured question variety with no question repeated more than twice per session.
+  - Standardized estimate moments with exact engine range matching, brief recap, and budget-fit evaluation.
+- **TASK Q2 (E6 Widget Feel & Parity)**:
+  - Byte-for-byte synchronization between `widget/consultant.js` and `public/widget/consultant.js` (`cmp` returncode 0).
+  - Verified card rendering parity in both embed widget and Proposal Studio (`/studio.html`) for all card types (shape, estimate, mvp, architecture, portfolio, calendar).
+  - Maintained smooth transitions and responsive layout across mobile and desktop.
+- **TASK Q3 (E5 Fast Flow Behind Flag)**:
+  - Implemented configurable `ENABLE_FAST_FLOW` toggle in `core/settings.py` and `agents/router.py`.
+  - Side-by-side comparison documented in `docs/FLOW_COMPARISON.md`. Owner question logged in `docs/OWNER_QUESTIONS.md`.
+- **TASK Q4 (SHIP-3B Security, Leaks, Uploads & Red-Teaming)**:
+  - Duration leak sanitization (`sanitize_duration_leaks()` in `core/guard.py`) preventing unauthorized timeline commitments while allowing indicative engine ranges.
+  - Upload safety in `api/documents.py`: enforced `MAX_UPLOAD_BYTES = 4_000_000` (4MB), extracted text clamped to 20k chars in memory (`DocumentRow(storage_key="memory")`), zero disk writes.
+  - Session transcript export authorization in `api/sessions.py` returning only visitor-visible messages with sanitized filenames.
+  - Dynamic out-of-scope keyword filtering from tenant configuration (`services.out_of_scope`).
+  - Dynamic brand name resolution in `refusal_message(brand_name)`.
+  - Executed `scripts/redteam_live.py` across 19 adversarial probes (16 PASS, 3 REVIEW, 0 FAIL) logged in `docs/REDTEAM.md`.
+- **TASK Q5 (SHIP-4 Booking Safety & Persistent Rate Limits)**:
+  - Added `RateLimitRow` to `models/entities.py` mapped to database table `rate_limits(key_hash, window_start, count)` with `window_start` index.
+  - Implemented atomic upsert and 24h prune across SQLite and PostgreSQL in `core/security.py`.
+  - Persistent rate limits, per-IP LLM actor budget, and admin lockout moved to persistent database table.
+  - Fail-open for visitor endpoints on DB error (warning with class name only); fail-closed for admin authentication.
+  - Added booking abuse limits: max 3 bookings per IP per 24 hours, max 1 active booking per email, max 5 email submissions per session.
+  - Salted SHA-256 IP hashing (`hash_ip()`), requiring `IP_HASH_SALT` in production (`assert_ip_salt_configured()`).
+  - RFC single email validation (`validate_single_email()`, `extract_single_email()`), max 254 chars, syntax check, rejection of multiple comma/semicolon-separated addresses.
+  - Enforced single calendar attendee constraint in `engines/calendar.py`.
+- **TASK Q6 (Docs Refresh & Demo Playbook)**:
+  - Updated `README.md`, `docs/MASTER_CONTEXT.md`, `docs/DEPLOY.md`, `docs/PROGRESS.md` with measured 417 passing test suite count.
+  - Created comprehensive `DEMO_PLAYBOOK.md` with full pitch script, step-by-step walkthrough, and red-team demonstration guide.
+  - Sanitized personal emails across all documentation.
+  - Documented known gaps and production deployment checklist.
 
-### 2. Files Changed in TASK SHIP-3
+### 2. Files Changed in Session 22
 | File | Change |
 |------|--------|
-| `backend/app/agents/router.py` | Token-based `_is_ack`, post-booking fast-path, rewrite & FAQ gating, deterministic fallbacks, question-scoped yes/no, demo honesty notices, ContextVar timing. |
-| `backend/app/core/guard.py` | Removed bare comma regex, currency-word context requirement for numbers, whitespace-tolerant `VISITOR_TAG`, tightened DAN pattern. |
-| `backend/app/core/llm.py` | Sent `x-goog-api-key` header, removed `?key=` query parameter, silenced httpx/httpcore loggers. |
-| `backend/app/engines/calendar.py` | Timezone formatting with `brand.timezone` (default `Asia/Kolkata`), Google Calendar `patch` when `event_id` present, demo disclaimer payload. |
-| `backend/app/tenants/schema.py` | Default `BrandConfig.timezone` to `Asia/Kolkata`. |
-| `backend/app/rag/embeddings.py` | `query_embedding_duration_ms` ContextVar around `embed_query`, silenced httpx/httpcore loggers. |
-| `backend/tests/test_ship3_requirements.py` | 11 comprehensive automated tests covering all SHIP-3 items. |
-| `docs/PROGRESS.md` | Session 19 running log entry. |
-
----
-
-## Session 18 (TASK SHIP-2: Discovery Acknowledgement Scoping, Request Mode & Grounding) — 2026-10-04
-
-### 1. What was done in TASK SHIP-2
-- **Discovery Acknowledgement Scoping (`backend/app/agents/router.py`)**:
-  - Differentiated always-acknowledgements (`ALWAYS_ACK_RE`: `hi`, `hello`, `hey`, `thanks`, `shukriya`) from conditional acknowledgements (`CONDITIONAL_ACK_RE`: `yes`, `no`, `ok`, `haan`, `theek hai`).
-  - Implemented `has_pending_discovery`: True when discovery is ongoing (`not brief_ready(brief)` and no estimate generated, stage not in advising/handoff/disqualified).
-  - When `has_pending_discovery` is True, `yes`/`no`/`ok` bypass the fast deterministic acknowledgement and enter the standard extractor/slot path.
-  - Added deterministic free-text slot mapping in `_apply_free_text`: `"no"` after integrations sets `brief.integrations = ["none"]`; `"yes"` after admin question sets `brief.admin = True`.
-  - Maintained zero-LLM/zero-retrieval skip for `thanks`, `yes`, `no`, `ok` after estimate generation when discovery is inactive.
-- **Visitor Request Mode Enforcement (`backend/app/core/llm.py`, caller agents)**:
-  - Verified and ensured all visitor-facing LLM calls pass `mode="request"`: extractor (`router.py:382`), consult (`discovery_synth.py:65`), solution (`router.py:461`), fallback (`fallback.py:53`), and grounded answer (`grade.py:61`).
-  - In `core/llm.py`, when `mode="request"` and model starts with `gemini-3`, injects `thinkingConfig: {"thinkingLevel": settings.llm_thinking_level}` (default `"low"`).
-- **Grounding Prompt in `grounded_answer` (`backend/app/rag/grade.py`)**:
-  - Added exact grounding directive `GROUNDING_LINE` into `GROUNDED_SYSTEM_PROMPT`:
-    `"Answer only from the engine data and the provided notes. If the notes do not contain the answer, say you are not sure and offer to connect the team. Never invent clients, case studies, guarantees, delivery dates or prices."`
-- **Test Suite Expansion**:
-  - Added 9 dedicated regression tests in `backend/tests/test_ship2_requirements.py`.
-  - Suite status: **278 passed, 0 xfailed, 0 failed in 12.90s** (100% green).
-
-### 2. Files Changed in TASK SHIP-2
-| File | Change |
-|------|--------|
-| `backend/app/agents/router.py` | Distinguish always vs conditional ack, `has_pending_discovery` check, `_apply_free_text` yes/no mapping. |
-| `backend/app/rag/grade.py` | Injected `GROUNDING_LINE` into `GROUNDED_SYSTEM_PROMPT` for `grounded_answer` LLM call. |
-| `backend/app/core/llm.py` | Verified `mode="request"` thinking config payload construction for gemini-3. |
-| `backend/tests/test_ship2_requirements.py` | 9 automated tests for ack scoping, mode="request", and grounded_answer prompt. |
-
----
-
-## Session 17 (TASK SHIP-1: Thinking Level, Timing Benchmarks, Bypass, Badges, Price Guard & Grounding) — 2026-10-04
-
-### 1. What was done in TASK SHIP-1
-- **LLM Thinking Level Control (`backend/app/core/settings.py`, `backend/app/core/llm.py`)**:
-  - Added `llm_thinking_level: str = "low"` (allowed: `low`, `medium`, `high`).
-  - Added validator rejecting `"minimal"` with explicit error because `gemini-3.8-flash` rejects minimal.
-  - Injected `thinkingConfig: {"thinkingLevel": settings.llm_thinking_level}` for `gemini-3` models in `mode="request"`. Documented in `.env.example`.
-- **Latency Timing & Server-Timing Header (`backend/app/api/sessions.py`)**:
-  - Wrapped each turn stage with `time.perf_counter()`: `extractor`, `query_embedding`, `retrieval_db`, `answer_llm`, `db_writes`, `total`.
-  - Emits single INFO log line per turn with stage durations in ms without visitor text.
-  - Added RFC-compliant `Server-Timing` HTTP response header.
-  - Benchmarked 10 scripted turns locally with real Gemini API key:
-    - Extractor: Median 2043 ms, Max 2315 ms.
-    - Query Embedding: Median 120 ms, Max 185 ms.
-    - Retrieval DB: Median 8 ms, Max 22 ms.
-    - Answer LLM: Median 1991 ms, Max 2250 ms.
-    - DB Writes: Median 4 ms, Max 12 ms.
-    - Total: Median 4210 ms, Max 4680 ms.
-- **Skip Pointless Work (`backend/app/agents/router.py`)**:
-  - Chip clicks bypass slot extractor via `is_chip_click`.
-  - Pure acknowledgements (`hi`, `hello`, `ok`, `thanks`, etc.) bypass query embedding and retrieval DB, returning deterministic fallback string.
-- **Bottleneck Analysis & Proposed Fix**:
-  - Single biggest cost identified: Sequential 2-call LLM architecture (extractor ~2043 ms + answer LLM ~1991 ms = ~4000 ms of 4200 ms total).
-  - Proposed fix: Collapse slot extraction and synthesis into a single structured LLM call when user provides free text during discovery.
-- **Sample Project Badging (`widget/consultant.js`, `public/studio.html`)**:
-  - Rendered `Sample project (demo data)` badge on portfolio/case-study cards from chunks with `is_sample=True`.
-  - Fallback/consultant citations prepend `"Sample case study:"` when citing sample data.
-- **Strict Sentence-Level Price Guard (`backend/app/core/guard.py`)**:
-  - Rewrote `sanitize_price_leaks` to replace whole sentence containing unauthorized figures with:
-    `"Exact pricing depends on scope; the indicative range above is the only figure I can confirm."`
-  - Added Indian currency expressions (`lakh`, `crore`, `₹`), lookbehinds `(?<!\bRs\.)`, and expanded budget bands.
-- **Grounding Directive (`backend/app/agents/fallback.py`, `backend/app/agents/discovery_synth.py`, `backend/app/agents/router.py`)**:
-  - Injected exact grounding line into fallback, consult, and solution system prompts.
-- **Test Suite**:
-  - Added 14 automated tests in `backend/tests/test_ship1_requirements.py`.
-  - Suite status: **269 passed, 0 xfailed, 0 failed in 12.30s**.
-
-### 2. Files Changed in TASK SHIP-1
-| File | Change |
-|------|--------|
-| `backend/app/core/settings.py` | Added `llm_thinking_level` setting and validator rejecting `"minimal"`. |
-| `backend/app/core/llm.py` | Added `thinkingConfig` payload injection for `gemini-3*` models in `mode="request"`. |
-| `backend/app/api/sessions.py` | Stage timers (`time.perf_counter`), INFO turn log line, `Server-Timing` header. |
-| `backend/app/agents/router.py` | Skip extractor on chip clicks, pure ack bypass, grounding line in solution prompt. |
-| `backend/app/agents/fallback.py` | Added grounding line in fallback prompt, cite sample cases as sample. |
-| `backend/app/agents/discovery_synth.py` | Added grounding line in consult system prompt. |
-| `backend/app/core/guard.py` | Sentence-level price leak sanitization, Indian currency support, expanded budget band regex. |
-| `widget/consultant.js` & `public/widget/consultant.js` | Added sample badge to portfolio cards. |
-| `public/studio.html` | Added sample badge to studio proposal cards. |
-| `.env.example` | Documented `LLM_THINKING_LEVEL=low`. |
-| `backend/tests/test_ship1_requirements.py` | 14 automated tests for SHIP-1 requirements. |
-
----
-
-## Session 16 (Live Deployment Hardening, UX Polish & Post-Booking Flow) — 2026-10-03
-
-### 1. What was done in Session 16
-- **Live Production Deployment & Verification**:
-  - Live production URL verified: `https://nexus-presales-bot-sales.vercel.app`.
-  - Database connected to Neon PostgreSQL (`persistence: "persistent"`).
-  - Production corpus reindexed: 199 documents indexed, 0 failures.
-  - Admin dashboard live at `/admin` (token tracker, INR costs, projections).
-- **Smart Chip Deduplication & Catalog Filtering (`backend/app/screening/slots.py`)**:
-  - Solved repetitive feature loop (e.g. clicking "Payments" gave the same 4 options again).
-  - Dynamically catalogs features based on `brief.service` (`ai_product`, `mobile_app`, `web_app`, `ui_ux`).
-  - Auto-filters already selected features from suggestion chips.
-  - Adds prominent `"Continue to next step →"` chip when at least one feature is selected.
-- **Purged "v1" Technical Jargon Across System**:
-  - Replaced technical "v1" jargon with client-friendly phrases ("initial launch", "first release", "core MVP") across `slots.py`, `discovery_synth.py`, `mvp.py`, and `studio.html`.
-- **Live Proposal Studio & Widget Executive Guide Book**:
-  - `public/studio.html`: Added `ⓘ Guide Book` modal explaining real-time sync, deterministic pricing, MVP separation, and PDF export.
-  - `widget/consultant.js` & `public/widget/consultant.js`: Added `ⓘ` info popover explaining the 4 advisor steps.
-- **Post-Booking Email Capture & Inquiry Resolution (`backend/app/agents/router.py`)**:
-  - Fixed bug where replying with an email after booking (`"kapil19092003@gmail.com here is my mail"`) triggered an unrelated BrowserStack testing RAG answer.
-  - Linked attendee email to `session.booking_json`, recorded lead in `LeadRow`, sent Slack notification, and returned warm executive invite confirmation.
-  - Added dedicated handlers for post-booking questions: "What is on the agenda?", "Can I invite a colleague?", "Can I reschedule?".
-  - Contextual post-booking chips: replaced redundant "Book a meeting" chip with reschedule / agenda chips.
-- **Test Suite Hardening**:
-  - Added comprehensive regression test in `backend/tests/test_booking_email_flow.py`.
-  - Suite status: **252 passed, 0 xfailed, 0 failed in 11.95s** (100% green).
-
-### 2. Files Changed in Session 16
-| File | Change |
-|------|--------|
-| `backend/app/screening/slots.py` | Dynamic service catalog, deduplicated chips, "Continue to next step →" chip, purged v1. |
-| `backend/app/agents/discovery_synth.py` | Added system prompt rule against "v1", updated fallback prompt. |
-| `backend/app/engines/mvp.py` | Replaced `v1:` item prefix with `Core:`. |
-| `public/studio.html` | Added `ⓘ Guide Book` modal, Core MVP title update, script open/close handlers. |
-| `widget/consultant.js` & `public/widget/consultant.js` | Added `ⓘ` info button and overlay modal. |
-| `backend/app/agents/router.py` | Post-booking email capture, agenda/colleague inquiry handlers, reschedule regex. |
-| `backend/tests/test_booking_email_flow.py` | Full lifecycle test for booking, email capture, DB lead, agenda, colleague, reschedule. |
-
-### 3. Commits Pushed to `main`
-- `4a04c78`: feat: smart chip deduplication, purge v1 jargon, and add executive guide book
-- `beb68f2`: fix: seamlessly capture work email post-booking and handle agenda/colleague inquiries
-
----
-
-## Session 15 (Prompt F3: Documentation Accuracy & Eval Calibration) — 2026-10-03
-
-### 1. What was done in Prompt F3
-- **Current State Architecture in `docs/MASTER_CONTEXT.md`**:
-  - Completely rewrote Section 3 as current audited state with exact `file:line` citations for all components (`main.py`, `embeddings.py`, `settings.py`, `security.py`, `llm.py`, `guard.py`, `usage.py`, `router.py`, `extractor.py`, `pricing.py`, `store.py`, `grade.py`, `schema.py`, `health.py`, `admin.py`, `platform.yaml`, `model_rates.yaml`).
-  - Moved legacy Phase 0 pre-fix findings (query-string API keys, unconstrained 3072 dims, admin fail-open, loose schemas) to Section 10 "History Appendix".
-  - Section 9 rows marked `[Resolved]` updated with verified `file:line` implementation references and test names.
-- **`README.md` Diagram and Spec Reconciliation**:
-  - Restored missing `Security --> Router` edge and explicit `Router` node label in Mermaid flowchart.
-  - Removed duplicate `models/` and `rag/` folder listings in the repository tree.
-  - Updated Section 1 Item 2 to dynamically reference `LLM_MODEL` (`agents/discovery_synth.py`).
-  - Reconciled Rule 2: clearly documented `memory_turns: 8` for the rolling summary window alongside the 3-turn window passed for pronoun resolution.
-  - Reconciled Section 10 "Paid API Readiness": clarified the difference between visitor request-time budget (12s wall-clock, 1 retry) and offline batch ingestion backoff.
-  - Reconciled sample prompt estimate from the pinned golden test: Sarah inquiry yields $36,000–$45,000 USD, 19 weeks (complex base 22 weeks accelerated to 19 weeks via `ceil(22 * 0.85)` by the `asap` timeline trigger).
-- **Exact Pricing Band Formula Across Docs**:
-  - Replaced every occurrence of `+/-25%` with the exact mathematical formulation: `the price band is low = 0.8 x raw and high = raw (width 25% of low, 0% above raw)` across `README.md`, `docs/AGENT_BRIEF.md`, `docs/MASTER_CONTEXT.md`, and `docs/PRICING_PROPOSALS.md`.
-  - Recomputed proposal bands in `docs/PRICING_PROPOSALS.md` accordingly (early discovery: low = 0.70 x raw, high = raw, width 42.8% of low; mature discovery: low = 0.90 x raw, high = raw, width 11.1% of low).
-- **Evaluation & Benchmark Calibration (`docs/EVAL.md`)**:
-  - Re-ran `backend/tests/eval` (all 31 scenarios passing in 4.45s).
-  - Published before vs after table across all metrics with sample sizes ($n$), explicitly labeling stub-only vs deterministic metrics.
-  - Documented final H1–H6 table with implementation citations and test names, eliminating stale xfail text.
-  - Published 25-query RAG calibration distributions and threshold proposals from `scripts/calibrate_rag.py`.
-- **Progress Log Condensation**:
-  - Moved historical Sessions 2–8 into a compact summary table.
-  - Maintained verified facts, citations, and complete roadmap status.
-
-### 2. Files Changed in Prompt F3
-| File | Change |
-|------|--------|
-| `docs/MASTER_CONTEXT.md` | Rewrote Section 3 as current state with `file:line` citations; added History appendix; pinned Section 9 test names. |
-| `README.md` | Fixed Mermaid diagram edge/node, removed duplicate tree items, dynamic `LLM_MODEL`, pinned Sarah prompt, accurate request budget. |
-| `docs/PRICING_PROPOSALS.md` | Replaced `+/-25%` with exact formula and recomputed proposal bands. |
-| `docs/AGENT_BRIEF.md` | Replaced `±25%` with exact price band formula. |
-| `docs/EVAL.md` | Published before vs after metrics, H1–H6 resolutions, and 25-query calibration results. |
-| `docs/PROGRESS.md` | Logged Sessions 14 & 15, condensed Sessions 2–8 into summary table. |
+| `backend/app/models/entities.py` | Added `RateLimitRow` table entity with index on `window_start`. |
+| `backend/app/core/settings.py` | Added `enable_fast_flow`, `max_bookings_per_ip_per_day`, `max_active_bookings_per_email`, `max_email_submissions_per_session`, `ip_hash_salt`. |
+| `backend/app/core/security.py` | Persistent rate limiting with atomic SQLite/Postgres upsert and 24h prune; salted IP hash; fail-open for visitors, fail-closed for admin. |
+| `backend/app/core/guard.py` | Implemented `sanitize_duration_leaks()`; dynamic tenant `refusal_message(brand_name)`. |
+| `backend/app/api/documents.py` | Enforced `MAX_UPLOAD_BYTES = 4_000_000` (4MB) and 20k extracted text memory limit. |
+| `backend/app/api/sessions.py` | Session transcript download authorization and sanitized export filename. |
+| `backend/app/engines/calendar.py` | Enforced single attendee booking constraint (`"attendees": [{"email": attendee}]`). |
+| `backend/app/agents/router.py` | Fast flow branch, dynamic out-of-scope check, single email validator, booking limits integration. |
+| `widget/consultant.js` & `public/widget/consultant.js` | Maintained byte-for-byte parity (`cmp` returncode 0). |
+| `scripts/redteam_live.py` | Automated 19 red-team probes against live server. |
+| `DEMO_PLAYBOOK.md` | Comprehensive sales demo script and feature guide. |
+| `docs/AGENT_REPORTS.md` | Detailed reports for tasks Q1, Q2, Q3, Q4, Q5, Q6. |
+| `docs/REDTEAM.md` | Recorded 19 red-team probe outputs and status. |
+| `docs/FLOW_COMPARISON.md` | Documented standard vs fast flow comparison. |
+| `docs/OWNER_QUESTIONS.md` | Logged fast flow default question for project owner. |
+| `backend/tests/test_q4.py` | 14 automated tests for SHIP-3B requirements. |
+| `backend/tests/test_q5.py` | 12 automated tests for SHIP-4 requirements. |
 
 ### 3. Test Counts
-- **Suite Status**: **251 passed, 0 xfailed, 0 failed in ~11.4s** (100% green across all suites).
+- **Before Session 22**: 368 passed
+- **After Task Q1-Q3**: 390 passed
+- **After Task Q4**: 405 passed
+- **After Task Q5-Q6**: **417 passed, 0 xfailed, 0 failed in 30.25s** (100% green).
 
 ---
 
-## Session 14 (Prompt F2: Conversation Quality & Guard Hardening) — 2026-10-03
+## Session 21 (TASK QA-1: Audit, Configurable Model Fallback, Question Detection, Rewrite Bypass & Transcripts) — 2026-10-11
 
-### 1. What was done in Prompt F2
-- **Visitor Request LLM Time Budget (`backend/app/core/llm.py`)**:
-  - Added `mode="request"` parameter to `complete_json()` and `_gemini()`.
-  - In `mode="request"`: enforces 15s per-call timeout, max 1 retry on 429/503, and a 12s wall-clock budget.
-  - On budget exhaustion, raises `LLMError` cleanly to allow `run_turn()` to fall back immediately to intelligent heuristic responses rather than leaving frontend visitors hanging.
-  - Recorded system event on quota failure.
-- **Minimal Public `/health` Information Disclosure (`backend/app/api/health.py`, `backend/app/api/admin.py`)**:
-  - Shrunk public `GET /health` to only return `{"status": "ok" | "degraded"}` with zero internal model names, unindexed chunk counts, or exception classes.
-  - Moved comprehensive diagnostic dictionary (`embeddings`, `llm`, `stale_chunks`, `persistence`, `tenants`) to authenticated `GET /admin/api/health`.
-- **Explicit Failure Listener Registry (`backend/app/rag/embeddings.py`, `backend/app/core/llm.py`)**:
-  - Replaced ad-hoc monkeypatching with an explicit listener pattern: `set_failure_listener(fn)`.
-  - Embedding failures notify all registered listeners cleanly, isolating DB event logging from embedding execution.
-- **Student Role Confirmation Score Neutrality (`backend/app/agents/router.py`)**:
-  - When a visitor confirms "Live project at a company", sets `brief.decision_role = None` (neutral) rather than `founder_or_exec`.
-  - Prevents premature 20-point qualification score inflation while leaving discovery open to clarify the actual role naturally.
-- **Price Leak Guard Span-Based Replacement (`backend/app/core/guard.py`)**:
-  - Rewrote `sanitize_price_leaks` using span-based right-to-left substitution.
-  - Correctly validates and preserves: engine ranges (`$36k`, `$36K`, `36,000`, `USD 36000`, `36 thousand dollars`), bare legitimate numbers, and visitor-stated budget echoes (`$25k-$50k`).
-  - Sanitizes unauthorized currency figures (`$5,000`, `Rs 30 lakh`, `₹50,000`, `10,000 dollars`) to the authorized engine range or indicative pricing text.
-  - Verified across a comprehensive 30-sample test matrix.
-- **Lexical-Only RAG Mode Floor Cap (`backend/app/rag/store.py`, `backend/app/rag/grade.py`)**:
-  - Added `lexical_only: bool = False` flag to `Hit`.
-  - In lexical-only mode (e.g. Gemini embedding outage), caps classification grade at `"weak"`, never `"show"`, preventing ungrounded lexical noise from surfacing as confident case studies.
-- **Calibrate RAG Production Path (`scripts/calibrate_rag.py`)**:
-  - Updated calibration script to score through the production search path with lexical boosts.
-  - Evaluated 25 labelled queries against demo corpus in ONLINE mode and printed proposed thresholds.
-- **Sarah Golden Prompt Pinned Estimate**:
-  - Evaluated README prompt ("Sarah, Founder at Fintech startup...").
-  - Exact pinned values: route `estimate`, stage `advising`, `$36,000–$45,000 USD`, 19 weeks (complex base 22 weeks accelerated by `asap` trigger), score 88 hot.
-
-### 2. 30-Sample Price Guard Verification Table
-
-| # | Input Text | Allowed Estimate | Visitor Budget | Expected Result | Actual Result | Status |
-|:--|:-----------|:-----------------|:---------------|:----------------|:--------------|:-------|
-| 1 | "Estimated range is $36k for your scope." | $36k–$45k | None | $36k | Contains "$36k" | **PASSED** |
-| 2 | "Total could be up to $45k." | $36k–$45k | None | $45k | Contains "$45k" | **PASSED** |
-| 3 | "Pricing band: $36K to $45K." | $36k–$45k | None | $36K to $45K | Contains "$36K to $45K" | **PASSED** |
-| 4 | "The baseline is 36,000 USD." | $36k–$45k | None | 36,000 USD | Contains "36,000 USD" | **PASSED** |
-| 5 | "Target cost is USD 36000." | $36k–$45k | None | USD 36000 | Contains "USD 36000" | **PASSED** |
-| 6 | "Overall investment is 36 thousand dollars." | $36k–$45k | None | 36 thousand dollars | Contains "36 thousand dollars" | **PASSED** |
-| 7 | "Capped at 45 thousand dollars." | $36k–$45k | None | 45 thousand dollars | Contains "45 thousand dollars" | **PASSED** |
-| 8 | "Aligned with your $25k-$50k budget." | $36k–$45k | "$25k-$50k" | $25k-$50k | Contains "$25k-$50k" | **PASSED** |
-| 9 | "Fits inside your $50k envelope." | $36k–$45k | "50k" | $50k | Contains "$50k" | **PASSED** |
-| 10 | "Referencing your 25k to 50k budget." | $36k–$45k | "25k to 50k" | 25k to 50k | Contains "25k to 50k" | **PASSED** |
-| 11 | "We can deliver this for only $5,000." | $36k–$45k | None | $36,000–$45,000 USD | Replaced with range | **PASSED** |
-| 12 | "Special discount rate is $12k." | $36k–$45k | None | $36,000–$45,000 USD | Replaced with range | **PASSED** |
-| 13 | "It will cost exactly $15,000." | $36k–$45k | None | $36,000–$45,000 USD | Replaced with range | **PASSED** |
-| 14 | "Fixed price: USD 20000." | $36k–$45k | None | $36,000–$45,000 USD | Replaced with range | **PASSED** |
-| 15 | "Total quote is 80 thousand dollars." | $36k–$45k | None | $36,000–$45,000 USD | Replaced with range | **PASSED** |
-| 16 | "Rough estimate is Rs 30 lakh." | None | None | custom indicative pricing | Replaced with disclaimer | **PASSED** |
-| 17 | "Development fee is ₹50,000." | None | None | custom indicative pricing | Replaced with disclaimer | **PASSED** |
-| 18 | "Starts from Rs. 25 lakh." | None | None | custom indicative pricing | Replaced with disclaimer | **PASSED** |
-| 19 | "Budget needed: INR 500000." | None | None | custom indicative pricing | Replaced with disclaimer | **PASSED** |
-| 20 | "Project quote: $36,000–$45,000 USD." | $36k–$45k | None | $36,000–$45,000 USD | Exact range kept | **PASSED** |
-| 21 | "Budget baseline: 36000 dollars." | $36k–$45k | None | 36000 dollars | Legit bare number kept | **PASSED** |
-| 22 | "Budget baseline: 10,000 dollars." | $36k–$45k | None | $36,000–$45,000 USD | Replaced with range | **PASSED** |
-| 23 | "Consultation is free." | None | None | Consultation is free. | Non-price text untouched | **PASSED** |
-| 24 | "Was $20k now $15k." | $36k–$45k | None | $36,000–$45,000 USD | Multi-figure replaced | **PASSED** |
-| 25 | "Between $36k and $90k." | $36k–$45k | None | $36k kept, $90k replaced | Sanitized mixed | **PASSED** |
-| 26 | "Based on your $15k-$40k range." | $36k–$45k | "$15k-$40k" | $15k-$40k | Visitor budget kept | **PASSED** |
-| 27 | "Enterprise edition is $100k." | $36k–$45k | None | $36,000–$45,000 USD | Replaced with range | **PASSED** |
-| 28 | "Hosting fee is $500." | $36k–$45k | None | $36,000–$45,000 USD | Small figure replaced | **PASSED** |
-| 29 | "Setup cost is 999 USD." | $36k–$45k | None | $36,000–$45,000 USD | Replaced with range | **PASSED** |
-| 30 | "The upper ceiling is $45,000." | $36k–$45k | None | $45,000 | Legit upper bound kept | **PASSED** |
-
-### 3. Files Changed in Prompt F2
-| File | Change |
-|------|--------|
-| `backend/app/core/llm.py` | Added request-time budget (12s wall-clock, 15s timeout, 1 retry) and listener dispatch. |
-| `backend/app/rag/embeddings.py` | Added explicit `set_failure_listener()` pattern. |
-| `backend/app/api/health.py` | Made public `/health` minimal (`{"status": "ok" | "degraded"}`). |
-| `backend/app/api/admin.py` | Mounted diagnostic health metrics under authenticated `GET /admin/api/health`. |
-| `backend/app/agents/brief.py` | Set `decision_role = None` on "Live project at a company". |
-| `backend/app/agents/router.py` | Updated student role confirm handler and budget pass-through to price guard. |
-| `backend/app/core/guard.py` | Implemented span-based price leak replacement supporting prefixes, suffixes, and visitor budget echoes. |
-| `backend/app/rag/store.py` | Added `lexical_only` attribute to `Hit`. |
-| `backend/app/rag/grade.py` | Capped lexical-only hits at `"weak"` confidence floor. |
-| `scripts/calibrate_rag.py` | Updated scoring through production search path with lexical boosts. |
-| `backend/tests/test_phase_f2_quality.py` | Created 7 comprehensive tests covering all F2 deliverables. |
-
-### 4. Test Counts
-- **Before Prompt F2**: 244 passed, 0 xfailed
-- **After Prompt F2**: **251 passed, 0 xfailed, 0 failed** (all green, 11.44s)
+### 1. What was done in TASK QA-1
+- **Audit Completed**:
+  - Identified and reported file:line and test coverage for the unrequested model fallback (`gemini-2.5-flash`), short-query rewrite bypass (`< 6` words), and warm response LLM branches.
+- **Configurable Model Fallback (`core/settings.py`, `core/llm.py`, `api/admin.py`)**:
+  - Replaced hard-coded fallback model with configurable setting `llm_model_fallbacks: str = ""` (default empty, off by default).
+  - Fallback strictly restricted to HTTP 404 (NOT_FOUND); 429 quota exhaustion, 5xx, timeouts, 400, 401, 403 never trigger a fallback.
+  - Answering model is recorded in token usage and tracks `last_used_model`.
+  - Fallback events log to `SystemEventRow` (`kind="model_fallback"`).
+  - `/admin/api/health` exposes both `configured_model` and `last_used_model`.
+- **Rewrite Bypass Rule (`memory/rewrite.py`)**:
+  - Skips LLM query rewrite only when message has $\ge 4$ words AND contains none of the trigger tokens: `it`, `its`, `that`, `this`, `they`, `them`, `those`, `these`, `there`, `also`, `and`, `same`, `other`, `instead`, `too`, `what about`, `how about`. Otherwise rewrites.
+- **Question-Like Detector (`agents/router.py`, `agents/extractor.py`)**:
+  - Detects explicit inquiry phrases ("I want to know", "I'd like to know", "I would like to understand", "want to understand", "wondering", "curious", "need more info/information/details", "looking for info/information/details", "more about") and bare noun phrases starting with "your" ("your pricing", "your process", "your team", "your stack", "your support").
+  - Routes directly to knowledge retrieval / FAQ, bypassing slot extraction and discovery nudge.
+- **Grounded Responses (`agents/router.py`)**:
+  - Replaced ungrounded LLM synthesis in post-booking ack, off-topic redirect, and brief-ready ack with deterministic templates that contain zero claims about past projects, response times, guarantees, prices, or durations.
+- **Rendering Parity (`widget/consultant.js`, `public/studio.html`)**:
+  - Added card type `shape` renderer using safe `textContent` to `public/studio.html`.
+  - Explicitly handled special chips `"Email me instead"` and `"Show a leaner cut"` in both `widget/consultant.js` and `public/studio.html`.
+  - Synced `public/widget/consultant.js` byte-identically with `widget/consultant.js`.
+- **Demo Transcripts & Verification (`scripts/demo_transcripts.py`, `docs/DEMO_TRANSCRIPTS.md`, `tests/test_qa1.py`)**:
+  - Implemented `scripts/demo_transcripts.py` executing 6 end-to-end scenarios (S1-S6) in-process and recording `docs/DEMO_TRANSCRIPTS.md` with checks table.
+  - Added 28 automated tests in `tests/test_qa1.py` covering model fallback, rewrite bypass, question detector, grounded response safety, and UI rendering parity.
+  - Total test suite: **368 passed in 19.10s** (100% green).
 
 ---
 
-## Session 13 (Prompt T1: Token Tracker & Measured Pricing) — 2026-10-03
+## Summary of Historical Sessions (Sessions 2–19)
 
-### 1. What was done in Prompt T1
-- **Model Rates in YAML (`config/model_rates.yaml`)**:
-  - Moved token rates out of code into `config/model_rates.yaml` with exact model keys, `effective_from` dates, sources, and verification status.
-  - Supported effective-dated pricing: `gemini-3.8-flash` is \$0.75 in / \$3.75 out through 2026-12-31, rising to \$1.50 / \$7.50 from 2027-01-01.
-  - Unknown models: records tokens, returns `cost: None`, and shows `"rate unknown"` in UI and model breakdown. Never falls back silently to another model's rate.
-- **Thinking Tokens Billed as Output (`backend/app/core/llm.py`)**:
-  - In `_gemini()`: reads `thoughtsTokenCount` from `usageMetadata` and adds to `completion_tokens` (`completion_tokens = candidates_tokens + thoughts_tokens`).
-- **Session Binding via ContextVar (`backend/app/core/usage.py`)**:
-  - Added `_active_session_id: ContextVar[str | None]` and helper functions `set_active_session()`, `reset_active_session()`, `get_active_session()`. Fallback to `_llm_actor`.
-  - Concurrent requests/tasks each retain their own bound session ID without cross-talk.
-- **Embedding Estimates Tagged (`backend/app/models/entities.py`, `backend/app/rag/embeddings.py`, `backend/app/models/db.py`)**:
-  - Added `estimated: Mapped[bool]` column to `TokenUsageRow` and `_ensure_columns("token_usage", {"estimated": "BOOLEAN DEFAULT FALSE"})` in `models/db.py`.
-  - `_gemini_embed()` reads `usageMetadata["promptTokenCount"]` if present (`estimated=False`); otherwise estimates `sum(characters // 4)` and sets `estimated=True`.
-  - Admin UI displays `[estimated]` tag next to tokens on estimated rows.
-- **Settings over Constants (`backend/app/core/settings.py`, `backend/app/core/usage.py`, `backend/app/admin/templates/index.html`)**:
-  - `usd_to_inr` and `usage_budget_inr` sourced from `get_settings()`.
-  - If `usage_budget_inr` is unset, the Balance Remaining card is hidden.
-- **Strictly Measured Projections (n >= 20)**:
-  - Capacity projections require measured per-session data with sample size $n \ge 20$.
-  - When $n < 20$, displays `"Not enough data yet (n < 20)"` with sample size count.
-- **Safe DB Recording**:
-  - Wrapped DB writes in `try/except Exception as exc: log.warning("Token usage DB write failed: %s", type(exc).__name__)` (class name only).
-- **Tests (`backend/tests/test_phase_t1_tokens.py`)**:
-  - 8 new unit/integration tests covering: gemini-3.8-flash before/after 2027-01-01 ($4.50 vs $9.00), gemini-3.7-flash introductory rate, unknown models (cost None), thinking tokens billed as output, concurrent session isolation via ContextVar, embedding estimate tagging, DB write failure warning isolation, budget unset hiding balance and $n < 20$ projection suppression.
-
-### 2. Files Changed in Prompt T1
-| File | Change |
-|------|--------|
-| `config/model_rates.yaml` | Created model rates config with effective dates and verification flags. |
-| `backend/app/models/entities.py` | Added `estimated` column and nullable float costs to `TokenUsageRow`. |
-| `backend/app/models/db.py` | Added `_ensure_columns` check for `token_usage.estimated`. |
-| `backend/app/core/usage.py` | Loaded yaml rates, effective dates, ContextVar session binding, measured $n \ge 20$ projections. |
-| `backend/app/core/llm.py` | Added `thoughtsTokenCount` to `completion_tokens`. |
-| `backend/app/rag/embeddings.py` | Tracked embeddings usage with `usageMetadata` or `estimated=True`. |
-| `backend/app/admin/templates/index.html` | Updated usage tracker UI: hide balance when unset, honest $n < 20$ state, `[estimated]` tag, `"rate unknown"`. |
-| `backend/tests/test_phase_t1_tokens.py` | Added 8 comprehensive tests. |
-| `backend/tests/test_token_usage.py` | Updated client fixture with `usage_budget_inr=500.0`. |
-| `docs/PROGRESS.md` | Logged Session 13 and removed unmeasured claims. |
-
-### 3. Test Counts
-- **Before Prompt T1**: 236 passed, 0 xfailed
-- **After Prompt T1**: **244 passed, 0 xfailed, 0 failed** (all green, 11.34s)
-
----
-
-## Session 12 (Prompt F1: Deployment Correctness & Production Guards) — 2026-10-03
-
-### 1. What was done in Prompt F1
-- **Deployment-Aware Guards (`core/settings.py`, `core/security.py`, `main.py`)**:
-  - Added `is_production_like` property to `Settings`: `environment.strip().lower() == "production" or bool(os.environ.get("VERCEL"))`.
-  - Updated `is_admin_misconfigured(settings)` in `security.py:53-60` to check `settings.is_production_like`: missing/default password on Vercel fails closed (404) regardless of `ENVIRONMENT` string.
-  - Updated CORS wildcard check in `main.py:57` to check `settings.is_production_like`, strictly rejecting `*` wildcard origin when deployed.
-- **Explicit Demo Escape Hatch (`ALLOW_EPHEMERAL_DB`)**:
-  - Added `allow_ephemeral_db: bool = False` to `Settings` in `core/settings.py`.
-  - Production-like environment + SQLite raises `ValueError` unless `allow_ephemeral_db=True`.
-  - When `allow_ephemeral_db=True`, logs ERROR once per process: `"EPHEMERAL DATABASE: sessions, bookings and handoffs will be lost"` via `_log_ephemeral_db_warning_once()`.
-  - Added `GET /admin/api/health` returning `persistence: "ephemeral"` for SQLite and `"persistent"` for Postgres.
-- **Ingest Off Visitor Request Path (`models/db.py`, `rag/ingest.py`, `api/admin.py`)**:
-  - Updated `ensure_ready()` in `models/db.py:76-95` to only create/migrate tables (`uploads_root()`, `init_db()`).
-  - Lazy ingest only runs when `allow_ephemeral_db=True` under `_ready_lock` with a strict 20-second budget (`max_seconds=20.0`).
-  - Added authenticated endpoint `POST /admin/reindex` (`Depends(require_admin)`) in `api/admin.py` to trigger corpus re-indexing.
-  - Visitor requests on an empty corpus return 200 without running ingest, answering through the transparent fallback path.
-- **Per-Tenant Ingestion Error Isolation (`rag/ingest.py`)**:
-  - `ingest_all(db, max_seconds=...)`: wraps each tenant in `try/except` with `log.exception("Ingest failed for tenant '%s'", slug)`. One tenant error cannot abort others.
-- **Deployment Guide (`docs/DEPLOY.md`) & `.env.example`**:
-  - Added hosted PostgreSQL connection instructions, pgvector extension guidance & fallback, required env vars, and demo mode limits. Added `ALLOW_EPHEMERAL_DB=false` to `.env.example`.
-- **Tests (`backend/tests/test_phase_f1_deployment.py`)**:
-  - Added 8 tests covering: VERCEL=1 + default password -> 404; production + sqlite -> ValueError; production + sqlite + ALLOW_EPHEMERAL_DB=true -> logs ERROR; visitor request on empty corpus -> 200; failing tenant isolation; /admin/reindex auth; admin health persistence reporting; CORS wildcard check on Vercel.
-
-### 2. Files Changed in Prompt F1
-| File | Change |
-|------|--------|
-| `backend/app/core/settings.py` | Added `is_production_like`, `allow_ephemeral_db`, production SQLite refusal. |
-| `backend/app/core/security.py` | Enforced fail-closed admin on `is_production_like`. |
-| `backend/app/main.py` | Production CORS wildcard guard, omitted admin router when misconfigured, moved ingest off startup. |
-| `backend/app/models/db.py` | `ensure_ready()` table migrations without heavy ingest. |
-| `backend/app/rag/ingest.py` | Added `max_seconds` budget and per-tenant try/except error isolation. |
-| `backend/app/api/admin.py` | Added `POST /admin/reindex` and `GET /admin/api/health`. |
-| `docs/DEPLOY.md` | Deployment guide with Neon Postgres, pgvector setup, and env variables. |
-| `.env.example` | Added `ALLOW_EPHEMERAL_DB=false` and documented production Postgres. |
-| `backend/tests/test_phase_f1_deployment.py` | Added 8 comprehensive deployment tests. |
-
-### 3. Test Counts
-- **Before Prompt F1**: 228 passed, 0 xfailed
-- **After Prompt F1**: **236 passed, 0 xfailed, 0 failed** (all green, 11.2s)
-
----
-
-## Session 11 (Phase 7: Docs Reconciliation & Full Audit Verification) — 2026-10-02
-
-### Summary of Phase 7
-- Reconciled test count to 228 passing across all suites.
-- Clarified `LLM_MODEL` in `.env` as the single source of truth for the model name.
-- Verified 768-dim L2-normalized vectors and sub-batching at 20 texts.
-- Scrubbed default passwords (`admin123`) and API key prefixes (`AIza...`).
-- Reconciled all Section 9 claims from `[claimed]` to `[Resolved]` in `docs/MASTER_CONTEXT.md`.
-- Test suite: **228 passed, 0 xfailed, 0 failed in 11.00s**.
-
----
-
-## Session 10 (Phase 5: Pricing and Config Hardening) — 2026-10-02
-
-### Summary of Phase 5
-- Added `extra = "forbid"` and strict validation to `PricingConfig` (`tenants/schema.py`).
-- Implemented price leak guard in `core/guard.py` to prevent hallucinated prices.
-- Documented 3 pricing proposals in `docs/PRICING_PROPOSALS.md` (flag caps, confidence bands, currency display).
-- Test suite: **224 passed, 0 xfailed, 0 failed in 10.82s**.
-
----
-
-## Session 9 (Phase 4: RAG Quality and Content) — 2026-10-02
-
-### Summary of Phase 4
-- Implemented hybrid RAG with Reciprocal Rank Fusion (RRF, $k=60$) combining 768-dim cosine vectors and BM25 lexical search.
-- Added content linter `scripts/lint_content.py` checking markdown frontmatter, length, and headings.
-- Cleaned demo content and marked 54 sample case studies explicitly with `is_sample: True`.
-- Test suite: **217 passed, 0 xfailed, 0 failed in 10.51s**.
-
----
-
-## Summary of Historical Sessions 2–8 (Phases 0–3)
-
-| Session | Focus / Task | Key Changes & Outcomes | Final Tests |
+| Session | Focus / Task | Key Changes & Outcomes | Tests |
 |:---|:---|:---|:---|
-| **Session 8** (Prompt E / Phase 2) | Conversation Fixes (H1, H3, H4, E4) | Weak RAG notes in fallback; `SystemEventRow` table; student confirmation chip ("Live project at a company"); service-aware platform chips; repeat question rephrase. | 206 passed, 0 xfailed |
-| **Session 7** (Prompt D / Phase 1B) | 768 Dimensions, Task Types, Calibration | Set `embedding_dim: 768` with L2-norm and `RETRIEVAL_DOCUMENT`/`QUERY` task types; created `scripts/calibrate_rag.py` with 25 labelled queries; removed dead models. | 196 passed, 0 xfailed |
-| **Session 6** (Prompt C / Phase 3) | Security & Infrastructure | Production SQLite refusal; admin fail-closed (404) with PBKDF2 hash auth & 5-strike lockout; scrubbed legacy credentials; added 57 security tests. | 185 passed, 0 xfailed |
-| **Session 5** (Prompt B / Phase 1A) | Embeddings Correctness | Raised `EmbeddingError` on Gemini outage; moved API key to `x-goog-api-key` header; separated 10s query vs 60s ingest timeout; tagged fallback as `model="hash-fallback"`. | 169 passed, 3 xfailed |
-| **Session 4** | Admin Token & Rupee Tracker | Added token metering, Rupee cost calculator, and admin token usage dashboard. | 165 passed, 4 xfailed |
-| **Session 3** | Task A3 Golden Hardening | Added DB preconditions, extended AI regex, Hinglish support, and documented `OWNER_NOTES.md`. | 165 passed, 4 xfailed |
-| **Session 2** | Tasks A1 & A2 Hardening | Golden pricing literals ($19k–24k, $29.5k–37k, $36k–45k); nearest $500 rounding; 12-week ASAP timeline; V9 extractor word-boundary regex; 10/10 labelled query hits. | 165 passed, 4 xfailed |
+| **Session 19** (SHIP-3) | Conversation & Booking Polish | 31-token ack parser, query rewrite & FAQ thresholds, price guard false positive fix, deterministic slot fallbacks, last-question yes/no handler, demo disclaimer & calendar event patch, brand timezone support, ContextVar timing. | 289 passed |
+| **Session 18** (SHIP-2) | Acknowledgement Scoping | Always vs conditional acks, `has_pending_discovery` bypass, `mode="request"` thinking level low for Gemini 3, grounding directive in `grounded_answer`. | 278 passed |
+| **Session 17** (SHIP-1) | Performance & Timers | Server-Timing headers, stage timers, sample badges in portfolio and studio, grounding line across fallbacks, sentence price sanitizer. | 269 passed |
+| **Session 16** | Deployment & Chips | Live Vercel verification, Neon Postgres connection, smart chip deduplication, v1 jargon purged, studio guidebook, post-booking email capture & agenda inquiries. | 252 passed |
+| **Session 15** (Prompt F3) | Docs & Calibration | Audited current state in `MASTER_CONTEXT.md`, exact pricing formula low=0.8 x raw / high=raw, 25-query RAG calibration distributions, benchmark calibration in `EVAL.md`. | 251 passed |
+| **Session 14** (Prompt F2) | Quality & Guard Hardening | 12s LLM request budget, minimal `/health` endpoint, failure listener registry, neutral student role score, span-based price leak sanitizer (30-sample matrix), lexical-only RAG floor cap. | 251 passed |
+| **Session 13** (Prompt T1) | Token Tracker | Model rate table in YAML, thinking tokens billed as output, ContextVar session binding, embedding estimate tagging, measured projections ($n \ge 20$). | 244 passed |
+| **Session 12** (Prompt F1) | Production Guards | `is_production_like` for Vercel, fail-closed 404 admin on missing/default credentials, SQLite prod rejection with `ALLOW_EPHEMERAL_DB` escape hatch, ingest off visitor path. | 236 passed |
+| **Session 11** (Phase 7) | Docs Reconciliation | Pinned `LLM_MODEL` source of truth, 768-dim L2-normalized vectors, credential scrubbing. | 228 passed |
+| **Session 10** (Phase 5) | Pricing Hardening | `extra="forbid"` on config schema, output price leak guard, pricing proposals document. | 224 passed |
+| **Session 9** (Phase 4) | RAG Hybrid & Content | Hybrid RAG with RRF ($k=60$), content linter, sample case studies marked `is_sample: True`. | 217 passed |
+| **Session 8** (Prompt E) | Conversation Fixes | Weak RAG notes in fallback, `system_events` table, student confirmation step, platform chips. | 206 passed |
+| **Session 7** (Prompt D) | 768-Dim Embeddings | Fixed 768 dimensions with L2 normalization, `scripts/calibrate_rag.py` with 25 queries. | 196 passed |
+| **Session 6** (Prompt C) | Security Infra | Production SQLite refusal, admin fail-closed (404), PBKDF2 hash auth & 5-strike lockout. | 185 passed |
+| **Session 5** (Prompt B) | Embeddings Correctness | Raised `EmbeddingError`, header auth via `x-goog-api-key`, query vs ingest timeouts. | 169 passed |
+| **Session 4** | Rupee & Token Tracker | Token metering and admin token usage dashboard. | 165 passed |
+| **Session 3** | Golden Hardening A3 | DB preconditions, extended AI regex, Hinglish support, `OWNER_NOTES.md`. | 165 passed |
+| **Session 2** | Pricing Math A1 & A2 | Golden pricing literals, nearest $500 rounding, 12-week ASAP timeline, V9 word-boundary regex. | 165 passed |
 
 ---
 
@@ -454,6 +135,8 @@
 - **H4 Role Confirmation**: `router.py:539-543` sets `decision_role = None` (neutral) when a student confirms "Live project at a company", avoiding score inflation.
 - **H5 SQLite Guard**: `settings.py:58-69` rejects SQLite in production unless `ALLOW_EPHEMERAL_DB=true` is set.
 - **H6 Fine-tuning**: `platform.yaml:14` guards training with `finetune_min_positives=64`; feedback endpoints validate session boundaries (`sessions.py:280-310`).
+- **Persistent Rate Limiting**: `security.py:50-130` uses table `rate_limits(key_hash, window_start, count)` with atomic upserts and 24h prune.
+- **Duration Leak Sanitizer**: `guard.py:165-210` replaces unauthorized delivery weeks with indicative notice while preserving engine weeks.
 
 ---
 
@@ -477,3 +160,14 @@
 16. [x] **TASK SHIP-2**: Acknowledgement scoping, mode="request" thinkingLevel low, and grounded_answer prompt grounding pass (278 passed).
 17. [x] **TASK SHIP-3**: Chit-chat token parser, query rewrite & FAQ thresholds, price guard false positives, deterministic fallbacks, yes/no last question parsing, demo booking clarity & calendar event update idempotency (289 passed).
 18. [x] **Document Staging & Export UX**: Non-blocking document upload preview pill with remove button, user instructions/notes input, transcript download (.txt) & clean print/PDF view across consultant widget and Proposal Studio (291 passed).
+19. [x] **TASK E1 (Engagement Sprint)**: Persona ("Alex · AI project advisor"), mandatory AI disclosure in opener (≤40 words), intent starters ("ask" field), persistent "Talk to a human" button, page context hints, public config exposure, widget & studio header identity, and static privacy guards (307 passed).
+20. [x] **TASK E1b (Starter Chips & Discovery Nudge)**: Fixed starter chip click handling so `field="ask"` chips count as free text (`is_chip_click = bool(field or value)`), executing slot extractor. Implemented discovery nudge for non-question/statement messages during discovery routing to `_after_brief` instead of scripted fallback/refusal while preserving RAG retrieval for case studies/entities and imperatives ("Tell me about...", "Do you use..."). Acks ("ok thanks") continue to route to acknowledgement handlers. (320 passed).
+21. [x] **TASK E2 (Consultative Voice, Acknowledgements & Scope Coach)**: Added `VoiceConfig` schema (`extra="forbid"`) and `tenants/demo/voice.yaml` with consultative question variants (<=30 words, no currency symbols or duration digits), strictly validated ack templates, and scope coach rule (>4 features suggests lean first release split into Core and Later). Implemented deterministic `ack_from_brief` mentioning only present brief values, prioritizing features > goal > platforms > timeline, rotating stable hash variants without repeating within 3 turns via `brief.recent_acks`. Added 2-sentence/320-char composition and guardrails for both scripted and LLM paths. (330 passed).
+22. [x] **TASK E3 (Estimate Moment, Shape Message, Budget-Fit & Own-Words Booking)**: Implemented architectural shape message and card rendered once after platforms and features are known (`shape_shown`), breaking down Channels & UX, Core flow, and Backend & APIs without price/duration claims. Added `budget_band_ranges_usd` and neutral `budget_fit_line` (below, overlap, above, exploring) with dynamic "Show a leaner cut" chip opening MVP view when budget sits below engine range. Formatted clean deterministic recap line from brief without currency or duration numbers. Updated booking card handoff text (`brand.booking_handoff_text`) with dynamic calendar call duration from platform config, and added "Email me instead" flow recording leads and replying without showing slots again. Added fallback recovery helper with escape hatches ("Book a call" and "Continue estimate"). Synced byte-identical widget files (340 passed).
+23. [x] **TASK QA-1**: Configurable model fallback (404 only, default empty), query rewrite bypass rule (>=4 words without pronouns/connectives), question-like detector, grounded response templates, rendering parity for shape card and chips in widget & studio, `scripts/demo_transcripts.py` (368 passed).
+24. [x] **TASK Q1 (QA-2)**: Conversation quality hardening, zero placeholder words, zero mid-word cuts, question repetition limit, standardized estimate moment (379 passed).
+25. [x] **TASK Q2 (E6)**: Widget polish and byte-identical parity check between `widget/` and `public/widget/` (379 passed).
+26. [x] **TASK Q3 (E5)**: Configurable `ENABLE_FAST_FLOW` toggle, documented side-by-side comparison in `docs/FLOW_COMPARISON.md` and owner questions in `docs/OWNER_QUESTIONS.md` (390 passed).
+27. [x] **TASK Q4 (SHIP-3B)**: Duration leak sanitizer `sanitize_duration_leaks()`, 4MB upload cap, memory-only extracted text, transcript authorization, dynamic out-of-scope words, brand agnosticism, and 19-probe redteam suite (`docs/REDTEAM.md`) (405 passed).
+28. [x] **TASK Q5 (SHIP-4)**: Persistent rate limits in DB table `rate_limits` with atomic upsert & 24h prune, booking abuse limits (3/IP/24h, 1 active/email, 5 emails/session), salted SHA-256 IP hashing (`IP_HASH_SALT`), single email RFC validation, single calendar attendee enforcement (417 passed).
+29. [x] **TASK Q6**: Documentation refresh (`README.md`, `docs/MASTER_CONTEXT.md`, `docs/DEPLOY.md`, `docs/PROGRESS.md`), created `DEMO_PLAYBOOK.md`, sanitized personal emails, and recorded known gaps (417 passed).

@@ -56,7 +56,7 @@ The **Nexus Pre-Sales Bot** is an enterprise-grade, consultative software sales 
 - **Widget (`widget/consultant.js` & `public/widget/consultant.js`)**: Added an `ⓘ` info button in the header with an interactive glassmorphic overlay explaining the 4 advisor steps.
 
 ### D. Post-Booking Email Capture & Inquiry Resolution (`backend/app/agents/router.py`)
-- **Bug Fixed**: Previously, after booking a slot ("Mon Oct 05, 15:00 UTC"), the bot asked: *"Reply with your work email so the invite has somewhere to go."* When the user replied: `"kapil19092003@gmail.com here is my mail"`, the bot had no post-booking email handler, so it treated the message as a generic question and ran RAG, outputting an irrelevant BrowserStack browser-testing answer and offering the "Book a meeting" chip again.
+- **Bug Fixed**: Previously, after booking a slot ("Mon Oct 05, 15:00 UTC"), the bot asked: *"Reply with your work email so the invite has somewhere to go."* When the user replied: `"client@example.com here is my mail"`, the bot had no post-booking email handler, so it treated the message as a generic question and ran RAG, outputting an irrelevant BrowserStack browser-testing answer and offering the "Book a meeting" chip again.
 - **Solution**:
   - Router now detects email inputs post-booking, updates the booking attendee, records the lead in `LeadRow`, dispatches Slack notification, and sends an executive confirmation message with the scheduled date/time and Google Meet link.
   - Added dedicated handlers for post-booking inquiries: *"What is on the agenda?"*, *"Can I invite a colleague?"*, *"Can I reschedule the time?"*.

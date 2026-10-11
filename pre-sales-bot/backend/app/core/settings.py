@@ -78,7 +78,10 @@ class Settings(BaseSettings):
     message_rate_window_seconds: int = 60
     llm_calls_per_session: int = 60
     llm_calls_per_ip_per_hour: int = 160
-
+    max_bookings_per_ip_per_day: int = 3
+    max_active_bookings_per_email: int = 1
+    max_email_submissions_per_session: int = 5
+    ip_hash_salt: str = "default-salt-pre-sales"
 
     llm_thinking_level: str = "low"
 

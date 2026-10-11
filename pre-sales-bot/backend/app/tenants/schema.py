@@ -74,6 +74,8 @@ class BrandConfig(BaseModel):
     opening_variants: list[str] = Field(default_factory=list)
     page_hints: list[PageHint] = Field(default_factory=list)
     booking_handoff_text: str = "The team will see this whole conversation, so you won't need to repeat anything."
+    flow: str = "classic"
+    teaser_delay_ms: int = 10000
 
     @field_validator("advisor_name")
     @classmethod

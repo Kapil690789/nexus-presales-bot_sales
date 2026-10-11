@@ -178,3 +178,11 @@ class SystemEventRow(Base):
     reason: Mapped[str] = mapped_column(String(200), default="")
     stage: Mapped[str] = mapped_column(String(50), default="")
     error_class: Mapped[str] = mapped_column(String(100), default="")
+
+
+class RateLimitRow(Base):
+    __tablename__ = "rate_limits"
+
+    key_hash: Mapped[str] = mapped_column(String(128), primary_key=True)
+    window_start: Mapped[float] = mapped_column(Float, default=0.0, index=True)
+    count: Mapped[int] = mapped_column(Integer, default=0)

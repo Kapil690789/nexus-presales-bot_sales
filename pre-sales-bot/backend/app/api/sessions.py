@@ -12,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.agents.router import run_turn
-from backend.app.core.guard import REFUSAL_MESSAGE, looks_like_jailbreak
+from backend.app.core.guard import looks_like_jailbreak, refusal_message
 from backend.app.core.security import bind_llm_actor, client_ip, rate_limit_messages, reset_llm_actor
 from backend.app.learning.pairs import save_thumb
 from backend.app.models.db import get_db
@@ -107,6 +107,7 @@ def _public(session: SessionRow, message: MessageRow, result: dict, config: Tena
         "score": (result.get("qualification") or {}).get("score"),
         "band": (result.get("qualification") or {}).get("band"),
         "booking": result.get("booking"),
+        "progress": result.get("progress"),
     }
 
 
@@ -243,7 +244,7 @@ def post_message(
             db,
             session.id,
             "assistant",
-            REFUSAL_MESSAGE,
+            refusal_message(config.brand.name),
             {"route": "refused", "chips": [], "chunk_ids": []},
         )
         db_writes_ms += (time.perf_counter() - t0_db) * 1000.0
@@ -262,7 +263,7 @@ def post_message(
             session,
             assistant,
             {
-                "message": REFUSAL_MESSAGE,
+                "message": refusal_message(config.brand.name),
                 "stage": session.stage or "discovery",
                 "chips": [],
                 "cards": [],
@@ -380,3 +381,71 @@ def accept_nda(
         response,
         db,
     )
+
+
+@router.get("/api/v1/sessions/{session_id}/transcript")
+def download_transcript(
+    session_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    import re as _re
+
+    auth_header = request.headers.get("authorization") or ""
+    x_session = request.headers.get("x-session-id") or ""
+    token = ""
+    if auth_header.lower().startswith("bearer "):
+        token = auth_header[7:].strip()
+    elif auth_header:
+        token = auth_header.strip()
+    elif x_session:
+        token = x_session.strip()
+
+    session = db.get(SessionRow, session_id)
+    if session is None or not token or token != session.id:
+        raise HTTPException(status_code=404, detail="Unknown session")
+
+    tenant_row = db.get(TenantRow, session.tenant_id)
+    brand_name = "Advisor"
+    slug = "transcript"
+    if tenant_row:
+        slug = tenant_row.slug or "transcript"
+        try:
+            config = load_tenant(tenant_row.slug)
+            brand_name = config.brand.widget_title or config.brand.name
+        except Exception:
+            pass
+
+    # Visitor-visible messages only
+    rows = db.scalars(
+        select(MessageRow).where(MessageRow.session_id == session.id).order_by(MessageRow.created_at.asc())
+    ).all()
+
+    lines = [
+        f"# {brand_name} — Consultation Transcript",
+        f"Session ID: {session.id}",
+        "--------------------------------------------------------------------------------",
+        "",
+    ]
+    for row in rows:
+        if row.role not in ("user", "assistant"):
+            continue
+        sender = "Visitor" if row.role == "user" else brand_name
+        lines.append(f"{sender}:")
+        lines.append(row.content.strip())
+        lines.append("")
+
+    lines.append("--------------------------------------------------------------------------------")
+    lines.append(f"Exported from {brand_name} Consultation")
+    transcript_text = "\n".join(lines)
+
+    safe_slug = _re.sub(r"[^a-zA-Z0-9_-]", "", slug)
+    safe_sid = _re.sub(r"[^a-zA-Z0-9_-]", "", session.id[:8])
+    filename = f"{safe_slug}-consultation-{safe_sid}.txt"
+
+    return Response(
+        content=transcript_text,
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+

@@ -164,7 +164,60 @@ def needs_feature_detail(brief: ProjectBrief) -> bool:
     return all(len(item.split()) < 8 for item in named)
 
 
-def next_discovery_field(brief: ProjectBrief) -> str | None:
+FAST_FLOW_FIELDS = (
+    "service",
+    "goal",
+    "platforms",
+    "timeline",
+    "budget_band",
+)
+SHARPEN_FIELDS = (
+    "features",
+    "integrations",
+    "users",
+    "decision_role",
+    "company_size",
+)
+
+
+def fast_engine_gaps(brief: ProjectBrief) -> list[str]:
+    gaps = []
+    if not brief.service:
+        gaps.append("service")
+    if not brief.goal:
+        gaps.append("goal")
+    if not brief.platforms and brief.service != "ui_ux":
+        gaps.append("platforms")
+    if not brief.timeline:
+        gaps.append("timeline")
+    if not brief.budget_band:
+        gaps.append("budget_band")
+    return gaps
+
+
+def next_sharpen_field(brief: ProjectBrief) -> str | None:
+    if not brief.features_confirmed:
+        return "features"
+    if needs_feature_detail(brief):
+        return "feature_detail"
+    if not brief.integrations or brief.integrations == ["none"]:
+        return "integrations"
+    if not brief.users:
+        return "users"
+    if not brief.decision_role:
+        return "decision_role"
+    if not brief.company_size:
+        return "company_size"
+    return None
+
+
+def next_discovery_field(brief: ProjectBrief, flow: str = "classic") -> str | None:
+    if flow == "fast":
+        gaps = fast_engine_gaps(brief)
+        # Order: service, goal, platforms (unless ui_ux), timeline, budget_band
+        # Never ask budget before goal and platforms
+        return gaps[0] if gaps else None
+
     missing = brief.missing_discovery()
     head = missing[0] if missing else None
     if head == "service" and brief.goal and brief.field_attempts.get("service", 0) >= 1:
@@ -186,6 +239,12 @@ def next_discovery_field(brief: ProjectBrief) -> str | None:
     ):
         return "user_flow"
     if missing:
+        # Never ask budget before goal and platforms
+        if missing[0] == "budget_band" and (not brief.goal or (not brief.platforms and brief.service != "ui_ux")):
+            if not brief.goal:
+                return "goal"
+            if not brief.platforms and brief.service != "ui_ux":
+                return "platforms"
         return missing[0]
     if not brief.company_size:
         return "company_size"
@@ -196,5 +255,7 @@ def engine_gaps(brief: ProjectBrief) -> list[str]:
     return [name for name in ENGINE_FIELDS if getattr(brief, name) in (None, "", [])]
 
 
-def brief_ready(brief: ProjectBrief) -> bool:
+def brief_ready(brief: ProjectBrief, flow: str = "classic") -> bool:
+    if flow == "fast":
+        return not fast_engine_gaps(brief)
     return not engine_gaps(brief)

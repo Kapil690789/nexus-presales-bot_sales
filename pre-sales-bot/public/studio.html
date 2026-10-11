@@ -1364,6 +1364,11 @@ let studioStagedFile = null;
 
 function handleStudioFileSelect(input) {
   if (!input.files || !input.files[0]) return;
+  if (input.files[0].size > 4000000) {
+    alert('File exceeds maximum upload size of 4MB.');
+    input.value = '';
+    return;
+  }
   studioStagedFile = input.files[0];
   const box = document.getElementById('studioAttachmentBox');
   const sizeKb = (studioStagedFile.size / 1024).toFixed(0);
@@ -1398,7 +1403,7 @@ function clearStudioStagedFile() {
 function downloadChatTranscript() {
   const msgs = document.querySelectorAll('#chatMessages .msg');
   const lines = [
-    '# Nexus Proposal Studio — Chat Transcript',
+    '# Proposal Studio — Chat Transcript',
     'Date: ' + new Date().toLocaleString(),
     'Session ID: ' + (sessionId || 'unassigned'),
     '--------------------------------------------------------------------------------',
@@ -1408,19 +1413,19 @@ function downloadChatTranscript() {
     lines.push('(No messages recorded.)');
   } else {
     msgs.forEach(m => {
-      const sender = m.classList.contains('msg-user') ? 'You' : 'Nexus Advisor';
+      const sender = m.classList.contains('msg-user') ? 'You' : 'Advisor';
       lines.push('[' + sender + ']');
       lines.push(m.innerText.trim());
       lines.push('');
     });
   }
   lines.push('--------------------------------------------------------------------------------');
-  lines.push('Exported from Nexus Live Proposal Studio');
+  lines.push('Exported from Live Proposal Studio');
   const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'nexus-chat-' + (sessionId || 'transcript').slice(0, 8) + '.txt';
+  a.download = 'consultation-' + (sessionId || 'transcript').slice(0, 8) + '.txt';
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 200);
@@ -1713,7 +1718,7 @@ function renderBrief() {
   const items = [];
   if (briefData.service) items.push({ label: 'Service Category', value: formatService(briefData.service) });
   if (briefData.platforms && briefData.platforms.length) {
-    const pStr = Array.isArray(briefData.platforms) ? briefData.platforms.join(', ').toUpperCase() : String(briefData.platforms).toUpperCase();
+    const pStr = formatPlatforms(briefData.platforms);
     items.push({ label: 'Target Platforms', value: pStr });
   }
   if (briefData.timeline) items.push({ label: 'Target Timeline', value: formatTimeline(briefData.timeline) });
@@ -1954,6 +1959,23 @@ function formatService(s) {
     out_of_scope: 'Custom Enterprise'
   };
   return map[s] || s;
+}
+
+function formatPlatforms(platforms) {
+  if (!platforms) return '';
+  const list = Array.isArray(platforms) ? platforms : [platforms];
+  const normalized = list.map(p => String(p).toLowerCase().trim());
+  const hasIos = normalized.includes('ios');
+  const hasAndroid = normalized.includes('android');
+  const hasWeb = normalized.includes('web');
+  const parts = [];
+  if (hasWeb) parts.push('web');
+  if (hasIos && hasAndroid) parts.push('iOS and Android');
+  else if (hasIos) parts.push('iOS');
+  else if (hasAndroid) parts.push('Android');
+  if (parts.length === 2) return parts.join(', ');
+  if (parts.length === 1) return parts[0];
+  return normalized.map(p => p === 'ios' ? 'iOS' : p === 'android' ? 'Android' : p).join(', ');
 }
 
 function formatTimeline(t) {

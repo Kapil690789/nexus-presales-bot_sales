@@ -43,6 +43,9 @@ def _refused_upload(db: Session, session: SessionRow, config: TenantConfig) -> d
     )
 
 
+MAX_UPLOAD_BYTES = 4_000_000
+
+
 @router.post("/api/v1/sessions/{session_id}/documents")
 async def upload_document(
     session_id: str,
@@ -65,8 +68,10 @@ async def upload_document(
         raise HTTPException(status_code=400, detail="Empty file")
     if len(data) > 5_000_000:
         raise HTTPException(status_code=400, detail="File is too large")
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="File exceeds maximum upload size of 4MB.")
     filename = Path(file.filename or "upload.txt").name
-    clean_notes = (notes or "").strip()
+    clean_notes = (notes or "").strip()[:500]
     if looks_like_jailbreak(filename) or (clean_notes and looks_like_jailbreak(clean_notes)):
         return _refused_upload(db, session, config)
     try:
@@ -75,16 +80,15 @@ async def upload_document(
         return _refused_upload(db, session, config)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    folder = uploads_root() / tenant.slug / session.id
-    folder.mkdir(parents=True, exist_ok=True)
-    target = folder / filename
-    target.write_bytes(data)
+
+    # Keep only extracted text (max 20000 characters), file is not saved to disk
+    excerpt = excerpt[:20000]
     db.add(
         DocumentRow(
             session_id=session.id,
             filename=filename,
-            storage_key=str(target),
-            excerpt=excerpt[:2000],
+            storage_key="memory",
+            excerpt=excerpt,
         )
     )
     # Record user upload message in session history

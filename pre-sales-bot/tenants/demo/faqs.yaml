@@ -39,7 +39,7 @@ items:
   - id: maintenance
     topic: support
     question: Do you provide ongoing support after launch?
-    answer: Yes, we offer customized post-launch maintenance, monitoring, security patching, and continuous feature development retainers.
+    answer: Yes, we offer customized post-launch maintenance, monitoring, security patching, and continuous feature development retainers with our team. For 24/7 critical coverage, our team reviews SLA requirements during discovery.
   - id: team_scale
     topic: team
     question: How quickly can you scale a development team up or down?

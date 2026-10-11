@@ -13,13 +13,14 @@
     text: "#EDEDED",
     muted: "#A1A1AA",
     radius_px: 16,
-    logo_text: "Nexus Advisor",
+    logo_text: "Advisor",
     launcher_text: "Talk to an advisor",
     launcher_subtitle: "Scope, estimate, and next steps",
-    widget_title: "Nexus Advisor",
+    widget_title: "Advisor",
     widget_subtitle: "Online",
     placeholder: "Type your message...",
-    position: "bottom-right"
+    position: "bottom-right",
+    teaser_delay_ms: 10000
   };
 
   var ICONS = {
@@ -50,10 +51,10 @@
     ".ps-launcher.bottom-left{left:40px;bottom:40px}",
     ".ps-launcher svg{width:22px;height:22px;display:block}",
     ".ps-launcher[hidden]{display:none !important}",
-    ".ps-panel{position:fixed;z-index:2147483001;width:min(400px,calc(100vw - 32px));height:min(580px,calc(100vh - 96px));background:#0A0A0A;border:1px solid rgba(255,255,255,0.12);border-radius:var(--ps-radius);box-shadow:0 20px 50px rgba(0,0,0,.8);display:flex;flex-direction:column;overflow:hidden;opacity:0;transform:translateY(18px);pointer-events:none;visibility:hidden}",
-    ".ps-panel.bottom-right{right:40px;bottom:40px}",
-    ".ps-panel.bottom-left{left:40px;bottom:40px}",
-    ".ps-panel.is-open{opacity:1;transform:translateY(0);pointer-events:auto;visibility:visible;animation:ps-enter 300ms ease-out}",
+    ".ps-panel{position:fixed;z-index:2147483001;right:32px;bottom:32px;width:min(400px,calc(100vw - 32px));height:min(580px,calc(100vh - 96px));background:#0A0A0A;border:1px solid rgba(255,255,255,0.12);border-radius:var(--ps-radius);box-shadow:0 20px 50px rgba(0,0,0,.8);display:flex;flex-direction:column;overflow:hidden;opacity:0;transform:translateY(18px);pointer-events:none;visibility:hidden}",
+    ".ps-panel.bottom-right{right:32px;bottom:32px;left:auto}",
+    ".ps-panel.bottom-left{left:32px;right:auto;bottom:32px}",
+    ".ps-panel.is-open{opacity:1 !important;transform:translateY(0) !important;pointer-events:auto !important;visibility:visible !important;display:flex !important}",
     "@keyframes ps-enter{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}",
     "@keyframes ps-launcher-in{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}",
     "@keyframes ps-msg-in{from{opacity:0}to{opacity:1}}",
@@ -152,8 +153,26 @@
     ".ps-step-badge{background:rgba(59,130,246,0.18);color:#60A5FA;border:1px solid rgba(96,165,250,0.3);width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:1px}",
     ".ps-guide-ok{margin-top:16px;width:100%;background:#2563EB;color:#fff;border:0;border-radius:8px;padding:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background 150ms}",
     ".ps-guide-ok:hover{background:#1D4ED8}",
-    "@media (max-width:520px){.ps-panel,.ps-panel.bottom-right,.ps-panel.bottom-left{width:100vw;height:100vh;height:100dvh;right:0 !important;left:0 !important;bottom:0 !important;border-radius:0}.ps-launcher.bottom-right,.ps-launcher.bottom-left{right:16px;bottom:16px;left:auto}.ps-compose input[type=text]{font-size:16px}.ps-compose{padding-bottom:max(12px, env(safe-area-inset-bottom))}}",
-    "@media (prefers-reduced-motion:reduce){.ps-launcher,.ps-panel.is-open,.ps-msg,.ps-card,.ps-chip,.ps-online-dot,.ps-shimmer-line{animation:none !important}}",
+    ".ps-progress-pill{font-size:11px;color:#60A5FA;font-weight:600;margin-left:4px}",
+    ".ps-teaser-bubble{position:fixed;z-index:2147482999;right:40px;bottom:106px;background:#18181B;border:1px solid rgba(255,255,255,0.15);color:#EDEDED;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,0.6);display:flex;align-items:center;gap:10px;max-width:280px;cursor:pointer;animation:ps-msg-in 300ms ease-out}",
+    ".ps-teaser-bubble.bottom-left{left:40px;right:auto}",
+    ".ps-teaser-text{flex:1;font-weight:500}",
+    ".ps-teaser-close{background:transparent;border:none;color:#A1A1AA;cursor:pointer;padding:2px 6px;font-size:16px;line-height:1;border-radius:4px;transition:color 150ms ease}",
+    ".ps-teaser-close:hover{color:#FFFFFF}",
+    ".ps-brief-card{padding:12px 14px;background:#111215;border:1px solid rgba(255,255,255,0.1);border-radius:12px;margin:0 0 10px}",
+    ".ps-brief-head{display:flex;align-items:center;justify-content:space-between}",
+    ".ps-brief-title{font-size:13px;font-weight:600;color:#FFFFFF}",
+    ".ps-brief-toggle{background:transparent;border:none;color:#60A5FA;font-size:12px;font-weight:500;cursor:pointer;padding:2px 4px}",
+    ".ps-brief-toggle:hover{text-decoration:underline}",
+    ".ps-brief-body{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.08)}",
+    ".ps-brief-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;font-size:12.5px}",
+    ".ps-brief-row-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+    ".ps-brief-field-label{color:#A1A1AA;font-weight:500}",
+    ".ps-brief-field-val{color:#EDEDED;font-weight:600}",
+    ".ps-brief-change-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#60A5FA;border-radius:6px;font-size:11px;padding:2px 8px;cursor:pointer;transition:all 150ms ease}",
+    ".ps-brief-change-btn:hover{background:#2563EB;color:#FFFFFF;border-color:#2563EB}",
+    "@media (max-width:520px){.ps-panel,.ps-panel.bottom-right,.ps-panel.bottom-left{width:100vw;height:100vh;height:100dvh;right:0 !important;left:0 !important;bottom:0 !important;border-radius:0}.ps-launcher.bottom-right,.ps-launcher.bottom-left{right:16px;bottom:16px;left:auto}.ps-compose input[type=text]{font-size:16px}.ps-compose{padding-bottom:max(12px, env(safe-area-inset-bottom))}.ps-chips{flex-wrap:wrap !important;gap:6px !important;padding:4px 12px 10px !important}.ps-chip{font-size:11.5px !important;padding:6px 10px !important}.ps-teaser-bubble{display:none !important}}",
+    "@media (prefers-reduced-motion:reduce){.ps-launcher,.ps-panel.is-open,.ps-msg,.ps-card,.ps-chip,.ps-online-dot,.ps-shimmer-line,.ps-teaser-bubble{animation:none !important;transition:none !important}.ps-shimmer-line{background:rgba(255,255,255,0.15) !important}}",
     "@media print{body>*:not(#ps-widget-root){display:none !important}#ps-widget-root .ps-launcher{display:none !important}#ps-widget-root .ps-panel{display:block !important;position:static !important;width:100% !important;height:auto !important;max-height:none !important;border:none !important;box-shadow:none !important;background:#fff !important;color:#111 !important}#ps-widget-root .ps-header{border-bottom:1px solid #ddd !important;background:#f8fafc !important;color:#111 !important}#ps-widget-root .ps-header-actions,#ps-widget-root .ps-chips,#ps-widget-root .ps-compose,#ps-widget-root .ps-guide-overlay{display:none !important}#ps-widget-root .ps-thread{overflow:visible !important;height:auto !important;padding:16px 0 !important}#ps-widget-root .ps-msg{color:#111 !important;border:1px solid #e2e8f0 !important}#ps-widget-root .ps-msg.assistant{background:#f8fafc !important}#ps-widget-root .ps-msg.user{background:#eff6ff !important;border-color:#bfdbfe !important}#ps-widget-root .ps-card{background:#fff !important;border:1px solid #cbd5e1 !important;color:#111 !important}}"
   ].join("");
   document.head.appendChild(style);
@@ -174,6 +193,9 @@
   var dot = el("span", "ps-online-dot");
   dot.setAttribute("aria-hidden", "true");
   var statusEl = el("span");
+  var progressEl = el("span", "ps-progress-pill");
+  progressEl.id = "ps-progress-pill";
+  progressEl.style.display = "none";
   var statusSep = el("span");
   statusSep.textContent = " · ";
   var humanLink = el("button", "ps-human-link");
@@ -181,6 +203,7 @@
   humanLink.setAttribute("aria-label", "Talk to a human");
   status.appendChild(dot);
   status.appendChild(statusEl);
+  status.appendChild(progressEl);
   status.appendChild(statusSep);
   status.appendChild(humanLink);
   identity.appendChild(titleEl);
@@ -195,14 +218,14 @@
     post("/api/v1/sessions/" + sessionId + "/messages", {
       content: label,
       chip: { label: label, field: "booking_window", value: "this_week" }
-    }).then(renderReply).catch(fail);
+    }).then(deliverReply).catch(deliverFail);
   };
 
   var headerActions = el("div", "ps-header-actions");
   var infoBtn = el("button", "ps-header-btn");
   infoBtn.type = "button";
-  infoBtn.title = "How Nexus Advisor works";
-  infoBtn.setAttribute("aria-label", "How Nexus Advisor works");
+  infoBtn.title = "How " + (brand.widget_title || "Advisor") + " works";
+  infoBtn.setAttribute("aria-label", "How " + (brand.widget_title || "Advisor") + " works");
   infoBtn.innerHTML = ICONS.info;
 
   var downloadBtn = el("button", "ps-header-btn");
@@ -246,6 +269,7 @@
   header.appendChild(headerActions);
   var thread = el("div", "ps-thread");
   thread.id = "ps-log";
+  thread.setAttribute("aria-live", "polite");
   var chipsBox = el("div", "ps-chips");
   var compose = el("div", "ps-compose");
   var attachmentBox = el("div", "ps-attachment-box");
@@ -285,7 +309,7 @@
   guideModal.innerHTML = [
     '<div class="ps-guide-box">',
       '<div class="ps-guide-header">',
-        '<h4>How Nexus Advisor Works</h4>',
+        '<h4>How ' + esc(brand.widget_title || "Advisor") + ' Works</h4>',
         '<button type="button" class="ps-guide-close" aria-label="Close guide">&times;</button>',
       '</div>',
       '<div class="ps-guide-body">',
@@ -373,6 +397,7 @@
     launcher.classList.remove("bottom-left", "bottom-right");
     launcher.classList.add(pos);
     panel.classList.remove("bottom-left", "bottom-right");
+    panel.classList.add(pos);
     var advName = brand.advisor_name || "Alex";
     var advTitle = brand.advisor_title || "AI project advisor";
     titleEl.textContent = advName + " · " + advTitle;
@@ -452,9 +477,12 @@
     if (node) node.remove();
   }
 
+  var waitStartTime = 0;
+
   function beginWait() {
     if (busy) return false;
     busy = true;
+    waitStartTime = Date.now();
     input.disabled = true;
     send.disabled = true;
     showTyping();
@@ -466,6 +494,185 @@
     input.disabled = false;
     send.disabled = false;
     hideTyping();
+  }
+
+  function deliverReply(payload) {
+    var elapsed = Date.now() - waitStartTime;
+    if (elapsed < 400) {
+      setTimeout(function () {
+        renderReply(payload);
+      }, Math.max(0, 600 - elapsed));
+    } else {
+      renderReply(payload);
+    }
+  }
+
+  function deliverFail(error) {
+    var elapsed = Date.now() - waitStartTime;
+    if (elapsed < 400) {
+      setTimeout(function () {
+        fail(error);
+      }, Math.max(0, 600 - elapsed));
+    } else {
+      fail(error);
+    }
+  }
+
+  function displayPlatforms(platforms) {
+    if (!platforms) return "";
+    var list = Array.isArray(platforms) ? platforms : [platforms];
+    var normalized = list.map(function (p) { return String(p).toLowerCase().trim(); });
+    var hasIos = normalized.indexOf("ios") !== -1;
+    var hasAndroid = normalized.indexOf("android") !== -1;
+    var hasWeb = normalized.indexOf("web") !== -1;
+    var parts = [];
+    if (hasWeb) parts.push("web");
+    if (hasIos && hasAndroid) parts.push("iOS and Android");
+    else if (hasIos) parts.push("iOS");
+    else if (hasAndroid) parts.push("Android");
+    if (parts.length === 2) return parts.join(", ");
+    if (parts.length === 1) return parts[0];
+    return normalized.map(function (p) {
+      if (p === "ios") return "iOS";
+      if (p === "android") return "Android";
+      return p;
+    }).join(", ");
+  }
+
+  function timelineLabel(t) {
+    var map = {
+      asap: "as soon as possible",
+      "1_3_months": "1 to 3 months",
+      "3_6_months": "3 to 6 months",
+      flexible: "flexible timing"
+    };
+    return map[t] || t;
+  }
+
+  function budgetLabel(b) {
+    var map = {
+      exploring: "still exploring",
+      under_15k: "under $15k",
+      "15_40k": "$15k to $40k",
+      "40_80k": "$40k to $80k",
+      "80k_plus": "$80k or more"
+    };
+    return map[b] || b;
+  }
+
+  function serviceLabel(s) {
+    var map = {
+      mobile_app: "Mobile app",
+      web_app: "Web application",
+      ai_product: "AI product",
+      ui_ux: "UI/UX design",
+      staff_augmentation: "Staff augmentation"
+    };
+    return map[s] || s;
+  }
+
+  function roleLabel(r) {
+    var map = {
+      founder_or_exec: "Founder / exec",
+      product_or_ops_lead: "Product / ops",
+      manager: "Manager",
+      intern_or_student: "Student / intern",
+      agency_or_reseller: "Agency / reseller"
+    };
+    return map[r] || r;
+  }
+
+  function offerFieldChange(key) {
+    if (!sessionId || busy) return;
+    var changeChips = [];
+    if (key === "platforms") {
+      changeChips = [
+        { label: "iOS and Android", field: "platforms", value: ["ios", "android"] },
+        { label: "Web", field: "platforms", value: ["web"] },
+        { label: "Both web & mobile", field: "platforms", value: ["web", "ios", "android"] }
+      ];
+    } else if (key === "timeline") {
+      changeChips = [
+        { label: "ASAP", field: "timeline", value: "asap" },
+        { label: "1 to 3 months", field: "timeline", value: "1_3_months" },
+        { label: "3 to 6 months", field: "timeline", value: "3_6_months" },
+        { label: "Flexible", field: "timeline", value: "flexible" }
+      ];
+    } else if (key === "budget_band") {
+      changeChips = [
+        { label: "Under $15k", field: "budget_band", value: "under_15k" },
+        { label: "$15k to $40k", field: "budget_band", value: "15_40k" },
+        { label: "$40k to $80k", field: "budget_band", value: "40_80k" },
+        { label: "$80k or more", field: "budget_band", value: "80k_plus" },
+        { label: "Still exploring", field: "budget_band", value: "exploring" }
+      ];
+    } else if (key === "service") {
+      changeChips = [
+        { label: "Mobile app", field: "service", value: "mobile_app" },
+        { label: "Web platform", field: "service", value: "web_app" },
+        { label: "AI product", field: "service", value: "ai_product" }
+      ];
+    } else {
+      say("assistant", "What would you like to update " + key + " to?");
+      input.focus();
+      return;
+    }
+    setChips(changeChips);
+    say("assistant", "Select an option below to update your " + key + ":");
+  }
+
+  function renderBriefCard(brief, title) {
+    var wrap = el("div", "ps-card ps-brief-card");
+    var head = el("div", "ps-brief-head");
+    var titleSpan = el("strong", "ps-brief-title");
+    titleSpan.textContent = title || "Your brief";
+    var toggleBtn = el("button", "ps-brief-toggle");
+    toggleBtn.type = "button";
+    toggleBtn.setAttribute("aria-expanded", "false");
+    toggleBtn.textContent = "Show details ▼";
+    head.appendChild(titleSpan);
+    head.appendChild(toggleBtn);
+    wrap.appendChild(head);
+
+    var body = el("div", "ps-brief-body");
+    body.style.display = "none";
+
+    toggleBtn.onclick = function () {
+      var isClosed = body.style.display === "none";
+      body.style.display = isClosed ? "block" : "none";
+      toggleBtn.textContent = isClosed ? "Hide ▲" : "Show details ▼";
+      toggleBtn.setAttribute("aria-expanded", isClosed ? "true" : "false");
+    };
+
+    var fields = [];
+    if (brief.goal) fields.push({ key: "goal", label: "Objective", val: brief.goal });
+    if (brief.service) fields.push({ key: "service", label: "Service", val: serviceLabel(brief.service) });
+    if (brief.platforms && brief.platforms.length) fields.push({ key: "platforms", label: "Platforms", val: displayPlatforms(brief.platforms) });
+    if (brief.timeline) fields.push({ key: "timeline", label: "Timeline", val: timelineLabel(brief.timeline) });
+    if (brief.budget_band) fields.push({ key: "budget_band", label: "Budget", val: budgetLabel(brief.budget_band) });
+    if (brief.features && brief.features.length) {
+      var featStr = Array.isArray(brief.features) ? brief.features.join(", ") : String(brief.features);
+      fields.push({ key: "features", label: "Features", val: featStr });
+    }
+    if (brief.decision_role) fields.push({ key: "decision_role", label: "Role", val: roleLabel(brief.decision_role) });
+
+    fields.forEach(function (f) {
+      var row = el("div", "ps-brief-row");
+      var textPart = el("div", "ps-brief-row-text");
+      textPart.innerHTML = '<span class="ps-brief-field-label">' + esc(f.label) + ':</span> <span class="ps-brief-field-val">' + esc(f.val) + '</span>';
+      var changeBtn = el("button", "ps-brief-change-btn", "Change");
+      changeBtn.type = "button";
+      changeBtn.setAttribute("aria-label", "Change " + f.label);
+      changeBtn.onclick = function () {
+        offerFieldChange(f.key);
+      };
+      row.appendChild(textPart);
+      row.appendChild(changeBtn);
+      body.appendChild(row);
+    });
+
+    wrap.appendChild(body);
+    return wrap;
   }
 
   function setChips(chips) {
@@ -483,7 +690,7 @@
         var displayText = (chip.field === "ask" && typeof chip.value === "string" && chip.value) ? chip.value : (chip.label || "");
         say("user", displayText);
         if (!beginWait()) return;
-        post("/api/v1/sessions/" + sessionId + "/messages", { content: displayText, chip: chip }).then(renderReply).catch(fail);
+        post("/api/v1/sessions/" + sessionId + "/messages", { content: displayText, chip: chip }).then(deliverReply).catch(deliverFail);
       };
       chipsBox.appendChild(button);
     });
@@ -550,6 +757,8 @@
       if (card.backend_apis && card.backend_apis.length) {
         html += "<strong>Backend &amp; APIs</strong>" + list(card.backend_apis);
       }
+    } else if (card.type === "brief") {
+      return renderBriefCard(card.brief || currentBrief || {}, card.title);
     } else {
       html = "<h4>" + esc(card.title || card.type || "Details") + "</h4>";
     }
@@ -557,16 +766,32 @@
     return wrap;
   }
 
+  var currentBrief = {};
+
   function renderReply(payload) {
     endWait();
     if (!payload || payload.detail) {
       say("assistant", (payload && typeof payload.detail === "string" && payload.detail) || "Something went wrong. Please try again.");
       return;
     }
+    if (payload.brief && typeof payload.brief === "object") {
+      currentBrief = Object.assign(currentBrief, payload.brief);
+    }
+    if (payload.progress) {
+      progressEl.textContent = " • Step " + payload.progress;
+      progressEl.style.display = "inline";
+    } else {
+      progressEl.style.display = "none";
+    }
     var node = say("assistant", payload.message || "");
     (payload.cards || []).forEach(function (card) {
       thread.appendChild(renderCard(card));
     });
+    if (payload.cards && payload.cards.some(function (c) { return c.type === "estimate"; })) {
+      if (!payload.cards.some(function (c) { return c.type === "brief"; }) && Object.keys(currentBrief).length > 0) {
+        thread.appendChild(renderBriefCard(currentBrief, "Your brief"));
+      }
+    }
     setChips(payload.chips || []);
     if (node && payload.message_id && payload.route && payload.route !== "discovery") {
       var thumbs = el("div", "ps-thumb");
@@ -608,13 +833,22 @@
   function closePanel() {
     panel.classList.remove("is-open");
     panel.setAttribute("aria-hidden", "true");
+    panel.style.visibility = "hidden";
+    panel.style.pointerEvents = "none";
     launcher.hidden = false;
   }
 
   function open() {
     panel.classList.add("is-open");
     panel.setAttribute("aria-hidden", "false");
+    panel.style.visibility = "visible";
+    panel.style.pointerEvents = "auto";
     launcher.hidden = true;
+    var tb = document.getElementById("ps-teaser-bubble");
+    if (tb) {
+      tb.remove();
+      try { sessionStorage.setItem("ps_teaser_dismissed", "1"); } catch (e) {}
+    }
     input.focus();
     if (sessionId) return;
     if (!tenant) {
@@ -634,7 +868,7 @@
         if (!data) return;
         sessionId = data.session_id;
         try { localStorage.setItem("ps_sess_" + tenant, sessionId); } catch (e) {}
-        renderReply(data);
+        deliverReply(data);
       })
       .catch(function () {
         endWait();
@@ -662,6 +896,11 @@
 
   file.onchange = function () {
     if (!file.files || !file.files[0]) return;
+    if (file.files[0].size > 4000000) {
+      alert("File exceeds maximum upload size of 4MB.");
+      file.value = "";
+      return;
+    }
     stagedFile = file.files[0];
     attachmentBox.innerHTML = [
       '<div class="ps-attachment-pill">',
@@ -708,8 +947,8 @@
       if (notes) data.append("notes", notes);
       fetch(api + "/api/v1/sessions/" + sessionId + "/documents", { method: "POST", body: data })
         .then(function (res) { return res.json().then(function (body) { if (!res.ok) throw body; return body; }); })
-        .then(renderReply)
-        .catch(fail);
+        .then(deliverReply)
+        .catch(deliverFail);
       return;
     }
 
@@ -718,12 +957,12 @@
     setChips([]);
     say("user", value);
     if (!beginWait()) return;
-    post("/api/v1/sessions/" + sessionId + "/messages", { content: value }).then(renderReply).catch(fail);
+    post("/api/v1/sessions/" + sessionId + "/messages", { content: value }).then(deliverReply).catch(deliverFail);
   };
 
   function buildTranscriptText() {
     var lines = [
-      "# " + (brand.widget_title || "Nexus Advisor") + " — Consultation Transcript",
+      "# " + (brand.widget_title || "Advisor") + " — Consultation Transcript",
       "Date: " + new Date().toLocaleString(),
       "Session: " + (sessionId || "unassigned"),
       "--------------------------------------------------------------------------------",
@@ -752,7 +991,7 @@
       }
     }
     lines.push("--------------------------------------------------------------------------------");
-    lines.push("Exported from " + (brand.widget_title || "Nexus Advisor") + " Consultation");
+    lines.push("Exported from " + (brand.widget_title || "Advisor") + " Consultation");
     return lines.join("\n");
   }
 
@@ -762,7 +1001,8 @@
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
-    a.download = "nexus-consultation-" + (sessionId || "transcript").slice(0, 8) + ".txt";
+    var safeSlug = (brand.slug || "consultation").replace(/[^a-zA-Z0-9_-]/g, "");
+    a.download = safeSlug + "-consultation-" + (sessionId || "transcript").slice(0, 8) + ".txt";
     document.body.appendChild(a);
     a.click();
     setTimeout(function () {
@@ -777,7 +1017,7 @@
     if (printWin) {
       var html = [
         '<!DOCTYPE html><html><head><meta charset="utf-8">',
-        '<title>' + esc(brand.widget_title || "Nexus Advisor") + ' Consultation Transcript</title>',
+        '<title>' + esc(brand.widget_title || "Advisor") + ' Consultation Transcript</title>',
         '<style>',
         'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:30px;color:#0f172a;line-height:1.6;font-size:13px}',
         'h2{margin:0 0 6px;color:#0f172a;font-size:20px}',
@@ -786,7 +1026,7 @@
         '@media print{body{margin:15mm}pre{background:#fff;border:none;padding:0}}',
         '</style>',
         '</head><body>',
-        '<h2>' + esc(brand.widget_title || "Nexus Advisor") + ' — Consultation Transcript</h2>',
+        '<h2>' + esc(brand.widget_title || "Advisor") + ' — Consultation Transcript</h2>',
         '<div class="meta">Exported on ' + new Date().toLocaleString() + ' &bull; Session: ' + esc(sessionId || "unassigned") + '</div>',
         '<pre>' + esc(text) + '</pre>',
         '<script>window.onload=function(){window.print();};<\/script>',
@@ -857,6 +1097,53 @@
   window.NorthlineAdvisor = advisorAPI;
   window.Advisor = advisorAPI;
 
+  function initTeaserBubble() {
+    var delay = (brand.teaser_delay_ms != null) ? brand.teaser_delay_ms : 10000;
+    if (delay <= 0) return;
+    var isDesktop = window.innerWidth >= 768;
+    if (!isDesktop) return;
+    try {
+      if (sessionStorage.getItem("ps_teaser_dismissed")) return;
+    } catch (e) {}
+
+    setTimeout(function () {
+      try {
+        if (sessionStorage.getItem("ps_teaser_dismissed")) return;
+      } catch (e) {}
+      if (panel.classList.contains("is-open")) return;
+      if (document.getElementById("ps-teaser-bubble")) return;
+
+      var teaser = el("div", "ps-teaser-bubble " + (brand.position || "bottom-right"));
+      teaser.id = "ps-teaser-bubble";
+      teaser.setAttribute("role", "status");
+
+      var text = el("span", "ps-teaser-text");
+      text.textContent = brand.teaser_text || brand.launcher_subtitle || "Have an app idea? Get an instant cost estimate";
+
+      var closeBtn = el("button", "ps-teaser-close");
+      closeBtn.type = "button";
+      closeBtn.setAttribute("aria-label", "Dismiss");
+      closeBtn.innerHTML = "&times;";
+
+      closeBtn.onclick = function (e) {
+        e.stopPropagation();
+        teaser.remove();
+        try { sessionStorage.setItem("ps_teaser_dismissed", "1"); } catch (err) {}
+      };
+
+      teaser.onclick = function () {
+        teaser.remove();
+        try { sessionStorage.setItem("ps_teaser_dismissed", "1"); } catch (err) {}
+        open();
+      };
+
+      teaser.appendChild(text);
+      teaser.appendChild(closeBtn);
+      root.appendChild(teaser);
+    }, delay);
+  }
+
   applyBrand();
+  initTeaserBubble();
   void ndaVersion;
 })();

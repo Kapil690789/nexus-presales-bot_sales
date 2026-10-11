@@ -164,9 +164,9 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                 models_to_try.append(fb_clean)
 
     if mode == "request":
-        per_call_timeout = 15.0
+        per_call_timeout = 25.0
         max_retries = 1
-        wall_budget = 12.0
+        wall_budget = 25.0
         backoffs = [3.0]
     else:
         per_call_timeout = 15.0

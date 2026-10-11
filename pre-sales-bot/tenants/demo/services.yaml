@@ -30,6 +30,11 @@ in_scope:
     stacks: [Matches your existing stack]
     backend_stacks: []
 out_of_scope:
+  - shopify
+  - crypto
+  - web3
+  - homework
+  - student project
   - shopify_only
   - crypto_web3
   - pure_marketing_site

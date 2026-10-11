@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import json
 import logging
 import re
@@ -9,13 +10,13 @@ from sqlalchemy.orm import Session
 
 log = logging.getLogger(__name__)
 
-from backend.app.agents.brief import ProjectBrief, brief_ready, next_discovery_field
+from backend.app.agents.brief import ProjectBrief, brief_ready, next_discovery_field, next_sharpen_field
 from backend.app.agents.discovery_synth import synthesize_discovery_prompt
 from backend.app.agents.extractor import apply_extracted_slots, extract_slots
 from backend.app.agents.fallback import fallback_message
 from backend.app.agents.suggestions import ensure_chips
 from backend.app.core.llm import LLMError, complete_json, llm_available
-from backend.app.core.guard import sanitize_price_leaks
+from backend.app.core.guard import sanitize_duration_leaks, sanitize_price_leaks
 from backend.app.core.platform import get_platform
 from backend.app.engines.architecture import recommend_architecture
 from backend.app.engines.calendar import confirm_slot, list_slots
@@ -27,6 +28,12 @@ from backend.app.engines.qualification import qualify
 from backend.app.engines.notify import company_from_email, notify_slack
 from backend.app.learning.pairs import save_booking_pairs
 from backend.app.memory.rewrite import lookup_queries, rolling_summary
+from backend.app.core.security import (
+    check_booking_ip_limit,
+    check_email_submission_limit,
+    current_ip,
+    record_booking_for_ip,
+)
 from backend.app.models.entities import LeadRow, SessionRow, TenantRow
 from backend.app.rag.filters import query_filters
 from backend.app.rag.grade import grade, grounded_answer
@@ -39,6 +46,35 @@ OPEN = re.compile(r"\?|^(what|how|who|why|when|where|can|do|does|is|are|have)\b"
 BOOK = re.compile(r"\b(book|schedule|reschedule)\b.{0,40}\b(call|meeting|consultation|time)\b|\breschedule\b", re.IGNORECASE)
 OUT_OF_SCOPE = ("shopify", "crypto", "web3", "homework", "student project")
 ACTION = {"show_portfolio", "booking_window", "booking_slot", "nda", "close_out", "view_mvp", "email_instead", "continue_discovery", "sharpen_estimate"}
+
+
+def validate_single_email(raw: str) -> str | None:
+    if not raw or not isinstance(raw, str):
+        return None
+    cleaned = raw.strip().rstrip(".")
+    if len(cleaned) > 254:
+        return None
+    if any(c in cleaned for c in (" ", "\t", "\n", "\r", ",", ";")):
+        return None
+    if cleaned.count("@") != 1:
+        return None
+    m = re.match(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+$", cleaned)
+    if not m:
+        return None
+    return cleaned.lower()
+
+
+def extract_single_email(text: str) -> tuple[str | None, bool]:
+    if not text:
+        return None, False
+    matches = EMAIL.findall(text)
+    if len(matches) > 1 or ("," in text and "@" in text) or (";" in text and "@" in text):
+        return None, True
+    if len(matches) == 1:
+        candidate = matches[0].rstrip(".")
+        val = validate_single_email(candidate)
+        return val, False
+    return None, False
 
 import time
 from backend.app.rag.embeddings import query_embedding_duration_ms
@@ -136,6 +172,7 @@ def run_turn(
     brief = _brief(session)
     contact = _json(session.contact_json)
     text = (user_text or "").strip()
+    session._latest_user_text = text
     chip = chip or {}
     field = str(chip.get("field") or "").strip()
     value = chip.get("value")
@@ -154,9 +191,10 @@ def run_turn(
     brief_track_fields = ("service", "goal", "platforms", "features", "timeline", "budget_band", "decision_role", "company_size", "integrations")
     initial_brief_state = {f: getattr(brief, f) for f in brief_track_fields}
     initial_pending = _pending(brief)
-    found = EMAIL.search(text)
-    if found:
-        contact["email"] = found.group(0).rstrip(".")
+    email_val, is_multi_email = extract_single_email(text)
+    found = bool(email_val)
+    if email_val:
+        contact["email"] = email_val
     user_texts = [item["content"] for item in history if item.get("role") == "user" and item.get("content")]
     if text:
         user_texts.append(text)
@@ -202,6 +240,21 @@ def run_turn(
         )
 
     if field in ("continue_discovery", "sharpen_estimate"):
+        flow = getattr(config.brand, "flow", "classic")
+        if brief_ready(brief, flow=flow):
+            s_field = next_sharpen_field(brief)
+            if s_field:
+                prompt_msg = prompt_for(brief, s_field, repeat=False)
+                chips = chips_for_field(s_field, brief, repeat=False) or ensure_chips(brief, prompt_msg)
+                return _finish(
+                    session, brief, contact, summary,
+                    message=prompt_msg,
+                    stage="discovery",
+                    route="discovery",
+                    chips=chips,
+                    cards=[],
+                    timings=timings,
+                )
         return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings)
 
     if field == "email_instead":
@@ -238,6 +291,42 @@ def run_turn(
             cards=[pick_card],
         )
 
+    if is_multi_email:
+        if session.stage in ("email_capture", "booking") or session.booking_json or contact.get("prefers_email") or "@" in text:
+            return _finish(
+                session, brief, contact, summary,
+                message="Please provide a single valid email address (e.g. name@company.com).",
+                stage=session.stage or "discovery",
+                route="email_invalid",
+                chips=[],
+            )
+
+    has_at = "@" in text
+    if (has_at or session.stage == "email_capture") and not email_val and not is_chip_click and not field:
+        target_msg = (
+            "Please provide a single valid email address (e.g. name@company.com) so we can send your summary."
+            if session.stage == "email_capture"
+            else "Please provide a single valid email address (e.g. name@company.com) so we can send your calendar invitation."
+        )
+        return _finish(
+            session, brief, contact, summary,
+            message=target_msg,
+            stage=session.stage or "discovery",
+            route="email_invalid",
+            chips=[],
+        )
+
+    if email_val:
+        sub_cnt, sub_ok = check_email_submission_limit(session.id)
+        if not sub_ok:
+            return _finish(
+                session, brief, contact, summary,
+                message="You have reached the maximum number of email submissions for this session.",
+                stage=session.stage or "discovery",
+                route="email_capped",
+                chips=[PORTFOLIO_CHIP],
+            )
+
     if found:
         email = contact["email"]
         if contact.get("prefers_email"):
@@ -250,7 +339,7 @@ def run_turn(
                 db,
                 session.id,
                 tenant,
-                f"Lead email captured (prefers email) for {config.brand.name}: {email}",
+                f"Lead email captured (prefers email) for {config.brand.name}: {email} (Session: {session.id})",
             )
             return _finish(
                 session, brief, contact, summary,
@@ -267,6 +356,38 @@ def run_turn(
                 booked = json.loads(session.booking_json)
             except Exception:
                 booked = {}
+
+            # Check 1 active booking per email
+            now_iso = datetime.now(timezone.utc).isoformat()
+            rows = db.query(SessionRow).filter(SessionRow.booking_json != "").all()
+            for r in rows:
+                if r.id == session.id:
+                    continue
+                try:
+                    b_prev = json.loads(r.booking_json)
+                    if b_prev.get("attendee", "").lower() == email.lower() and (b_prev.get("slot_iso") or "") > now_iso:
+                        return _finish(
+                            session, brief, contact, summary,
+                            message="You already have an active scheduled consultation with our team. Please check your calendar or contact us to reschedule.",
+                            stage="handoff",
+                            route="booking_blocked",
+                            chips=[PORTFOLIO_CHIP],
+                        )
+                except Exception:
+                    pass
+
+            # Check 3 bookings per IP per 24h
+            cip = current_ip()
+            _, allowed = check_booking_ip_limit(cip)
+            if not allowed:
+                return _finish(
+                    session, brief, contact, summary,
+                    message="We have reached the maximum number of bookings allowed for today from your network. Please try again tomorrow or contact our team directly.",
+                    stage="handoff",
+                    route="booking_blocked",
+                    chips=[PORTFOLIO_CHIP],
+                )
+
             slot_iso = booked.get("slot_iso") or ""
             if slot_iso:
                 try:
@@ -284,6 +405,7 @@ def run_turn(
                     log.warning("Failed to update slot with email: %s", exc)
             booked["attendee"] = email
             session.booking_json = json.dumps(booked)
+            record_booking_for_ip(cip)
 
             qual = qualify(brief, config.qualification, config.services, has_email=True)
             estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
@@ -294,7 +416,7 @@ def run_turn(
                 db,
                 session.id,
                 tenant,
-                f"Booking invitation dispatched for {config.brand.name}: {booked.get('label') or slot_iso} -> {email}",
+                f"Booking invitation dispatched for {config.brand.name}: {booked.get('label') or slot_iso} -> {email} (Session: {session.id})",
             )
             slot_label = booked.get("label") or slot_iso or "your scheduled discovery session"
             reply = f"Thank you! Your calendar invitation for **{slot_label}** has been dispatched to **{email}**."
@@ -417,15 +539,27 @@ def run_turn(
                 chips=post_chips,
             )
 
-    if field == "show_portfolio":
-        cases = match_portfolio(brief, config.portfolio)
+    is_portfolio_request = field == "show_portfolio" or bool(
+        text and re.search(r"\b(show|see|any|have)\b.{0,30}\b(clients?|case\s+stud|portfolio|examples?)\b|\b(client\s+in|case\s+study\s+in)\b", text, re.IGNORECASE)
+    )
+    if is_portfolio_request:
+        brief_for_match = brief
+        if not brief.industry and text:
+            low_t = text.lower()
+            if "health" in low_t:
+                brief_for_match = brief.model_copy(update={"industry": "health"})
+            elif "fintech" in low_t or "finance" in low_t:
+                brief_for_match = brief.model_copy(update={"industry": "fintech"})
+            elif "market" in low_t:
+                brief_for_match = brief.model_copy(update={"industry": "marketplace"})
+        cases = match_portfolio(brief_for_match, config.portfolio)
         is_sample = getattr(config, "slug", "") == "demo" or tenant.slug == "demo"
         for c in cases:
             if is_sample or c.get("is_sample"):
                 c["is_sample"] = True
         return _finish(
             session, brief, contact, summary,
-            message="Here are relevant sample case studies and similar projects from our past work:" if is_sample else "Here are relevant case studies and similar projects from our past work:",
+            message="Sample case study: Here is relevant work and similar projects from our portfolio:" if is_sample else "Here are relevant case studies and similar projects from our past work:",
             stage=session.stage or "advising",
             route="portfolio",
             chips=[BOOK_CHIP],
@@ -516,7 +650,10 @@ def run_turn(
                 extracted = {}
             else:
                 t0_ext = time.perf_counter()
-                extracted = extract_slots(text, pending, brief)
+                try:
+                    extracted = extract_slots(text, pending, brief, out_of_scope=config.services.out_of_scope)
+                except TypeError:
+                    extracted = extract_slots(text, pending, brief)
                 timings["extractor"] += (time.perf_counter() - t0_ext) * 1000.0
             if extracted.get("is_off_topic"):
                 _svc_label = (brief.service or "").replace("_", " ") or "custom software"
@@ -536,7 +673,7 @@ def run_turn(
             if extracted and not extracted.get("is_question") and apply_extracted_slots(brief, extracted, pending):
                 _note_flags(brief)
                 filled = True
-            elif not extracted.get("is_question") and not _is_question_like(text) and not OPEN.search(text) and pending and _apply_free_text(brief, pending, text):
+            elif not extracted.get("is_question") and not _is_question_like(text) and not OPEN.search(text) and pending and _apply_free_text(brief, pending, text, out_of_scope=config.services.out_of_scope):
                 # 2. Fallback to deterministic regex matching
                 _note_flags(brief)
                 filled = True
@@ -739,6 +876,36 @@ def run_turn(
 
 def _book(db, tenant, config, session, brief, contact, summary, slot_iso: str) -> dict:
     email = contact.get("email") or ""
+    cip = current_ip()
+    if email:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        rows = db.query(SessionRow).filter(SessionRow.booking_json != "").all()
+        for r in rows:
+            if r.id == session.id:
+                continue
+            try:
+                b_prev = json.loads(r.booking_json)
+                if b_prev.get("attendee", "").lower() == email.lower() and (b_prev.get("slot_iso") or "") > now_iso:
+                    return _finish(
+                        session, brief, contact, summary,
+                        message="You already have an active scheduled consultation with our team. Please check your calendar or contact us to reschedule.",
+                        stage="handoff",
+                        route="booking_blocked",
+                        chips=[PORTFOLIO_CHIP],
+                    )
+            except Exception:
+                pass
+
+    _, allowed = check_booking_ip_limit(cip)
+    if not allowed:
+        return _finish(
+            session, brief, contact, summary,
+            message="We have reached the maximum number of bookings allowed for today from your network. Please try again tomorrow or contact our team directly.",
+            stage="handoff",
+            route="booking_blocked",
+            chips=[PORTFOLIO_CHIP],
+        )
+
     tz_name = getattr(config.brand, "timezone", "") or "Asia/Kolkata"
     booked = confirm_slot(
         tenant,
@@ -747,6 +914,8 @@ def _book(db, tenant, config, session, brief, contact, summary, slot_iso: str) -
         email,
         tz_name=tz_name,
     )
+    if email:
+        record_booking_for_ip(cip)
     qual = qualify(brief, config.qualification, config.services, has_email=bool(email))
     estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
     handoff = _handoff(config, brief, contact, qual, estimate, booked)
@@ -1027,13 +1196,16 @@ def _after_brief(
             defaults = {"users": "business", "integrations": ["none"], "company_size": "startup"}
             if not getattr(brief, prev_pending):
                 setattr(brief, prev_pending, defaults.get(prev_pending, "not_specified"))
-        if prev_pending != "service":
-            brief.field_attempts[prev_pending] = 99
+        if prev_pending == "service":
+            if not brief.service:
+                brief.service = "mobile_app" if (brief.platforms and any(p in ("ios", "android") for p in brief.platforms)) else "web_app"
+        brief.field_attempts[prev_pending] = 99
 
+    flow = getattr(config.brand, "flow", "classic")
     for _ in range(15):
-        if brief_ready(brief):
+        if brief_ready(brief, flow=flow):
             return _estimate(session, config, brief, contact, summary, qual, timings=timings)
-        field = next_discovery_field(brief)
+        field = next_discovery_field(brief, flow=flow)
         if not field:
             break
         attempts = brief.field_attempts.get(field, 0)
@@ -1068,7 +1240,7 @@ def _after_brief(
             continue
         break
 
-    if brief_ready(brief):
+    if brief_ready(brief, flow=flow):
         return _estimate(session, config, brief, contact, summary, qual, timings=timings)
 
     attempts = brief.field_attempts.get(field or "", 0)
@@ -1110,6 +1282,12 @@ def _after_brief(
         prompt_q = prompt_for(brief, field, repeat=repeat)
         prompt_msg = f"{shape_text} {prompt_q}"
 
+    progress_val = None
+    if getattr(config.brand, "flow", "classic") == "fast":
+        fast_fields = ["service", "goal", "platforms", "timeline", "budget_band"]
+        filled_count = sum(1 for f in fast_fields if getattr(brief, f))
+        progress_val = f"{min(5, filled_count + 1)} of 5"
+
     return _finish(
         session, brief, contact, summary,
         message=prompt_msg,
@@ -1117,6 +1295,7 @@ def _after_brief(
         route="discovery",
         chips=chips,
         cards=cards,
+        progress=progress_val,
         qualification=qual,
         timings=timings,
     )
@@ -1233,12 +1412,12 @@ def _pending(brief: ProjectBrief) -> str | None:
     return None
 
 
-def _apply_free_text(brief: ProjectBrief, field: str, text: str) -> bool:
+def _apply_free_text(brief: ProjectBrief, field: str, text: str, out_of_scope: list[str] | None = None) -> bool:
     cleaned = text.strip()
     if not cleaned:
         return False
     if field == "service":
-        mapped = _service(cleaned)
+        mapped = _service(cleaned, out_of_scope=out_of_scope)
         if mapped == "out":
             brief.out_of_scope = cleaned
             return True
@@ -1301,9 +1480,14 @@ def _apply_free_text(brief: ProjectBrief, field: str, text: str) -> bool:
     return False
 
 
-def _service(text: str) -> str | None:
+def _service(text: str, out_of_scope: list[str] | None = None) -> str | None:
     lowered = text.lower()
-    if any(token in lowered for token in OUT_OF_SCOPE):
+    tokens = (
+        OUT_OF_SCOPE
+        if out_of_scope is None
+        else tuple(t.lower().strip() for t in out_of_scope if t and t.strip())
+    )
+    if any(token in lowered for token in tokens):
         return "out"
     if "mobile" in lowered:
         return "mobile_app"
@@ -1455,6 +1639,12 @@ def _note_flags(brief: ProjectBrief) -> None:
         brief.realtime = True
 
 
+_OBJECTION_KEYWORDS = re.compile(
+    r"\b(expensive|cheaper|cheap|too\s+much|reduce|cost|rates?|budget|too\s+long|faster|hurry|slow|timeline|rush|fixed\s+price|fixed\s+bid|lump\s+sum|offshore|outsourced|guarantee|discount|hourly|retainer)\b",
+    re.IGNORECASE,
+)
+
+
 def _objection(db, tenant, config, text, nda_accepted: bool):
     found = match_objection(text, config.objections)
     if found or not text:
@@ -1462,8 +1652,11 @@ def _objection(db, tenant, config, text, nda_accepted: bool):
     if len(text.split()) > 20:
         return None
     hits = search(db, tenant, text, kind="objection", k=1, nda_accepted=nda_accepted)
-    if hits and hits[0].score >= get_platform().faq_min_score:
-        return {"id": getattr(hits[0], "source_id", "") or hits[0].id, "reply": hits[0].content, "match": "semantic"}
+    if hits:
+        has_keywords = bool(_OBJECTION_KEYWORDS.search(text))
+        min_score = get_platform().faq_min_score if has_keywords else 0.76
+        if hits[0].score >= min_score:
+            return {"id": getattr(hits[0], "source_id", "") or hits[0].id, "reply": hits[0].content, "match": "semantic"}
     return None
 
 
@@ -1604,6 +1797,17 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
         except Exception:
             estimate_ctx = None
     sanitized_message = sanitize_price_leaks(raw_message, estimate_ctx, visitor_budget=getattr(brief, "budget_band", None))
+    passages = list(payload.get("passages") or [])
+    route = payload.get("route") or "discovery"
+    if not passages and route != "faq":
+        engine_weeks = None
+        if estimate_ctx and isinstance(estimate_ctx, dict):
+            try:
+                engine_weeks = int(estimate_ctx.get("timeline_weeks"))
+            except (TypeError, ValueError):
+                engine_weeks = None
+        visitor_text = payload.get("visitor_text") or getattr(session, "_latest_user_text", "") or ""
+        sanitized_message = sanitize_duration_leaks(sanitized_message, engine_weeks=engine_weeks, visitor_message=visitor_text)
     result = {
         "message": sanitized_message,
         "stage": payload.get("stage") or "discovery",
@@ -1616,6 +1820,7 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
         "qualification": payload.get("qualification"),
         "estimate": payload.get("estimate"),
         "booking": payload.get("booking"),
+        "progress": payload.get("progress"),
         "summary": summary,
         "contact": contact,
         "handoff_summary": payload.get("handoff_summary") or session.handoff_summary or "",

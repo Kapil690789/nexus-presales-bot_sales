@@ -2,13 +2,13 @@
 
 > **Production AI Pre-Sales Agent & Live Proposal Studio**  
 > **Brand Identity:** **Nexus** — Digital Product Engineering Studio  
-> **LLM Engine:** Google Gemini (Configured via `LLM_MODEL` in `.env`, e.g. `gemini-2.5-flash` or `gemini-3.8-flash`)  
+> **LLM Engine:** Google Gemini (`gemini-3.8-flash` primary, configurable fallback via `LLM_MODEL_FALLBACKS`)  
 > **Embeddings / RAG:** Google `gemini-embedding-001` (768-dim L2-normalized vectors + Lexical RRF)  
 > **UI Aesthetic:** Ultra-Modern Obsidian Pitch-Black (`#050506`, Linear/Raycast/Vercel inspired)  
 > **Backend Framework:** FastAPI (Python 3.13 / Async / Uvicorn)  
 > **Deployment Target:** Vercel Serverless (`pre-sales-bot`), Docker, or Standalone VM  
 > **Database:** SQLite (local / non-production) or PostgreSQL with pgvector (production required)  
-> **Automated Test Suite:** 251 / 251 Passing (`pytest backend/tests`)
+> **Automated Test Suite:** 417 / 417 Passing (`pytest backend/tests` in ~30s)
 
 ---
 
@@ -77,7 +77,7 @@ flowchart TD
 | **RAG Precision & Slang Guard** | Slang / casual inputs dumped raw DB snippets | **Tightened Classifier (`rag/grade.py`):** Slang / casual inputs gracefully pivot to discovery without dumping raw case studies |
 | **File Upload Handling** | Silent upload | **User Chat Bubble Feedback:** `📎 Uploaded document: <filename>` with automatic scope integration |
 | **Database Migrations** | Missing columns caused 500 error on SQLite | **Auto-Migration in `init_db()` (`models/db.py`):** Automatically adds `llm_calls_used`, `expires_at`, `handoff_summary`, `embedding_version` |
-| **Test Suite** | Partial coverage | **251 / 251 automated pytest cases passing** (100% green, 0 xfailed, 0 failed in ~11s) across golden pricing math, RAG calibration, production hardening, conversation flow, hybrid retrieval, config hardening, token metering, and quality hardening |
+| **Test Suite** | Partial coverage | **417 / 417 automated pytest cases passing** (100% green, 0 xfailed, 0 failed in ~30s) across golden pricing math, RAG calibration, production hardening, conversation flow, hybrid retrieval, config hardening, token metering, quality hardening, rate limiting, and booking safety |
 
 ---
 
@@ -173,7 +173,7 @@ uvicorn backend.app.main:app --reload --port 8010
 ```bash
 .venv/bin/pytest backend/tests -q
 ```
-*(All 251 test cases execute and verify the full system in ~11 seconds with 100% pass rate).*
+*(All 417 test cases execute and verify the full system in ~30 seconds with 100% pass rate).*
 
 ---
 
@@ -231,57 +231,39 @@ window.NexusAdvisor.send("We want to build a mobile app for iOS and Android", tr
 
 ---
 
-## 10. Hardening & Verification Audit (Phases 0–7, F1–F3, T1)
+## 10. Hardening & Verification Audit (Phases 0–7, F1–F3, T1, SHIP-2, SHIP-3, QA-1, QA-2, E6, E5, SHIP-3B, SHIP-4)
 
 **Performed by:** Agentic AI Engineering Audit & Hardening.  
-**Test suite:** 46 → 103 → 228 → **251 / 251 passing** after all phases (0 xfailed, 0 failed in ~11s).
+**Test suite:** 46 → 103 → 228 → 251 → 289 → 368 → 379 → 390 → 405 → **417 / 417 passing** (0 xfailed, 0 failed in ~30s).
 
-### Security Fixes
-
-| Fix | File | Detail |
-|:----|:-----|:-------|
-| **Gemini LLM 429 retry & request budget** | `core/llm.py` | Visitor request-time calls use a 12s wall-clock budget and max 1 retry (15s timeout) to fail fast to heuristic fallback without hanging visitors. Batch/offline tasks use full exponential backoff. |
-| **Expanded jailbreak patterns** | `core/guard.py` | Added: DAN, `act as unrestricted`, `pretend you are`, `reveal backend/api/database`, `bypass your rules`, `forget your instructions`, `do anything now`, `you are now jailbroken/free`. |
-| **Google OAuth callback auth** | `api/admin.py` | `/admin/google/callback` now requires `Depends(require_admin)` — previously relied only on PKCE state token, which was insufficient. |
-| **Stale default password removed** | `core/security.py` | Removed `"northline-admin"` from `DEFAULT_ADMIN_PASSWORDS` — brand was renamed to Nexus. |
-| **Tenant slug injection** | `api/sessions.py` | Session creation now validates slug matches `^[a-z0-9_-]+$` and is clamped to 80 chars. Rejects `../`, spaces, uppercase, empty. |
-| **Real-time flag variants** | `agents/router.py` | `_note_flags()` now catches `"realtime"`, `"real-time"`, `"real time"`, `"live-chat"`, and `"live chat"` — previously missed hyphenated/spaced forms. |
-
-### Quality Fixes
+### Security & Rate Limiting Hardening
 
 | Fix | File | Detail |
 |:----|:-----|:-------|
-| **Budget comma-number parsing** | `agents/extractor.py` | Heuristic extractor now parses `$100,000` style comma-formatted budgets (not just `$100k`). |
-| **Price leak span sanitizer** | `core/guard.py` | Span-based sanitizer handles $36k, $36K, 36,000, USD 36000, 36 thousand dollars, Rs 30 lakh, while allowing visitor-stated budgets to echo. |
-| **Student role confirmation** | `agents/router.py` | "Live project at a company" sets `decision_role = None` to remain neutral, preventing premature lead score inflation. |
-| **Minimal public health** | `api/health.py` | Public `/health` returns only `{"status": "ok" | "degraded"}`; diagnostic details moved to authenticated `/admin/api/health`. |
+| **Persistent Rate Limiting & Lockout** | `models/entities.py`, `core/security.py` | State moved from ephemeral memory to database table `rate_limits(key_hash, window_start, count)` with atomic SQLite/Postgres upsert and 24h prune. Visitors fail open on DB error; admin fails closed. |
+| **Booking Abuse Defense** | `core/security.py`, `agents/router.py` | Enforced 3 bookings per IP per 24 hours, 1 active booking per email, and 5 email submissions per session. IP stored strictly as salted SHA-256 hash (`IP_HASH_SALT` required in production). |
+| **Single Calendar Attendee & Email Validation** | `engines/calendar.py`, `agents/router.py` | Calendar booking strictly restricted to single attendee. Email parser validates single RFC address (max 254 chars, no lists or injection). |
+| **Upload Limits & Memory-Only Extraction** | `api/documents.py`, `models/entities.py` | Enforced `MAX_UPLOAD_BYTES = 4_000_000` (4MB). Extracted text clamped to 20k chars in memory; zero file writes to disk. |
+| **Transcript Download Authorization** | `api/sessions.py` | Authorized transcript downloads requiring session token; returns only visitor-visible messages with sanitized filenames. |
+| **Duration Leak Sanitization** | `core/guard.py` | `sanitize_duration_leaks()` replaces unauthorized week commitments with indicative disclaimer while preserving engine ranges and discovery times. |
+| **Brand Agnosticism** | `core/guard.py`, `agents/router.py` | Dynamic tenant brand name resolution for refusals and out-of-scope service matching. |
 
-### New Test Coverage (`test_production_hardening.py` — 57 new tests; `test_phase_t1_tokens.py` — 8 tests; `test_phase_f1_deployment.py` — 8 tests; `test_phase_f2_quality.py` — 7 tests)
+### Quality, Conversation Flow & UX Enhancements
 
-| Category | Tests Added |
-|:---------|:-----------|
-| Jailbreak expansion | 13 pattern tests (positive + negative cases) |
-| Admin lockout | Lockout after 5 failures, reset on success |
-| Session slug validation | Injection, spaces, empty, uppercase, unknown tenant |
-| Message edge cases | Empty, whitespace-only, 1001 chars, exactly 1000, unknown session, chip-only |
-| Upload validation | Empty file, bad extension, >5MB, jailbreak filename, jailbreak content |
-| Rate limiting | Window resets, cross-session same-IP enforcement |
-| LLM budget exhaustion | Budget=0 still returns HTTP 200 with heuristic response |
-| Heuristic extractor | Off-topic FIFA, crypto out-of-scope, `$100,000` budget, 2-month timeline, ASAP, iOS+Android, CEO role, short question, long business message not flagged as question |
-| Realtime flags | All 5 variants (realtime/real-time/real time/live-chat/live chat/no-realtime) |
-| Google OAuth callback | Unauthenticated = 401, wrong password = 401 |
-| Concurrent session isolation | Two sessions with different chips have independent briefs in DB |
-| Feedback endpoint | Cross-session message ownership rejected as 404, invalid rating = 422 |
-| Token metering & model rates | Model rate tables, thinking tokens, ContextVar session isolation, estimated tags |
-| Production deployment guards | Vercel fail-closed 404 admin, SQLite prod rejection, ALLOW_EPHEMERAL_DB escape hatch, ingest off visitor path |
-| Quality & price guard matrix | 12s LLM budget, minimal health, listener-based failure events, 30-sample price guard matrix, lexical-only RAG cap |
-
-### Paid API Readiness
-
-When you switch from the free Gemini API to a paid tier:
-1. Update `LLM_API_KEY` in `.env` — no code changes needed.
-2. Increase `LLM_CALLS_PER_SESSION` (default 30) and `LLM_CALLS_PER_IP_PER_HOUR` (default 80) in `.env` to match your quota.
-3. In visitor request mode, the LLM has a strict 12-second wall-clock budget and 1 retry (15s timeout) to fail fast to intelligent heuristic replies, ensuring visitors never face hanging spinners. In offline/batch tasks, full exponential backoff is used.
-4. Embedding outages trigger failure listeners and fall back to local 384-dim hash embeddings, while capping retrieval confidence at "weak" (never "show") and reporting degradation status to `/admin/api/health`.
+| Enhancement | File | Detail |
+|:------------|:-----|:-------|
+| **AI Opener & Starters** | `agents/router.py`, `widget/consultant.js` | Opener includes standalone "AI" disclosure, 4 interactive starter chips, and ever-present "Talk to a human" escalation. |
+| **Scope Coach & Feature Split** | `agents/router.py` | Multi-feature inputs ($\ge 6$ features) trigger Scope Coach advisory with Core vs. Later MVP release split. |
+| **Shape Message & Card** | `agents/router.py`, `public/studio.html` | Renders architectural pillars (Channels/UX, Core Flow, Backend/APIs) before timeline capture. |
+| **Recap, Estimate & Budget-Fit** | `agents/router.py` | Delivers brief recap line, deterministic price range card, honest timeline disclaimer, and budget-fit variance evaluation. |
+| **Fast Flow Option** | `agents/router.py`, `core/settings.py` | Configurable `ENABLE_FAST_FLOW` toggle for streamlined 3-turn discovery. |
+| **Widget Polish & Studio Parity** | `widget/consultant.js`, `public/studio.html` | Byte-for-byte synced widget (`cmp` returncode 0); all card types (including shape) render identically in widget and studio. |
 
 ---
+
+## 11. Known Gaps
+
+1. **Google Calendar API Live Connection:** Calendar booking currently defaults to demo mode (`live=False`) with explicit disclosure. Live synchronization requires authenticating via Google OAuth 2.0 with a production consent screen.
+2. **PostgreSQL Database Requirement:** Production serverless environments (Vercel) require hosted PostgreSQL with pgvector for persistent multi-instance rate limits and session storage (`ALLOW_EPHEMERAL_DB=true` is for development only).
+3. **Multi-Tenant Tax Prototype:** Architectural support for multi-tenancy is active; tax advisory tenant (`tenants/tax_demo/`) is pending formal client specifications (`docs/TAX_TENANT_SPEC.md`).
+4. **Environment Salt Configuration:** Ensure `IP_HASH_SALT` and `ADMIN_PASSWORD` are set with strong, unique secrets before production deployment.

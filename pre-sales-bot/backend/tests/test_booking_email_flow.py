@@ -24,17 +24,17 @@ def test_booking_email_capture_and_inquiries(client):
     data_book = r_book.json()
     assert "Reply with your work email" in data_book["message"]
 
-    # 3. User responds with email and natural language: "kapil19092003@gmail.com here is my mail"
+    # 3. User responds with email and natural language: "lead@example.com here is my mail"
     r_email = client.post(
         f"/api/v1/sessions/{session_id}/messages",
-        json={"content": "kapil19092003@gmail.com here is my mail"},
+        json={"content": "lead@example.com here is my mail"},
     )
     assert r_email.status_code == 200
     data_email = r_email.json()
     msg = data_email["message"]
 
     # Assert invitation dispatch confirmation
-    assert "kapil19092003@gmail.com" in msg
+    assert "lead@example.com" in msg
     assert "invitation" in msg.lower() or "dispatched" in msg.lower()
     assert data_email["stage"] == "handoff"
     assert data_email["route"] == "booking"
@@ -44,12 +44,12 @@ def test_booking_email_capture_and_inquiries(client):
     with SessionLocal() as db:
         lead = db.query(LeadRow).filter(LeadRow.session_id == session_id).first()
         assert lead is not None
-        assert lead.email == "kapil19092003@gmail.com"
+        assert lead.email == "lead@example.com"
 
         session_row = db.get(SessionRow, session_id)
         assert session_row.booking_json
         booked = json.loads(session_row.booking_json)
-        assert booked.get("attendee") == "kapil19092003@gmail.com"
+        assert booked.get("attendee") == "lead@example.com"
 
     # 4. User asks post-booking question: "What is on the agenda?"
     r_agenda = client.post(

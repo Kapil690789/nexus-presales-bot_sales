@@ -461,12 +461,14 @@ def main():
     # Section 1: In-Process Deterministic Stub
     if not args.live or args.stub:
         settings.llm_api_key = ""
+        settings.embedding_backend = "hash"
         stub_md, stub_res = run_mode_scenarios(client, is_live=False, mode_title="Section 1: In-Process Deterministic Stub (Offline / Fallback)")
         sections.extend(stub_md)
 
     # Section 2: Live LLM Mode (if key is present and not explicitly --stub)
     if not args.stub and saved_key:
         settings.llm_api_key = saved_key
+        settings.embedding_backend = "gemini"
         live_md, live_res = run_mode_scenarios(client, is_live=True, mode_title="Section 2: Live LLM Evaluation (Primary Provider)")
         sections.extend(live_md)
 

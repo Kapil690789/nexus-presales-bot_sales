@@ -130,6 +130,8 @@ def embedding_backend() -> str:
     if os.environ.get("VERCEL") and choice != "gemini":
         return "hash"
     if choice == "gemini":
+        if not get_settings().llm_api_key.strip():
+            return "hash"
         return "gemini"
     if choice == "hash":
         return "hash"

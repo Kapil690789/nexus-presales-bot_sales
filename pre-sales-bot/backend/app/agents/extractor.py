@@ -40,7 +40,12 @@ _EXTRACTOR_SYSTEM = (
 )
 
 
-def _heuristic_extract(text: str, pending_field: str | None = None, brief: ProjectBrief | None = None) -> dict[str, Any]:
+def _heuristic_extract(
+    text: str,
+    pending_field: str | None = None,
+    brief: ProjectBrief | None = None,
+    out_of_scope: list[str] | None = None,
+) -> dict[str, Any]:
     import re
     lowered = text.lower().strip()
     res: dict[str, Any] = {}
@@ -51,7 +56,12 @@ def _heuristic_extract(text: str, pending_field: str | None = None, brief: Proje
         return res
 
     # Check out of scope
-    if any(token in lowered for token in ("homework", "student project", "crypto", "web3", "shopify")):
+    oos_tokens = (
+        ("homework", "student project", "crypto", "web3", "shopify")
+        if out_of_scope is None
+        else tuple(t.lower().strip() for t in out_of_scope if t and t.strip())
+    )
+    if any(token in lowered for token in oos_tokens):
         res["service"] = "out_of_scope"
         return res
 
@@ -146,17 +156,21 @@ def _heuristic_extract(text: str, pending_field: str | None = None, brief: Proje
     elif "flexible" in lowered:
         res["timeline"] = "flexible"
 
-    # Budget — match $Nk, $N,NNN, and plain 5-6 digit amounts
-    budget_nums = [int(n) for n in re.findall(r"\$?(\d+)k\b", lowered)]
-    if not budget_nums:
-        # Match comma-formatted: $100,000 or 100,000
-        comma_nums = [int(n.replace(",", "")) for n in re.findall(r"\$?([\d,]{4,9})\b", lowered) if "," in n]
-        if comma_nums:
-            budget_nums = [n // 1000 for n in comma_nums]
-    if not budget_nums:
-        full_nums = [int(n.replace(",", "")) for n in re.findall(r"\$?(\d{4,6})\b", lowered)]
-        if full_nums:
-            budget_nums = [n // 1000 for n in full_nums]
+    # Budget — only match if there is a currency indicator or explicitly in budget context
+    has_budget_context = bool(re.search(r"(\$|usd|dollars?|budget|spend|invest)", lowered))
+    has_user_metric = bool(re.search(r"\b(users?|visitors?|people|accounts|downloads?|devices?)\b", lowered))
+
+    budget_nums = []
+    if has_budget_context or (not has_user_metric and re.search(r"\$\d+|\d+k\b", lowered)):
+        budget_nums = [int(n) for n in re.findall(r"\$?(\d+)k\b", lowered)]
+        if not budget_nums and has_budget_context:
+            comma_nums = [int(n.replace(",", "")) for n in re.findall(r"\$?([\d,]{4,9})\b", lowered) if "," in n]
+            if comma_nums:
+                budget_nums = [n // 1000 for n in comma_nums]
+        if not budget_nums and has_budget_context:
+            full_nums = [int(n.replace(",", "")) for n in re.findall(r"\$?(\d{4,6})\b", lowered)]
+            if full_nums:
+                budget_nums = [n // 1000 for n in full_nums]
 
     if budget_nums:
         max_b = max(budget_nums)
@@ -184,11 +198,17 @@ def _heuristic_extract(text: str, pending_field: str | None = None, brief: Proje
     return res
 
 
-def extract_slots(text: str, pending_field: str | None = None, brief: ProjectBrief | None = None) -> dict[str, Any]:
+def extract_slots(
+    text: str,
+    pending_field: str | None = None,
+    brief: ProjectBrief | None = None,
+    out_of_scope: list[str] | None = None,
+) -> dict[str, Any]:
     cleaned = (text or "").strip()
     if not cleaned:
         return {}
 
+    heuristic = _heuristic_extract(cleaned, pending_field, brief, out_of_scope=out_of_scope)
     if llm_available():
         context = ""
         if brief:
@@ -202,7 +222,16 @@ def extract_slots(text: str, pending_field: str | None = None, brief: ProjectBri
         try:
             data = complete_json(_EXTRACTOR_SYSTEM, user_prompt)
             if isinstance(data, dict) and data:
-                return data
+                merged = dict(heuristic)
+                for k, v in data.items():
+                    if v not in (None, "", [], False):
+                        merged[k] = v
+                if out_of_scope is not None and merged.get("service") == "out_of_scope":
+                    lowered = cleaned.lower()
+                    oos_tokens = tuple(t.lower().strip() for t in out_of_scope if t and t.strip())
+                    if not any(tok in lowered for tok in oos_tokens):
+                        merged.pop("service", None)
+                return merged
         except LLMError as exc:
             error_cls = type(exc).__name__
             log.warning("Slot extraction fallback to heuristic: %s", error_cls)
@@ -218,7 +247,7 @@ def extract_slots(text: str, pending_field: str | None = None, brief: ProjectBri
             except Exception:
                 pass
 
-    return _heuristic_extract(cleaned, pending_field, brief)
+    return heuristic
 
 
 def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pending_field: str | None = None) -> bool:
@@ -241,6 +270,11 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
     if extracted.get("platforms") and not brief.platforms:
         brief.platforms = [p for p in extracted["platforms"] if isinstance(p, str)]
         applied_any = True
+        if not brief.service:
+            if any(p in ("ios", "android") for p in brief.platforms):
+                brief.service = "mobile_app"
+            elif "web" in [p.lower() for p in brief.platforms]:
+                brief.service = "web_app"
 
     # 4. Goal
     if extracted.get("goal") and not brief.goal:
