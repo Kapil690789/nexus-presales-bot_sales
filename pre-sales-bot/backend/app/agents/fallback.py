@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from backend.app.agents.brief import ProjectBrief, brief_ready
 from backend.app.core.guard import UNTRUSTED_RULE, wrap_visitor
