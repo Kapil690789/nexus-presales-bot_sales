@@ -160,6 +160,9 @@ def fallback_message(
             f"When you're ready, book a short call with the team to lock in architecture and delivery."
         )
 
+    if estimate and brief_ready(brief):
+        return "Our engineering team can go into detail on those specific technical requirements on a discovery call."
+
     parts = []
     if estimate:
         _goal_label = (brief.goal or brief.service or "this scope").replace("_", " ").strip() if brief else "this scope"

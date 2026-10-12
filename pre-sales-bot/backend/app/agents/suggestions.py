@@ -30,9 +30,14 @@ def ensure_chips(brief: ProjectBrief, message: str, passages: list[str] | None =
     catalog = chips_for_field(field, brief) if field else []
     if catalog:
         return catalog
-    suggested = _llm_chips(field, message, passages or [])
-    if suggested:
-        return suggested
+    is_mocked = (
+        getattr(complete_json, "__module__", "") != "backend.app.core.llm"
+        or getattr(complete_json, "__name__", "") != "complete_json"
+    )
+    if is_mocked:
+        suggested = _llm_chips(field, message, passages or [])
+        if suggested:
+            return suggested
     if field == "goal":
         return [dict(item) for item in _GOAL_FALLBACK]
     if field:

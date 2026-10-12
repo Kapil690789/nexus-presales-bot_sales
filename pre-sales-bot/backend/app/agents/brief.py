@@ -54,6 +54,7 @@ class ProjectBrief(BaseModel):
     ai_features: list[str] = Field(default_factory=list)
     timeline: str | None = None
     budget_band: str | None = None
+    budget_text: str | None = None
     decision_role: str | None = None
     role_unconfirmed: bool = False
     industry: str | None = None
@@ -64,6 +65,7 @@ class ProjectBrief(BaseModel):
     recent_acks: list[str] = Field(default_factory=list)
     shape_shown: bool = False
     platform_service_clarified: bool = False
+    service_source: str = "guess"  # "chip", "explicit", "guess"
 
     def apply_chip(self, field: str, value: Any) -> None:
         if not field or field in {
@@ -133,6 +135,12 @@ class ProjectBrief(BaseModel):
         if value in (None, "") or field not in self.model_fields:
             return
         setattr(self, field, value if not isinstance(value, list) else (value[0] if value else None))
+        if field == "service":
+            self.service_source = "chip"
+            if self.service == "mobile_app" and self.platforms == ["web"]:
+                self.platforms = ["ios", "android"]
+            elif self.service == "web_app" and self.platforms and all(p in ("ios", "android") for p in self.platforms):
+                self.platforms = ["web"]
 
     def missing_discovery(self) -> list[str]:
         missing: list[str] = []
@@ -246,8 +254,6 @@ def next_discovery_field(brief: ProjectBrief, flow: str = "classic") -> str | No
             if not brief.platforms and brief.service != "ui_ux":
                 return "platforms"
         return missing[0]
-    if not brief.company_size:
-        return "company_size"
     return None
 
 

@@ -38,8 +38,8 @@ questions:
 
 acks:
   goal:
-    - "A {service_label} for {goal_short}: that gives me a clear picture."
-    - "Building a {service_label} focused on {goal_short}: clear priority."
+    - "{goal_short}: that gives me a clear picture."
+    - "Focusing on {goal_short}: clear priority."
   features:
     - "{features_list} gives us a solid foundation for the first release."
     - "Focusing on {features_list} establishes a clear core scope."

@@ -38,7 +38,19 @@ def _parse_json(text: str) -> dict[str, Any]:
     return data
 
 
-def complete_json(system: str, user: str, mode: str = "request") -> dict[str, Any]:
+_last_used_model: str = ""
+_turn_llm_calls: list[dict[str, Any]] = []
+
+
+def get_turn_llm_calls() -> list[dict[str, Any]]:
+    return list(_turn_llm_calls)
+
+
+def reset_turn_llm_calls() -> None:
+    _turn_llm_calls.clear()
+
+
+def complete_json(system: str, user: str, mode: str = "request", purpose: str = "synth") -> dict[str, Any]:
     from backend.app.core.security import allow_llm_call
 
     settings = get_settings()
@@ -49,10 +61,19 @@ def complete_json(system: str, user: str, mode: str = "request") -> dict[str, An
     provider = settings.llm_provider.lower().strip()
     try:
         if provider == "anthropic":
-            return _anthropic(system, user, settings.llm_api_key, settings.llm_model)
+            try:
+                return _anthropic(system, user, settings.llm_api_key, settings.llm_model, purpose=purpose)
+            except TypeError:
+                return _anthropic(system, user, settings.llm_api_key, settings.llm_model)
         if provider == "gemini":
-            return _gemini(system, user, settings.llm_api_key, settings.llm_model, mode=mode)
-        return _openai(system, user, settings.llm_api_key, settings.llm_model, settings.llm_base_url)
+            try:
+                return _gemini(system, user, settings.llm_api_key, settings.llm_model, mode=mode, purpose=purpose)
+            except TypeError:
+                return _gemini(system, user, settings.llm_api_key, settings.llm_model, mode=mode)
+        try:
+            return _openai(system, user, settings.llm_api_key, settings.llm_model, settings.llm_base_url, purpose=purpose)
+        except TypeError:
+            return _openai(system, user, settings.llm_api_key, settings.llm_model, settings.llm_base_url)
     except LLMError:
         raise
     except Exception as exc:
@@ -72,14 +93,15 @@ def _public_error(exc: Exception) -> str:
     return text[:300]
 
 
-def _openai(system: str, user: str, api_key: str, model: str, base_url: str) -> dict[str, Any]:
+def _openai(system: str, user: str, api_key: str, model: str, base_url: str, purpose: str = "synth") -> dict[str, Any]:
+    import time
     from openai import OpenAI
 
-    kwargs: dict[str, Any] = {"api_key": api_key, "timeout": 20.0}
+    t0 = time.monotonic()
+    kwargs: dict[str, Any] = {"api_key": api_key, "timeout": 12.0}
     if base_url.strip():
         referer = get_settings().public_base_url.strip() or "http://127.0.0.1:8010"
         kwargs["base_url"] = base_url.strip()
-        # Quota errors are not transient. Retrying them burns the free daily cap.
         kwargs["max_retries"] = 0
         kwargs["default_headers"] = {
             "HTTP-Referer": referer,
@@ -94,6 +116,9 @@ def _openai(system: str, user: str, api_key: str, model: str, base_url: str) -> 
     if not base_url.strip():
         create_kwargs["response_format"] = {"type": "json_object"}
     response = client.chat.completions.create(**create_kwargs)
+    wall_ms = (time.monotonic() - t0) * 1000.0
+    prompt_tokens = 0
+    completion_tokens = 0
     try:
         from backend.app.core.usage import record_usage
 
@@ -109,12 +134,24 @@ def _openai(system: str, user: str, api_key: str, model: str, base_url: str) -> 
         )
     except Exception:
         pass
+    _turn_llm_calls.append({
+        "purpose": purpose,
+        "model": model or "gpt-4.1-mini",
+        "wall_time_ms": round(wall_ms, 1),
+        "prompt_tokens": prompt_tokens,
+        "output_tokens": completion_tokens,
+        "thinking_tokens": 0,
+        "retry_count": 0,
+        "had_429_backoff": False,
+    })
     return _parse_json(response.choices[0].message.content or "{}")
 
 
-def _anthropic(system: str, user: str, api_key: str, model: str) -> dict[str, Any]:
+def _anthropic(system: str, user: str, api_key: str, model: str, purpose: str = "synth") -> dict[str, Any]:
+    import time
     from anthropic import Anthropic
 
+    t0 = time.monotonic()
     client = Anthropic(api_key=api_key)
     response = client.messages.create(
         model=model or "claude-sonnet-4-20250514",
@@ -123,7 +160,10 @@ def _anthropic(system: str, user: str, api_key: str, model: str) -> dict[str, An
         system=system,
         messages=[{"role": "user", "content": user}],
     )
+    wall_ms = (time.monotonic() - t0) * 1000.0
     text = "".join(block.text for block in response.content if getattr(block, "text", None))
+    prompt_tokens = 0
+    completion_tokens = 0
     try:
         from backend.app.core.usage import record_usage
 
@@ -139,16 +179,20 @@ def _anthropic(system: str, user: str, api_key: str, model: str) -> dict[str, An
         )
     except Exception:
         pass
+    _turn_llm_calls.append({
+        "purpose": purpose,
+        "model": model or "claude-sonnet-4-20250514",
+        "wall_time_ms": round(wall_ms, 1),
+        "prompt_tokens": prompt_tokens,
+        "output_tokens": completion_tokens,
+        "thinking_tokens": 0,
+        "retry_count": 0,
+        "had_429_backoff": False,
+    })
     return _parse_json(text)
 
 
-def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "request") -> dict[str, Any]:
-    import time
-
-_last_used_model: str = ""
-
-
-def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "request") -> dict[str, Any]:
+def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "request", purpose: str = "synth") -> dict[str, Any]:
     global _last_used_model
     import time
 
@@ -164,10 +208,10 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                 models_to_try.append(fb_clean)
 
     if mode == "request":
-        per_call_timeout = 25.0
+        per_call_timeout = 10.5
         max_retries = 1
-        wall_budget = 25.0
-        backoffs = [3.0]
+        wall_budget = 11.0
+        backoffs = [1.5]
     else:
         per_call_timeout = 15.0
         max_retries = 4
@@ -180,6 +224,7 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
     }
 
     start_time = time.monotonic()
+    had_429 = False
     try:
         with httpx.Client(timeout=per_call_timeout, headers=headers) as client:
             for m_idx, target_model in enumerate(models_to_try):
@@ -188,10 +233,20 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                     "responseMimeType": "application/json",
                     "temperature": 0.2,
                 }
-                if target_model.startswith("gemini-3") and mode == "request":
+                if purpose in ("extractor", "synth", "grade"):
+                    generation_config["maxOutputTokens"] = 280
+                # Confirm thinkingLevel is "low" for EVERY call on gemini-3
+                if target_model.startswith("gemini-3"):
                     generation_config["thinkingConfig"] = {
-                        "thinkingLevel": settings.llm_thinking_level,
+                        "thinkingLevel": settings.llm_thinking_level or "low",
                     }
+                log.info(
+                    "Gemini request [%s] model=%s thinkingConfig_present=%s thinkingLevel=%s",
+                    purpose,
+                    target_model,
+                    "thinkingConfig" in generation_config,
+                    generation_config.get("thinkingConfig", {}).get("thinkingLevel"),
+                )
                 payload: dict[str, Any] = {
                     "contents": [{"parts": [{"text": user}]}],
                     "generationConfig": generation_config,
@@ -206,10 +261,24 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                     if elapsed >= wall_budget:
                         raise LLMError(f"Gemini LLM exceeded time budget ({elapsed:.1f}s >= {wall_budget}s)")
 
+                    rem_timeout = max(0.5, wall_budget - elapsed)
+                    actual_timeout = httpx.Timeout(
+                        min(per_call_timeout, rem_timeout),
+                        connect=min(4.0, rem_timeout),
+                        read=min(per_call_timeout, rem_timeout),
+                        write=min(per_call_timeout, rem_timeout),
+                        pool=min(per_call_timeout, rem_timeout),
+                    )
+
+                    call_t0 = time.monotonic()
                     try:
-                        resp = client.post(url, json=payload, headers=headers)
+                        resp = client.post(url, json=payload, headers=headers, timeout=actual_timeout)
                     except TypeError:
-                        resp = client.post(url, json=payload)
+                        try:
+                            resp = client.post(url, json=payload, headers=headers)
+                        except TypeError:
+                            resp = client.post(url, json=payload)
+                    call_wall_ms = (time.monotonic() - call_t0) * 1000.0
 
                     if resp.status_code == 200:
                         _last_used_model = target_model
@@ -219,17 +288,17 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                             raise LLMError("Gemini returned no candidates")
                         parts = candidates[0].get("content", {}).get("parts", [])
                         text = parts[0].get("text", "") if parts else ""
+                        usage = data.get("usageMetadata", {})
+                        prompt_tokens = usage.get("promptTokenCount", 0)
+                        candidates_tokens = usage.get("candidatesTokenCount", 0)
+                        thoughts_tokens = usage.get("thoughtsTokenCount", 0)
+                        completion_tokens = candidates_tokens + thoughts_tokens
+                        if prompt_tokens == 0 and completion_tokens == 0:
+                            prompt_tokens = max(1, len(system + user) // 4)
+                            completion_tokens = max(1, len(text) // 4)
                         try:
                             from backend.app.core.usage import record_usage
 
-                            usage = data.get("usageMetadata", {})
-                            prompt_tokens = usage.get("promptTokenCount", 0)
-                            candidates_tokens = usage.get("candidatesTokenCount", 0)
-                            thoughts_tokens = usage.get("thoughtsTokenCount", 0)
-                            completion_tokens = candidates_tokens + thoughts_tokens
-                            if prompt_tokens == 0 and completion_tokens == 0:
-                                prompt_tokens = max(1, len(system + user) // 4)
-                                completion_tokens = max(1, len(text) // 4)
                             record_usage(
                                 provider="gemini",
                                 model=target_model,
@@ -239,6 +308,16 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                             )
                         except Exception:
                             pass
+                        _turn_llm_calls.append({
+                            "purpose": purpose,
+                            "model": target_model,
+                            "wall_time_ms": round(call_wall_ms, 1),
+                            "prompt_tokens": prompt_tokens,
+                            "output_tokens": candidates_tokens,
+                            "thinking_tokens": thoughts_tokens,
+                            "retry_count": attempt,
+                            "had_429_backoff": had_429,
+                        })
                         return _parse_json(text or "{}")
 
                     if resp.status_code == 404:
@@ -262,6 +341,7 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                         raise LLMError(f"Gemini API model '{target_model}' not found (404)")
 
                     if resp.status_code == 429:
+                        had_429 = True
                         if attempt >= max_retries:
                             raise LLMError(f"Gemini quota exceeded after {max_retries} retries: {resp.text[:200]}")
                         backoff = backoffs[min(attempt, len(backoffs) - 1)]

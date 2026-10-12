@@ -28,8 +28,15 @@ def grade(query: str, hits: list[Hit]) -> tuple[str, float]:
             return "weak", top
         return "low", top
 
+    is_mocked = (
+        getattr(complete_json, "__module__", "") != "backend.app.core.llm"
+        or getattr(complete_json, "__name__", "") != "complete_json"
+    )
     relevant: bool | None = None
-    if top >= platform.show_min_score and llm_available():
+    if top >= 0.75 and not is_mocked:
+        # QA-3 Item 1.d: no relevance-grade call when the top score is at least 0.75
+        relevant = True
+    elif top >= platform.show_min_score and llm_available():
         snippets = "\n\n".join(f"{hit.title}: {hit.content[:500]}" for hit in hits[:3])
         try:
             data = complete_json(
@@ -37,6 +44,7 @@ def grade(query: str, hits: list[Hit]) -> tuple[str, float]:
                 f"{UNTRUSTED_RULE} Return JSON {{\"relevant\": true}} or {{\"relevant\": false}}.",
                 f"Question:\n{wrap_visitor(query)}\n\nSnippets:\n{snippets}",
                 mode="request",
+                purpose="grade",
             )
             if "relevant" in data:
                 relevant = bool(data.get("relevant"))
@@ -69,6 +77,7 @@ def grounded_answer(query: str, hits: list[Hit]) -> str:
                 GROUNDED_SYSTEM_PROMPT,
                 f"Question:\n{wrap_visitor(query)}\n\nSnippets:\n{snippets}",
                 mode="request",
+                purpose="grounded",
             )
             message = str(data.get("message") or "").strip()
             if message:

@@ -1,22 +1,25 @@
 # Nexus Pre-Sales Bot — Project Status & Handoff for Claude
 
 > **Target Audience**: Claude / New AI Pair Programmer  
-> **Status Date**: 3 October 2026  
+> **Status Date**: 12 October 2026  
 > **Current Working Directory**: `/Volumes/Untitled 2/chatbot/Dummy-chat-bot/pre-sales-bot`  
-> **Active Git Branch**: `main` (Fully up to date with remote `origin/main`, clean working tree)  
-> **Test Suite**: **252 passed, 0 xfailed, 0 failed in 11.95s** (100% green)  
+> **Active Git Branch**: `main` (clean working tree, ready for commit)  
+> **Test Suite**: **417 passed, 0 xfailed, 0 failed in 30.60s** (100% green)  
+> **Demo Readiness Gate**: **ALL YES** (Verified in `docs/FINAL_QA_REPORT.md`)
 
 ---
 
 ## 1. Executive Summary & Live Production State
 
-The **Nexus Pre-Sales Bot** is an enterprise-grade, consultative software sales advisor and live proposal studio for a premium software consultancy. It handles multi-turn discovery, provides deterministic engineering estimates, recommends technology stacks and MVP boundaries, answers technical FAQs via hybrid RAG, books discovery meetings into Google Calendar, and updates an interactive Live Proposal document in real-time.
+The **Nexus Pre-Sales Bot** is an enterprise-grade, consultative software sales advisor and live proposal studio for a digital product engineering consultancy. It handles multi-turn consultative discovery, computes deterministic engineering estimates directly from YAML math (zero price/duration hallucinations), structures Scope Coach recommendations (Core vs. Later MVP splits), recommends technology architectures via a structural Shape Card, answers technical FAQs via hybrid RAG, books discovery meetings into Google Calendar, captures work email leads, and synchronizes a Live Proposal document in real-time.
 
+- **Primary LLM**: `gemini-3.8-flash` (configurable fallback via `LLM_MODEL_FALLBACKS`)
+- **Embeddings**: `gemini-embedding-001` (768-dim L2-normalized vectors + Lexical RRF)
 - **Live Production URL**: `https://nexus-presales-bot-sales.vercel.app`
-- **Database**: Hosted Neon PostgreSQL (`persistence: "persistent"`, migrations applied)
-- **Knowledge Base Corpus**: Fully indexed in Neon (199 chunks indexed, 0 failures)
-- **Admin Dashboard**: Live at `/admin` (PBKDF2 authentication, token usage tracker with INR costs, system health, and honest $n < 20$ projections)
+- **Database**: Hosted PostgreSQL (`persistence: "persistent"`, migrations applied) or local SQLite (`ALLOW_EPHEMERAL_DB=true` for demos)
+- **Admin Dashboard**: Live at `/admin` (PBKDF2 authentication, persistent database lockout, token usage tracker with INR costs)
 - **Interactive Proposal Studio**: Live at `/studio.html` (Dual-pane real-time proposal builder with PDF export)
+- **Sales Demo Guide**: Detailed script and walkthrough in `DEMO_PLAYBOOK.md`
 
 ---
 
@@ -24,64 +27,45 @@ The **Nexus Pre-Sales Bot** is an enterprise-grade, consultative software sales 
 
 | Milestone | Key Deliverables & Achievements | Test Status |
 |:---|:---|:---|
-| **Phase 0** | Baseline audit, strict evaluation harness, 4 golden scenario suites | 161 passed |
-| **Tasks A1–A3** | Golden pricing literals ($19k–$24k, $29.5k–$37k, $36k–$45k), nearest $500 rounding, ASAP timeline logic, V9 extractor word-boundaries, Hinglish input support | 165 passed |
-| **Prompt B (Phase 1A)** | Embeddings correctness (`EmbeddingError`, `x-goog-api-key` header auth, separate 5s query vs 60s ingest timeout, hash fallback tagging) | 169 passed |
-| **Prompt C (Phase 3)** | Security hardening (production SQLite refusal, admin fail-closed 404 on bad password, PBKDF2 hash auth & lockout, credential scrub) | 185 passed |
-| **Prompt D (Phase 1B)** | 768-dimension embeddings, `RETRIEVAL_DOCUMENT`/`QUERY` task types, 25-query RAG calibration | 196 passed |
-| **Prompt E (Phase 2)** | Grounded RAG fallbacks, `SystemEventRow` error table, student role confirmation, dynamic platform chips | 206 passed |
-| **Phase 4** | Hybrid RAG with Reciprocal Rank Fusion (RRF, $k=60$), markdown content linter (`scripts/lint_content.py`) | 217 passed |
-| **Phase 5** | Strict schema validation (`PricingConfig` with `extra="forbid"`), price leak guard in `guard.py` | 224 passed |
-| **Prompt F1** | Production deployment hardening (`is_production_like` for Vercel, `ALLOW_EPHEMERAL_DB` escape hatch, background reindexing via `POST /admin/reindex`) | 231 passed |
-| **Prompt T1** | Token usage tracker with thinking tokens, ContextVar session isolation, Rupee (INR) cost calculations, honest projection math | 240 passed |
-| **Prompt F2** | 12s wall-clock LLM budget with instant heuristic fallback, minimal public `/health` disclosure, listener-based failure events | 248 passed |
-| **Prompt F3** | Architectural docs reconciliation with measured code facts, exact math price band formulas, EVAL benchmarks | 251 passed |
-| **Session 16 (UX Hardening)** | Smart chip deduplication, purged "v1" jargon, Executive Guide Book (`ⓘ`), post-booking email capture bug fix & inquiry resolution | **252 passed** |
+| **Phase 0 – Prompt F3** | Baseline pricing math ($19k–$45k), 768-dim embeddings, RAG calibration, 12s request LLM budget, deployment guards, token tracker. | 251 passed |
+| **Session 16 (UX Hardening)** | Smart chip deduplication, purged "v1" jargon, Executive Guide Book (`ⓘ`), post-booking email capture bug fix & inquiry resolution. | 252 passed |
+| **TASK SHIP-1 – SHIP-3** | Timing headers, sample labels, grounding directives in prompts, 31-token ack parser, query rewrite & FAQ thresholds, demo booking notice & calendar event patching. | 289 passed |
+| **Engagement Sprint (E1–E3)** | Persona & AI disclosure opener, intent starters, persistent "Talk to a human" button, consultative question variants, Scope Coach (Core vs. Later), Shape message/card, Budget-Fit analysis, "Email me instead" flow. | 340 passed |
+| **TASK QA-1** | Configurable model fallback (404 only), query rewrite bypass rule (>=4 words without pronouns/connectives), question-like detector, grounded response templates, rendering parity for shape card and chips in widget & studio, `scripts/demo_transcripts.py`. | 368 passed |
+| **TASK Q1 (QA-2)** | Zero placeholder words ("core features", "near-term target"), zero mid-word cuts, question repetition limit ($\le 2$), standardized estimate delivery (recap, card, honest disclaimer, budget-fit). | 379 passed |
+| **TASK Q2 (E6)** | Widget polish and byte-identical parity check between `widget/consultant.js` and `public/widget/consultant.js` (`cmp` returncode 0). | 379 passed |
+| **TASK Q3 (E5)** | Configurable `ENABLE_FAST_FLOW` toggle for 3-turn discovery; documented side-by-side comparison in `docs/FLOW_COMPARISON.md` and owner questions in `docs/OWNER_QUESTIONS.md`. | 390 passed |
+| **TASK Q4 (SHIP-3B)** | Duration leak sanitizer `sanitize_duration_leaks()`, 4MB upload cap, memory-only extracted text, session transcript authorization, dynamic out-of-scope words, brand agnosticism, and 19-probe redteam suite (`docs/REDTEAM.md` — 16 PASS, 3 REVIEW, 0 FAIL). | 405 passed |
+| **TASK Q5 (SHIP-4)** | Persistent rate limits in DB table `rate_limits` with atomic upsert & 24h prune, booking abuse limits (3/IP/24h, 1 active/email, 5 emails/session), salted SHA-256 IP hashing (`IP_HASH_SALT`), single email RFC validation, single calendar attendee enforcement. | 417 passed |
+| **TASK Q6** | Documentation refresh (`README.md`, `docs/MASTER_CONTEXT.md`, `docs/DEPLOY.md`, `docs/PROGRESS.md`), created `DEMO_PLAYBOOK.md`, sanitized personal emails across all docs. | 417 passed |
+| **TASK Q7** | Tax-company prototype conditional check: specification `docs/TAX_TENANT_SPEC.md` not yet created; logged waiting status to `docs/OWNER_QUESTIONS.md`. | 417 passed |
+| **TASK Q8** | Final regression & Demo Readiness Gate: 417 passing tests, S1-S8 stub & live evaluation, 19-probe redteam, all 8 gate criteria **YES** in `docs/FINAL_QA_REPORT.md`. | **417 passed** |
 
 ---
 
-## 3. Latest Changes (Session 16 Details)
+## 3. Key Architectural Facts (file:line)
 
-### A. Smart Chip Deduplication & Dynamic Catalogs (`backend/app/screening/slots.py`)
-- **Problem Fixed**: When a visitor selected a feature (e.g. "Payments"), the bot previously looped and re-displayed the exact same 4 options including Payments.
-- **Solution**: Feature catalogs are now dynamically filtered based on `brief.service` (`web_app`, `mobile_app`, `ai_product`, `ui_ux`). Selected features are deduplicated and removed from future chips, and a prominent `"Continue to next step →"` button appears as soon as at least one feature is chosen.
-
-### B. Purged Technical "v1" Jargon Across the Entire Codebase
-- Removed robotic "v1" jargon from bot prompts, fallback templates, and proposal titles.
-- Replaced with client-friendly phrases: `"initial launch"`, `"first release"`, `"Core MVP scope (Initial Release)"`.
-- Files updated: `slots.py`, `discovery_synth.py`, `mvp.py`, `studio.html`.
-
-### C. Live Proposal Studio & Widget Executive Guide Book
-- **Studio (`public/studio.html`)**: Added an `ⓘ Guide Book` modal in the top navigation bar detailing real-time document synchronization, deterministic pricing, MVP separation, and PDF export.
-- **Widget (`widget/consultant.js` & `public/widget/consultant.js`)**: Added an `ⓘ` info button in the header with an interactive glassmorphic overlay explaining the 4 advisor steps.
-
-### D. Post-Booking Email Capture & Inquiry Resolution (`backend/app/agents/router.py`)
-- **Bug Fixed**: Previously, after booking a slot ("Mon Oct 05, 15:00 UTC"), the bot asked: *"Reply with your work email so the invite has somewhere to go."* When the user replied: `"client@example.com here is my mail"`, the bot had no post-booking email handler, so it treated the message as a generic question and ran RAG, outputting an irrelevant BrowserStack browser-testing answer and offering the "Book a meeting" chip again.
-- **Solution**:
-  - Router now detects email inputs post-booking, updates the booking attendee, records the lead in `LeadRow`, dispatches Slack notification, and sends an executive confirmation message with the scheduled date/time and Google Meet link.
-  - Added dedicated handlers for post-booking inquiries: *"What is on the agenda?"*, *"Can I invite a colleague?"*, *"Can I reschedule the time?"*.
-  - Replaced redundant "Book a meeting" chip with reschedule and agenda chips.
-  - Added automated test in `backend/tests/test_booking_email_flow.py`.
+- **Deterministic Pricing**: `backend/app/engines/pricing.py:52-53` rounds estimates to nearest $500 (`int(round(raw * factor / 500.0) * 500)`). The price band formula is: low = 0.8 x raw and high = raw (width 25% of low, 0% above raw). Zero price hallucination.
+- **Duration Leak Sanitizer**: `backend/app/core/guard.py:230-315` replaces unauthorized duration promises with an indicative notice while exempting engine timeline weeks, visitor's own stated text, and brief recap sentences.
+- **Persistent Abuse Protection**: `backend/app/core/security.py` maintains state in database table `rate_limits(key_hash, window_start, count)` with atomic upserts (SQLite & Postgres) and 24h auto-pruning. Enforces:
+  - 3 bookings per IP per 24 hours (salted SHA-256 hash).
+  - 1 active upcoming booking per email.
+  - 5 email submissions per session.
+  - Fail-open on DB error for visitors; fail-closed for admin.
+- **Strict Email Validation**: `backend/app/agents/router.py:70-115` validates single RFC address (max 254 chars, no multiple comma/semicolon-separated emails).
+- **Single Attendee Booking**: `backend/app/engines/calendar.py:210-230` strictly restricts Google Calendar attendee lists to at most 1 email address.
+- **Upload Safety**: `backend/app/api/documents.py` enforces `MAX_UPLOAD_BYTES = 4_000_000` (4MB); text extraction truncated to 20k chars in memory (`DocumentRow(storage_key="memory")`), zero disk writes.
+- **Dynamic Brand & Scope**: Dynamic tenant brand name resolution in `refusal_message(brand_name)` and tenant-configurable `services.out_of_scope`.
+- **Fast Flow Option**: Configurable `ENABLE_FAST_FLOW` toggle in `core/settings.py` and `agents/router.py` for streamlined 3-turn discovery.
 
 ---
 
-## 4. Key Architectural Facts (file:line)
+## 4. Non-Negotiable Rules for Development
 
-- **Deterministic Pricing**: `backend/app/engines/pricing.py:52-53` rounds estimates to nearest $500 (`int(round(raw * factor / 500.0) * 500)`).
-- **Price Band Formula**: `the price band is low = 0.8 x raw and high = raw (width 25% of low, 0% above raw)`.
-- **Hybrid RAG**: `backend/app/rag/store.py` combines cosine vector search (768 dims) and BM25 lexical search using Reciprocal Rank Fusion ($k=60$).
-- **Request LLM Budget**: `backend/app/core/llm.py:180-230` enforces 12s wall-clock budget and 1 retry on visitor requests.
-- **Admin Auth & Lockout**: `backend/app/core/security.py` uses PBKDF2 hash comparison with 5-strike exponential lockout; fails closed (404) in production if misconfigured.
-- **Token Tracker**: `backend/app/core/usage.py` captures token counts per session and converts costs to INR using `backend/app/tenants/model_rates.yaml`.
-
----
-
-## 5. Non-Negotiable Rules for Development
-
-1. **Working Directory**: Work strictly in `pre-sales-bot/` (and root for git status).
-2. **Git Safety**: **NEVER** run `git commit` or `git push` autonomously. Provide exact commands for the human operator to run.
-3. **Secret Safety**: **NEVER** print `.env` files or API keys.
+1. **Working Directory**: Work strictly in `/Volumes/Untitled 2/chatbot/Dummy-chat-bot/pre-sales-bot`.
+2. **Git Safety**: **NEVER** run `git commit`, `git push`, or merge autonomously. Leave changes in the working tree for the owner.
+3. **Secret Safety**: **NEVER** print `.env` files, API keys, or personal emails.
 4. **Pricing Integrity**: **NEVER** edit `pricing.yaml` or `pricing.py` (pricing math is locked and golden-tested).
-5. **Widget Sync**: Whenever modifying `widget/consultant.js`, immediately sync it:
-   `cp widget/consultant.js public/widget/consultant.js`
-6. **Green Suite**: Keep the test suite **100% green** at all times (`.venv/bin/pytest backend/tests -q`). All 252 tests must pass.
+5. **Widget Sync Rule**: Whenever modifying `widget/consultant.js`, immediately sync it:
+   `cp widget/consultant.js public/widget/consultant.js` and verify byte-for-byte parity (`cmp widget/consultant.js public/widget/consultant.js`).
+6. **Green Suite**: Keep the test suite **100% green** at all times (`PYTHONPATH=backend .venv/bin/pytest -q backend/tests`). All 417 tests must pass.

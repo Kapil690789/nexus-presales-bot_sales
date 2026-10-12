@@ -152,20 +152,21 @@ def test_recap_with_0_to_6_features(config):
         )
         recap = recap_line_from_brief(config, brief)
         assert "Here's what I understood:" in recap
-        assert "a mobile app for Sports clinic booking application for direct patients" in recap
-        assert "on iOS and Android" in recap
-        assert "aiming for 1 to 3 months with a budget of $15k to $40k" in recap
+        assert "a mobile app - Sports clinic booking application for direct patients" in recap
+        assert "Platforms: iOS and Android" in recap
+        assert "Timeline: 1 to 3 months" in recap
+        assert "Budget: $15k to $40k" in recap
 
         if n == 0:
-            assert "feat_" not in recap
+            assert "Features:" not in recap
         elif n == 1:
-            assert "with feat_1" in recap
+            assert "Features: feat_1." in recap
         elif n == 4:
-            assert "with feat_1, feat_2, feat_3, feat_4" in recap
+            assert "Features: feat_1, feat_2, feat_3, feat_4." in recap
         elif n == 5:
-            assert "with feat_1, feat_2, feat_3, feat_4, and 1 more" in recap
+            assert "Features: feat_1, feat_2, feat_3, feat_4, and 1 more." in recap
         elif n == 6:
-            assert "with feat_1, feat_2, feat_3, feat_4, and 2 more" in recap
+            assert "Features: feat_1, feat_2, feat_3, feat_4, and 2 more." in recap
 
         for p in ["core features", "near-term target", "medium-term target", "growth tier", "scale tier"]:
             assert p not in recap

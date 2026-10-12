@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 import logging
+import os
 import re
 
 from sqlalchemy import select
@@ -10,9 +11,18 @@ from sqlalchemy.orm import Session
 
 log = logging.getLogger(__name__)
 
+
+def _resolve_flow(config: TenantConfig) -> str:
+    env_override = os.environ.get("ENABLE_FAST_FLOW")
+    if env_override is not None:
+        return "fast" if env_override.strip().lower() in ("true", "1", "yes") else "classic"
+    if hasattr(config, "brand") and hasattr(config.brand, "flow") and config.brand.flow:
+        return str(config.brand.flow).strip().lower()
+    return "classic"
+
 from backend.app.agents.brief import ProjectBrief, brief_ready, next_discovery_field, next_sharpen_field
 from backend.app.agents.discovery_synth import synthesize_discovery_prompt
-from backend.app.agents.extractor import apply_extracted_slots, extract_slots
+from backend.app.agents.extractor import apply_extracted_slots, extract_slots, is_product_idea
 from backend.app.agents.fallback import fallback_message
 from backend.app.agents.suggestions import ensure_chips
 from backend.app.core.llm import LLMError, complete_json, llm_available
@@ -39,13 +49,58 @@ from backend.app.rag.filters import query_filters
 from backend.app.rag.grade import grade, grounded_answer
 from backend.app.rag.store import search
 from backend.app.screening.slots import BOOK_CHIP, DISCOVERY_PROMPTS, PORTFOLIO_CHIP, chips_for_field, prompt_for
-from backend.app.tenants.schema import TenantConfig
+from backend.app.tenants.schema import TenantConfig, VoiceConfig
 
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 OPEN = re.compile(r"\?|^(what|how|who|why|when|where|can|do|does|is|are|have)\b", re.IGNORECASE)
 BOOK = re.compile(r"\b(book|schedule|reschedule)\b.{0,40}\b(call|meeting|consultation|time)\b|\breschedule\b", re.IGNORECASE)
 OUT_OF_SCOPE = ("shopify", "crypto", "web3", "homework", "student project")
 ACTION = {"show_portfolio", "booking_window", "booking_slot", "nda", "close_out", "view_mvp", "email_instead", "continue_discovery", "sharpen_estimate"}
+
+_OBJECTION_CUES = re.compile(
+    r"\b(expensive|cost|costly|price|pricing|cheaper|discount|afford|budget\s+is\s+tight|too\s+long|slow|faster|fixed\s+price|fixed\s+bid|lump\s+sum|offshore|outsourced|negotiate|guarantee)\b",
+    re.IGNORECASE,
+)
+_PRESSURE_WORDS = re.compile(
+    r"\b(expensive|cost|costly|price|pricing|cheaper|cheap|discount|afford|tight|rate|fee|budget|timeline|deadline|urgent|urgently|hurry|rush|slow|faster|delay|guarantee|weeks?|months?)\b",
+    re.IGNORECASE,
+)
+_STARTER_TEXTS = frozenset({
+    "i have an app idea", "i have an idea", "app idea", "i'm just exploring costs",
+    "im just exploring costs", "just exploring costs", "explore costs", "i need a web platform",
+    "add ai to my product", "i want to add ai to my product", "talk to a human", "i have a web idea",
+})
+_ACK_TEXTS = frozenset({
+    "ok", "okay", "sounds good", "thanks", "thank you", "got it", "yes", "sure", "cool", "great", "perfect", "yep", "yup", "understood",
+})
+_SLOT_ANSWER_RE = re.compile(
+    r"^(?:"
+    r"(?:(?:my\s+)?budget\s+(?:is\s+)?|around\s+|under\s+|between\s+)?\$?\d+(?:,\d{3})*(?:k|K)?\s*(?:to|-|–)\s*\$?\d+(?:,\d{3})*(?:k|K)?|"
+    r"under\s+\$?\d+(?:k|K)?|"
+    r"\$?\d+k|"
+    r"(?:\d+\s*(?:to|-|–)\s*\d+\s*(?:months?|weeks?))|(?:\d+\s*(?:months?|weeks?))|asap|flexible(?:\s+timing)?|"
+    r"mobile\s+app|web\s+app|web\s+application|web\s+platform|web\s+and\s+mobile|mobile\s+and\s+web|ios\s+and\s+android|ios|android|web|"
+    r"founder|founder\s+or\s+exec|product\s+lead|manager|student|intern|"
+    r"startup|smb|mid-market|enterprise"
+    r")$",
+    re.IGNORECASE,
+)
+
+
+def _is_objection_eligible(text: str) -> bool:
+    if not text:
+        return False
+    cleaned = text.strip().lower()
+    if cleaned in _STARTER_TEXTS:
+        return False
+    if cleaned in _ACK_TEXTS:
+        return False
+    if _SLOT_ANSWER_RE.match(cleaned) and not _OBJECTION_CUES.search(text):
+        return False
+    words = cleaned.split()
+    if len(words) <= 4 and not _OBJECTION_CUES.search(text):
+        return False
+    return True
 
 
 def validate_single_email(raw: str) -> str | None:
@@ -188,7 +243,7 @@ def run_turn(
         "db_writes": 0.0,
     }
     is_chip_click = bool(field or value)
-    brief_track_fields = ("service", "goal", "platforms", "features", "timeline", "budget_band", "decision_role", "company_size", "integrations")
+    brief_track_fields = ("service", "goal", "platforms", "features", "timeline", "budget_band", "decision_role", "company_size", "integrations", "users")
     initial_brief_state = {f: getattr(brief, f) for f in brief_track_fields}
     initial_pending = _pending(brief)
     email_val, is_multi_email = extract_single_email(text)
@@ -198,7 +253,15 @@ def run_turn(
     user_texts = [item["content"] for item in history if item.get("role") == "user" and item.get("content")]
     if text:
         user_texts.append(text)
-    summary = rolling_summary(session.summary or "", user_texts, get_platform().summary_every)
+    has_pending_discovery_init = (
+        not brief_ready(brief)
+        and not bool(session.estimate_json)
+        and (session.stage not in ("advising", "handoff", "disqualified"))
+    )
+    if has_pending_discovery_init:
+        summary = " | ".join(user_texts[-6:])[:800]
+    else:
+        summary = rolling_summary(session.summary or "", user_texts, get_platform().summary_every)
     previous = [item["content"] for item in history if item.get("role") == "user" and item.get("content")]
 
     if field == "nda":
@@ -240,7 +303,7 @@ def run_turn(
         )
 
     if field in ("continue_discovery", "sharpen_estimate"):
-        flow = getattr(config.brand, "flow", "classic")
+        flow = _resolve_flow(config)
         if brief_ready(brief, flow=flow):
             s_field = next_sharpen_field(brief)
             if s_field:
@@ -578,7 +641,7 @@ def run_turn(
             timings=timings,
         )
 
-    direct_objection = match_objection(text, config.objections) if (text and not field) else None
+    direct_objection = match_objection(text, config.objections) if (text and not field and _is_objection_eligible(text)) else None
     if direct_objection:
         return _finish(
             session, brief, contact, summary,
@@ -590,11 +653,12 @@ def run_turn(
         )
 
     filled = False
-    if field and field not in ACTION:
+    extracted: dict = {}
+    if field and field not in ACTION and field != "ask":
         brief.apply_chip(field, value)
         _note_flags(brief)
         filled = True
-    elif text:
+    elif text or field == "ask":
         if brief.role_unconfirmed:
             lowered = text.lower()
             if any(w in lowered for w in ("study", "practice", "college", "homework", "student", "class", "course", "academic")):
@@ -638,16 +702,27 @@ def run_turn(
                 brief.admin = False
                 filled = True
 
+        if not filled and session.estimate_json and text:
+            lt = text.lower().strip()
+            if any(k in lt for k in ("founder", "ceo", "cto", "exec", "product lead", "manager", "product manager", "student", "intern")):
+                brief.decision_role = "founder_or_exec" if any(k in lt for k in ("founder", "ceo", "cto", "exec")) else ("intern_or_student" if any(k in lt for k in ("student", "intern")) else "product_or_ops_lead")
+                filled = True
+            elif any(k in lt for k in ("startup", "enterprise", "scaleup")):
+                brief.company_size = "startup" if "startup" in lt else ("enterprise" if "enterprise" in lt else "scaleup")
+                filled = True
+
         if not filled:
             has_pending_discovery = (
                 not brief_ready(brief)
                 and not bool(session.estimate_json)
                 and (session.stage not in ("advising", "handoff", "disqualified"))
             )
-            # Skip LLM extractor for chip clicks and acknowledgements, or when booking exists and brief is ready
+            # Skip LLM extractor for slot chip clicks and acknowledgements, or when booking exists and brief is ready, or when post-estimate question is asked
             is_ack = _is_ack(text, has_pending_discovery)
-            if is_chip_click or is_ack or (bool(session.booking_json) and brief_ready(brief)):
+            if (is_chip_click and field != "ask") or is_ack or (bool(session.booking_json) and brief_ready(brief)):
                 extracted = {}
+            elif bool(session.estimate_json) and _is_question_like(text):
+                extracted = {"is_question": True}
             else:
                 t0_ext = time.perf_counter()
                 try:
@@ -693,14 +768,53 @@ def run_turn(
                         timings=timings,
                     )
 
-    if filled or (field and field not in ACTION):
+            if not filled and (not field or field == "ask") and text:
+                t_clean = text.strip()
+                if re.match(r"^(i'?m\s+)?(just\s+)?explor(ing)?\s+costs?$", t_clean, re.IGNORECASE):
+                    service_chips = [
+                        {"label": "Mobile app", "field": "service", "value": "mobile_app"},
+                        {"label": "Web platform", "field": "service", "value": "web_app"},
+                        {"label": "AI product", "field": "service", "value": "ai_product"},
+                        {"label": "UI/UX design", "field": "service", "value": "ui_ux"},
+                    ]
+                    return _finish(
+                        session, brief, contact, summary,
+                        message="Happy to help you explore costs. What are you thinking of building: a mobile app, a web platform, AI, or design?",
+                        stage="discovery",
+                        route="discovery",
+                        chips=service_chips,
+                        timings=timings,
+                    )
+                if re.match(r"^(i\s+have\s+an?\s+(?:app|web|software|product)?\s*idea|app\s+idea)$", t_clean, re.IGNORECASE):
+                    service_chips = [
+                        {"label": "Mobile app", "field": "service", "value": "mobile_app"},
+                        {"label": "Web platform", "field": "service", "value": "web_app"},
+                        {"label": "AI product", "field": "service", "value": "ai_product"},
+                        {"label": "UI/UX design", "field": "service", "value": "ui_ux"},
+                    ]
+                    return _finish(
+                        session, brief, contact, summary,
+                        message="Tell me what your app does in a sentence or two — who is it for and what's the core workflow?",
+                        stage="discovery",
+                        route="discovery",
+                        chips=service_chips,
+                        timings=timings,
+                    )
+
+    if filled or (field and field not in ACTION and field != "ask"):
         changed_fields = [f for f in brief_track_fields if getattr(brief, f) != initial_brief_state[f] and getattr(brief, f)]
         if changed_fields and any(f in changed_fields for f in ("platforms", "timeline", "budget_band", "decision_role")):
             if brief.feature_detail is None:
                 brief.feature_detail = "not_specified"
             if brief.user_flow is None:
                 brief.user_flow = "not_specified"
-        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings, changed_fields=changed_fields, prev_pending=initial_pending)
+        return _after_brief(
+            session, config, brief, contact, summary,
+            user_text=text, history=history, timings=timings,
+            changed_fields=changed_fields, prev_pending=initial_pending,
+            extracted_ack=extracted.get("acknowledgement") if isinstance(extracted, dict) else None,
+            is_chip_click=is_chip_click,
+        )
 
     # Skip embedding and retrieval for pure acknowledgements
     has_pending_discovery = (
@@ -752,7 +866,7 @@ def run_turn(
         changed_fields = [f for f in brief_track_fields if getattr(brief, f) != initial_brief_state[f] and getattr(brief, f)]
         greetings = ("hello", "hi", "hey", "umm", "thanks", "ok", "cool", "good morning", "good evening")
         is_filler = any(text.lower().strip().startswith(g) for g in greetings) or len(text.split()) < 3
-        if not changed_fields and not brief.goal and not is_filler:
+        if not changed_fields and not brief.goal and not is_filler and is_product_idea(text):
             from backend.app.screening.slots import goal_short as _clean_goal
             cleaned_g = _clean_goal(text) or text.strip()[:120]
             brief.goal = cleaned_g
@@ -762,7 +876,13 @@ def run_turn(
                 brief.feature_detail = "not_specified"
             if brief.user_flow is None:
                 brief.user_flow = "not_specified"
-        return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings, changed_fields=changed_fields, prev_pending=initial_pending)
+        return _after_brief(
+            session, config, brief, contact, summary,
+            user_text=text, history=history, timings=timings,
+            changed_fields=changed_fields, prev_pending=initial_pending,
+            extracted_ack=extracted.get("acknowledgement") if isinstance(extracted, dict) else None,
+            is_chip_click=is_chip_click,
+        )
 
     raw_queries = lookup_queries(text, summary, previous[-3:]) or [text]
     queries = [rewrite_query_with_brief(q, brief) for q in raw_queries]
@@ -792,7 +912,28 @@ def run_turn(
             t_ret_total = (time.perf_counter() - t_ret_start) * 1000.0
             timings["query_embedding"] = query_embedding_duration_ms.get()
             timings["retrieval_db"] = max(0.0, t_ret_total - timings["query_embedding"])
+
+            # QA-3 Item 8: Deduplicate consecutive FAQ replies
+            last_bot_msg = ""
+            for item in reversed(history or []):
+                if item.get("role") == "assistant" and item.get("content"):
+                    last_bot_msg = str(item.get("content")).strip()
+                    break
+
             hit = faq_hits[0]
+            if last_bot_msg and hit.content.strip() in last_bot_msg:
+                if len(faq_hits) > 1 and faq_hits[1].content.strip() not in last_bot_msg:
+                    hit = faq_hits[1]
+                else:
+                    return _finish(
+                        session, brief, contact, summary,
+                        message="Our team can go into detail on a call.",
+                        stage="advising" if brief_ready(brief) else "discovery",
+                        route="faq",
+                        chips=[BOOK_CHIP, PORTFOLIO_CHIP],
+                        timings=timings,
+                    )
+
             message = hit.content
             extra = _continuation(brief, history)
             if extra:
@@ -859,6 +1000,18 @@ def run_turn(
         ] if session.booking_json else [BOOK_CHIP, PORTFOLIO_CHIP]
     else:
         chips = []
+
+    last_assistant_msg = ""
+    for item in reversed(history or []):
+        if item.get("role") == "assistant" and item.get("content"):
+            last_assistant_msg = str(item.get("content")).strip()
+            break
+    if last_assistant_msg and message.strip() == last_assistant_msg:
+        if brief_ready(brief):
+            message = "We can dive deeper into that architecture and technical setup during a quick discovery call."
+        else:
+            message = "Our team can go into detail on those specific points on a call."
+
     return _finish(
         session, brief, contact, summary,
         message=message,
@@ -947,7 +1100,7 @@ def _book(db, tenant, config, session, brief, contact, summary, slot_iso: str) -
         message=message,
         stage="handoff",
         route="booking",
-        chips=[],
+        chips=_next_chips(brief, has_booking=True),
         cards=[card],
         qualification=qual,
         estimate=estimate,
@@ -1008,9 +1161,18 @@ def _field_asked_count(history: list[dict], field: str | None) -> int:
 
 def format_shape_message(arch: dict, mvp_res: dict) -> str:
     channels = (arch.get("frontend") or ["Web / Mobile"])[0]
-    flow = "Core user flows"
+    raw_mvp = list((mvp_res.get("mvp") or [])[:3])
+    clean_mvp = []
+    for item in raw_mvp:
+        it = re.sub(r"^(Prove this outcome:\s*|Core:\s*)", "", str(item).strip(), flags=re.IGNORECASE).strip()
+        if len(it) > 35:
+            it = it[:32].rstrip(" .,!?:")
+        clean_mvp.append(it)
     backend = (arch.get("backend") or ["API + Database"])[0]
-    return f"Here is the architectural shape: {channels} for Channels and UX, {flow} for the Core flow, and {backend} for Backend and APIs."
+    if clean_mvp:
+        mvp_str = ", ".join(clean_mvp)
+        return f"Here is the architectural shape: {channels} for Channels and UX, Core flow: {mvp_str}, and {backend} for Backend and APIs."
+    return f"Here is the architectural shape: {channels} for Channels and UX, and {backend} for Backend and APIs."
 
 
 def build_shape_card(arch: dict, mvp_res: dict) -> dict:
@@ -1060,7 +1222,6 @@ def recap_line_from_brief(config: TenantConfig, brief: ProjectBrief) -> str:
     from backend.app.screening.slots import (
         budget_label,
         display_platforms,
-        goal_short,
         service_article,
         service_label_clean,
         timeline_label,
@@ -1068,43 +1229,55 @@ def recap_line_from_brief(config: TenantConfig, brief: ProjectBrief) -> str:
 
     s_clean = service_label_clean(brief.service, config.services.in_scope if config.services else None)
     art = service_article(s_clean)
-    g_short = goal_short(brief.goal)
+
+    g_phrase = ""
+    if brief.goal:
+        g = brief.goal.strip()
+        g = re.sub(
+            r"^(i\s+am\s+building|i'?m\s+building|we\s+are\s+building|we'?re\s+building|"
+            r"i\s+want\s+a|i\s+want\s+to\s+build|i\s+want|we\s+want\s+a|we\s+want|"
+            r"i\s+need\s+a|i\s+need\s+to\s+build|i\s+need|we\s+need\s+a|we\s+need|"
+            r"looking\s+to\s+build|planning\s+to\s+build)\b\s*",
+            "",
+            g,
+            flags=re.IGNORECASE,
+        ).strip()
+        g = re.sub(r"^(a|an|the)\b\s*", "", g, flags=re.IGNORECASE).strip()
+        p_words = r",?\s*\b(for\s+ios\s+(?:&|and|aur)\s+android(?:\s+dono)?|ios\s+(?:&|and|aur)\s+android(?:\s+dono)?|cross-platform\s+mobile\s+app|mobile\s+app|web\s+app|web\s+application|on\s+ios\s+and\s+android|on\s+web|\bios\b|\bandroid\b)\b"
+        t_words = r",?\s*\b\d+\s*(?:months?|mahine(?:\s+me)?|weeks?)\b"
+        g = re.sub(p_words, "", g, flags=re.IGNORECASE).strip()
+        g = re.sub(t_words, "", g, flags=re.IGNORECASE).strip()
+        g = re.sub(r"\s+", " ", g).strip(" ,.-")
+        if g and len(g) > 90:
+            g = g[:90].rsplit(" ", 1)[0].strip()
+        g_phrase = g
+
+    service_goal = f"{art} {s_clean.lower()}"
+    if g_phrase:
+        service_goal += f" - {g_phrase}"
+
+    lines = [f"Here's what I understood: {service_goal}."]
+
     plats = display_platforms(brief.platforms)
-
-    if g_short:
-        main_part = f"{art} {s_clean} for {g_short}" if brief.service else f"a project for {g_short}"
-    elif brief.service:
-        main_part = f"{art} {s_clean}"
-    else:
-        main_part = "your project"
-
-    parts = [main_part]
     if plats:
-        parts.append(f"on {plats}")
+        lines.append(f"Platforms: {plats}.")
 
     if brief.features:
         named = [str(f).strip() for f in brief.features if str(f).strip()]
         if len(named) > 4:
-            first_four = ", ".join(named[:4])
-            rem = len(named) - 4
-            parts.append(f"with {first_four}, and {rem} more")
-        elif len(named) == 1:
-            parts.append(f"with {named[0]}")
-        elif len(named) > 1:
-            parts.append(f"with {', '.join(named)}")
+            lines.append(f"Features: {', '.join(named[:4])}, and {len(named) - 4} more.")
+        elif named:
+            lines.append(f"Features: {', '.join(named)}.")
 
     t_lbl = timeline_label(brief.timeline)
-    b_lbl = budget_label(brief.budget_band)
+    if t_lbl:
+        lines.append(f"Timeline: {t_lbl}.")
 
-    if t_lbl and b_lbl:
-        parts.append(f"aiming for {t_lbl} with a budget of {b_lbl}")
-    elif t_lbl:
-        parts.append(f"aiming for {t_lbl}")
-    elif b_lbl:
-        parts.append(f"with a budget of {b_lbl}")
+    b_val = getattr(brief, "budget_text", None) or budget_label(brief.budget_band)
+    if b_val:
+        lines.append(f"Budget: {b_val}.")
 
-    recap_body = ", ".join(parts)
-    return f"Here's what I understood: {recap_body}."
+    return " ".join(lines)
 
 
 def _after_brief(
@@ -1118,6 +1291,8 @@ def _after_brief(
     timings: dict | None = None,
     changed_fields: list[str] | None = None,
     prev_pending: str | None = None,
+    extracted_ack: str | None = None,
+    is_chip_click: bool = False,
 ) -> dict:
     timings = timings or {}
     qual = qualify(brief, config.qualification, config.services, has_email=bool(contact.get("email")))
@@ -1152,39 +1327,75 @@ def _after_brief(
             qualification=qual,
             timings=timings,
         )
-    # Check consistency between service and platforms (Rule 4e)
+
+    # QA-3 Item 8.a: After the estimate, role or company-size answers get a short acknowledgement and next-step chips; estimate block is never sent twice
+    if session.estimate_json:
+        role_label = getattr(brief, "decision_role", None)
+        size_label = getattr(brief, "company_size", None)
+        ack_parts = []
+        if changed_fields and "decision_role" in changed_fields and role_label:
+            ack_parts.append(f"Noted — having the {role_label.replace('_', ' ')} perspective helps keep delivery aligned.")
+        elif changed_fields and "company_size" in changed_fields and size_label:
+            ack_parts.append(f"Noted — designing for {size_label.replace('_', ' ')} scale helps calibrate our squad and architecture.")
+        else:
+            ack_parts.append("Noted, I have updated your project brief.")
+        reply_msg = f"{' '.join(ack_parts)} What would you like to explore next?"
+        next_chips = [
+            {"label": "Book a call", "field": "booking_window", "value": "this_week"},
+            {"label": "See the MVP", "field": "view_mvp", "value": "mvp"},
+            {"label": "See sample projects", "field": "show_portfolio", "value": "yes"},
+            {"label": "Talk to a human", "field": "talk_human", "value": "human"},
+        ]
+        return _finish(
+            session, brief, contact, summary,
+            message=reply_msg,
+            stage="advising",
+            route="discovery",
+            chips=next_chips,
+            timings=timings,
+        )
+
+    # Check consistency between service and platforms (Rule 4e / QA-3 Item 5.b)
     if brief.service == "mobile_app" and brief.platforms and not any(p in ("ios", "android") for p in brief.platforms):
-        if not brief.platform_service_clarified:
-            brief.platform_service_clarified = True
-            return _finish(
-                session, brief, contact, summary,
-                message="You mentioned a mobile app earlier, but web as the platform. Should we build this as a mobile app (iOS/Android), a web app, or both?",
-                stage="discovery",
-                route="discovery",
-                chips=[
-                    {"label": "Mobile app", "field": "platforms", "value": ["ios", "android"]},
-                    {"label": "Web app", "field": "service", "value": "web_app"},
-                    {"label": "Both web & mobile", "field": "platforms", "value": ["web", "ios", "android"]},
-                ],
-                qualification=qual,
-                timings=timings,
-            )
+        if getattr(brief, "service_source", "guess") in ("chip", "explicit"):
+            if not brief.platform_service_clarified:
+                brief.platform_service_clarified = True
+                return _finish(
+                    session, brief, contact, summary,
+                    message="You mentioned a mobile app earlier, but web as the platform. Should we build this as a mobile app (iOS/Android), a web app, or both?",
+                    stage="discovery",
+                    route="discovery",
+                    chips=[
+                        {"label": "Mobile app", "field": "platforms", "value": ["ios", "android"]},
+                        {"label": "Web app", "field": "service", "value": "web_app"},
+                        {"label": "Both web & mobile", "field": "platforms", "value": ["web", "ios", "android"]},
+                    ],
+                    qualification=qual,
+                    timings=timings,
+                )
+        else:
+            brief.service = "web_app"
+            brief.service_source = "explicit"
     elif brief.service == "web_app" and brief.platforms and not ("web" in [p.lower() for p in brief.platforms]):
-        if not brief.platform_service_clarified:
-            brief.platform_service_clarified = True
-            return _finish(
-                session, brief, contact, summary,
-                message="You mentioned a web app earlier, but mobile as the platform. Should we target web, mobile, or both?",
-                stage="discovery",
-                route="discovery",
-                chips=[
-                    {"label": "Web app", "field": "platforms", "value": ["web"]},
-                    {"label": "Mobile app", "field": "service", "value": "mobile_app"},
-                    {"label": "Both web & mobile", "field": "platforms", "value": ["web", "ios", "android"]},
-                ],
-                qualification=qual,
-                timings=timings,
-            )
+        if getattr(brief, "service_source", "guess") in ("chip", "explicit"):
+            if not brief.platform_service_clarified:
+                brief.platform_service_clarified = True
+                return _finish(
+                    session, brief, contact, summary,
+                    message="You mentioned a web app earlier, but mobile as the platform. Should we target web, mobile, or both?",
+                    stage="discovery",
+                    route="discovery",
+                    chips=[
+                        {"label": "Web app", "field": "platforms", "value": ["web"]},
+                        {"label": "Mobile app", "field": "service", "value": "mobile_app"},
+                        {"label": "Both web & mobile", "field": "platforms", "value": ["web", "ios", "android"]},
+                    ],
+                    qualification=qual,
+                    timings=timings,
+                )
+        else:
+            brief.service = "mobile_app"
+            brief.service_source = "explicit"
 
     if changed_fields and prev_pending and prev_pending not in changed_fields:
         # Rule 4c: If something was captured but not the pending field,
@@ -1192,16 +1403,17 @@ def _after_brief(
         # never repeat the pending question as if nothing happened.
         if prev_pending in ("feature_detail", "user_flow"):
             setattr(brief, prev_pending, "not_specified")
+            brief.field_attempts[prev_pending] = 99
         elif prev_pending in {"users", "integrations", "company_size"}:
             defaults = {"users": "business", "integrations": ["none"], "company_size": "startup"}
             if not getattr(brief, prev_pending):
                 setattr(brief, prev_pending, defaults.get(prev_pending, "not_specified"))
-        if prev_pending == "service":
+            brief.field_attempts[prev_pending] = 99
+        elif prev_pending == "service":
             if not brief.service:
                 brief.service = "mobile_app" if (brief.platforms and any(p in ("ios", "android") for p in brief.platforms)) else "web_app"
-        brief.field_attempts[prev_pending] = 99
 
-    flow = getattr(config.brand, "flow", "classic")
+    flow = _resolve_flow(config)
     for _ in range(15):
         if brief_ready(brief, flow=flow):
             return _estimate(session, config, brief, contact, summary, qual, timings=timings)
@@ -1252,21 +1464,30 @@ def _after_brief(
         else:
             brief.field_attempts[field] = attempts + 1
     t0_ans = time.perf_counter()
-    prompt_msg = (
-        prompt_for(brief, field, repeat=repeat)
-        if repeat
-        else synthesize_discovery_prompt(
-            config,
-            brief,
-            field,
-            user_text=user_text,
-            session_id=str(session.id or ""),
-            changed_fields=changed_fields,
-            attempt=attempts,
-        )
+    from backend.app.agents.discovery_synth import (
+        deterministic_discovery_prompt,
+        question_variant_for,
+        validate_discovery_reply,
     )
-    if not repeat:
-        timings["answer_llm"] = timings.get("answer_llm", 0.0) + (time.perf_counter() - t0_ans) * 1000.0
+    voice = getattr(config, "voice", None) or VoiceConfig()
+    deterministic_msg = deterministic_discovery_prompt(
+        config,
+        brief,
+        field,
+        changed_fields=changed_fields,
+        session_id=str(session.id or ""),
+        attempt=attempts,
+    )
+    if repeat or is_chip_click or not user_text:
+        prompt_msg = prompt_for(brief, field, repeat=repeat) if repeat else deterministic_msg
+    else:
+        ext_ack = (extracted_ack or "").strip()
+        if ext_ack and len(ext_ack) <= voice.max_chars and not any(p.lower() in ext_ack.lower() for p in voice.banned_phrases):
+            q_var = question_variant_for(config, brief, field, session_id=str(session.id or ""), attempt=attempts)
+            combined = f"{ext_ack} {q_var}".strip()
+            prompt_msg = validate_discovery_reply(combined, voice, deterministic_msg)
+        else:
+            prompt_msg = deterministic_msg
     chips = chips_for_field(field, brief, repeat=repeat) or ensure_chips(brief, prompt_msg)
     cards = []
     if (
@@ -1283,7 +1504,7 @@ def _after_brief(
         prompt_msg = f"{shape_text} {prompt_q}"
 
     progress_val = None
-    if getattr(config.brand, "flow", "classic") == "fast":
+    if _resolve_flow(config) == "fast":
         fast_fields = ["service", "goal", "platforms", "timeline", "budget_band"]
         filled_count = sum(1 for f in fast_fields if getattr(brief, f))
         progress_val = f"{min(5, filled_count + 1)} of 5"
@@ -1315,18 +1536,31 @@ def _estimate(session, config, brief, contact, summary, qual, timings: dict | No
     recap = recap_line_from_brief(config, brief)
     fit_line = budget_fit_line(brief.budget_band, estimate, config.qualification.budget_band_ranges_usd)
 
+    features_count = len(brief.features or [])
+    base_val = 0.0
+    if config.pricing and hasattr(config.pricing, "bases") and config.pricing.bases:
+        base_val = float(config.pricing.bases.get(brief.service) or config.pricing.bases.get("unknown") or 0.0)
+    has_scope_caution = bool(features_count >= 5 and estimate.get("low", 0) <= base_val)
+
+    if has_scope_caution and "room to add scope" in fit_line:
+        fit_line = ""
+
     parts = [
         f"{recap} If anything is off, tell me and I'll update the estimate.",
         f"A first-pass indicative range for this scope is **{estimate['range_label']}** over about **{estimate['timeline_weeks']} weeks**.\n*{config.brand.disclaimer}*",
         "That's a first-pass range based on typical scope for this kind of project.",
     ]
+    if has_scope_caution:
+        parts.append("This range assumes the Core scope; a list this long will likely need more, and the team can size it precisely.")
     if fit_line:
         parts.append(fit_line)
 
     message = "\n\n".join(parts)
 
     chips = []
-    if "leaner scope" in fit_line:
+    if has_scope_caution:
+        chips.append({"label": "Show the Core cut", "field": "view_mvp", "value": "core_cut"})
+    elif "leaner scope" in fit_line:
         chips.append({"label": "Show a leaner cut", "field": "view_mvp", "value": "leaner_cut"})
     chips.extend([
         {"label": "Sharpen this estimate", "field": "sharpen_estimate", "value": "sharpen"},
@@ -1393,10 +1627,7 @@ def _next_chips(brief: ProjectBrief, has_booking: bool = False) -> list[dict]:
             PORTFOLIO_CHIP,
         ]
     if brief_ready(brief):
-        chips = [BOOK_CHIP, PORTFOLIO_CHIP]
-        if not brief.company_size:
-            return chips_for_field("company_size") + chips
-        return chips
+        return [BOOK_CHIP, PORTFOLIO_CHIP]
     field = next_discovery_field(brief)
     return chips_for_field(field or "service", brief)
 
@@ -1407,8 +1638,6 @@ def _pending(brief: ProjectBrief) -> str | None:
         if field and field != "company_size":
             return field
         return field
-    if not brief.company_size:
-        return "company_size"
     return None
 
 
@@ -1442,6 +1671,10 @@ def _apply_free_text(brief: ProjectBrief, field: str, text: str, out_of_scope: l
         if not mapped:
             return False
         brief.budget_band = mapped
+        if re.search(r"\d", cleaned):
+            brief.budget_text = cleaned[:40]
+        elif getattr(brief, "budget_text", None) in ("just exploring costs", "exploring", "still exploring"):
+            brief.budget_text = None
         return True
     if field == "decision_role":
         mapped = _role(cleaned)
@@ -1458,6 +1691,10 @@ def _apply_free_text(brief: ProjectBrief, field: str, text: str, out_of_scope: l
         brief.company_size = mapped or cleaned[:80]
         return True
     if field == "features":
+        p_mapped = _platforms(cleaned)
+        if p_mapped or cleaned.lower().strip() in ("ios and android", "ios", "android", "web", "mobile", "web and mobile"):
+            brief.platforms = p_mapped or (["web", "ios", "android"] if "web" in cleaned.lower() else ["ios", "android"])
+            return True
         brief.features = [part.strip() for part in cleaned.split(",") if part.strip()]
         brief.features_confirmed = True
         return True
@@ -1796,7 +2033,16 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
             estimate_ctx = json.loads(session.estimate_json)
         except Exception:
             estimate_ctx = None
-    sanitized_message = sanitize_price_leaks(raw_message, estimate_ctx, visitor_budget=getattr(brief, "budget_band", None))
+    has_session_estimate = bool(payload.get("estimate") or session.estimate_json or estimate_ctx)
+    vis_budget = getattr(brief, "budget_text", None) or getattr(brief, "budget_band", None)
+    sanitized_message = sanitize_price_leaks(
+        raw_message,
+        estimate_ctx,
+        visitor_budget=vis_budget,
+        session_has_estimate=has_session_estimate,
+    )
+    if not sanitized_message.strip():
+        sanitized_message = "Let's continue shaping your project."
     passages = list(payload.get("passages") or [])
     route = payload.get("route") or "discovery"
     if not passages and route != "faq":
