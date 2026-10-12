@@ -1,20 +1,25 @@
 # OWNER QUESTIONS
 
 ## QA3-Q1: Light Model for Extraction and Acknowledgements (Item 1f)
-- **Question:** Allow `LLM_MODEL_LIGHT` (e.g., `gemini-2.5-flash` or `gemini-1.5-flash-8b`) for discovery extraction and consultative acknowledgements while `gemini-3.8-flash` stays the main model for RAG synthesis and architecture advice?
+- **Question:** Allow `LLM_MODEL_LIGHT` (verified available: `gemini-3.1-flash-lite` or `gemini-3.5-flash-lite`) for discovery extraction and consultative acknowledgements while `gemini-3.8-flash` stays the main model for RAG synthesis and architecture advice?
 - **Evidence / Background:**
   - With `gemini-3.8-flash` (thinkingLevel: "low"), minimal 1-turn call API latency is ~2.0s, and full structured slot extraction with objective acknowledgement is ~3.2s to 4.2s per turn.
   - While median per scenario meets the 4.0s SLA on mixed paths (e.g. S1 at 3.2s, S4 at 3.4s, S7 at 0.02s-3.5s, S10 at 3.8s), scenarios with 6+ consecutive free-text turns run close to or slightly above the 4.0s boundary due entirely to external Google API network roundtrip time (wall time ~3.5s/turn).
-  - Using a lighter model for slot extraction would drop turn latency to ~1.0s–1.8s while preserving identical extraction accuracy and schema fidelity.
-- **Recommendation:** Approve `LLM_MODEL_LIGHT` for `extractor` purpose while retaining `gemini-3.8-flash` for RAG and consultation synthesis.
+  - Model verification against Google Gemini API endpoint (`v1beta/models`) with this API key shows:
+    - `gemini-1.5-flash-8b`: HTTP 404 (model not found/unsupported in v1beta).
+    - `gemini-2.5-flash` and `gemini-2.5-flash-lite`: HTTP 404 ("no longer available to new users").
+    - Verified models active and responsive to this API key: **`gemini-3.1-flash-lite`** (1,749ms roundtrip) and **`gemini-3.5-flash-lite`** (1,717ms roundtrip).
+  - Using one of these verified lite models for slot extraction would drop turn latency to ~1.7s while preserving schema fidelity.
+- **Recommendation:** Approve `LLM_MODEL_LIGHT` configured to `gemini-3.1-flash-lite` or `gemini-3.5-flash-lite` for `extractor` purpose while retaining `gemini-3.8-flash` for RAG and consultation synthesis.
 
 ## QA3-Q2: "Web and Mobile" Base Service Resolution & Pricing Impact (Item 5e)
 - **Question:** How should multi-platform scope ("web and mobile") be treated in base service resolution and pricing?
 - **Implemented Rule:** "web and mobile" sets platforms `["web", "ios", "android"]`. When no explicit service chip was chosen by the visitor, service is assigned to `mobile_app`.
-- **Pricing Implication:**
-  - In `tenants/demo/pricing.yaml`, `mobile_app` sets a base indicative range of $29,500–$37,000 USD (14 weeks).
-  - Having all 3 platforms (`web`, `ios`, `android`) triggers the companion web platform expansion (+25% base, +4 weeks), raising the indicative estimate to $38,000–$47,500 USD (22 weeks).
-  - If service were defaulted to `web_app`, the base would start at $19,000–$24,000 USD and mobile companion would add overhead.
+- **Pricing Output from Engine (Final S3/S8 Brief):**
+  - Evaluated on final S3/S8 brief (platforms: `web`, `ios`, `android`; features: `produce catalog`, `stripe checkout`, `farmer payouts`, `direct chat`; timeline: `3_6_months`; budget: `40_80k`; role: `product_or_ops_lead`):
+    - **`mobile_app` resolution**: Low: **$38,000 USD**, High: **$47,500 USD**, Timeline: **22 weeks** (range label: `$38,000–$47,500 USD`).
+    - **`web_app` resolution**: Low: **$32,500 USD**, High: **$40,500 USD**, Timeline: **22 weeks** (range label: `$32,500–$40,500 USD`).
+  - (For comparison, single-platform base for `mobile_app` with iOS+Android only is $29,500–$37,000 USD, 14 weeks; and single-platform base for `web_app` web-only is $19,000–$24,000 USD, 8 weeks).
 - **Recommendation:** Maintain `mobile_app` as default base service for cross-platform mobile+web requests, as mobile architecture drives the primary technical stack (Flutter/React Native + companion web API).
 
 ## QA3-Q3: Scope-vs-Range Sizing for Extensive Feature Lists (Item 9)

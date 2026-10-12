@@ -208,10 +208,10 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                 models_to_try.append(fb_clean)
 
     if mode == "request":
-        per_call_timeout = 10.5
-        max_retries = 1
-        wall_budget = 11.0
-        backoffs = [1.5]
+        per_call_timeout = 15.0
+        max_retries = 2
+        wall_budget = 20.0
+        backoffs = [2.0, 4.0]
     else:
         per_call_timeout = 15.0
         max_retries = 4
@@ -232,20 +232,20 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                 generation_config: dict[str, Any] = {
                     "responseMimeType": "application/json",
                     "temperature": 0.2,
+                    "maxOutputTokens": 2048,
                 }
-                if purpose in ("extractor", "synth", "grade"):
-                    generation_config["maxOutputTokens"] = 280
                 # Confirm thinkingLevel is "low" for EVERY call on gemini-3
                 if target_model.startswith("gemini-3"):
                     generation_config["thinkingConfig"] = {
                         "thinkingLevel": settings.llm_thinking_level or "low",
                     }
                 log.info(
-                    "Gemini request [%s] model=%s thinkingConfig_present=%s thinkingLevel=%s",
+                    "Gemini request [%s] model=%s thinkingConfig_present=%s thinkingLevel=%s maxOutputTokens=%s",
                     purpose,
                     target_model,
                     "thinkingConfig" in generation_config,
                     generation_config.get("thinkingConfig", {}).get("thinkingLevel"),
+                    generation_config.get("maxOutputTokens"),
                 )
                 payload: dict[str, Any] = {
                     "contents": [{"parts": [{"text": user}]}],
@@ -259,12 +259,21 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                 for attempt in range(max_retries + 1):
                     elapsed = time.monotonic() - start_time
                     if elapsed >= wall_budget:
+                        try:
+                            record_system_event(
+                                kind="llm_slow_turn",
+                                reason=f"Gemini LLM exceeded time budget ({elapsed:.1f}s >= {wall_budget}s)",
+                                stage="llm",
+                                error_class="TimeoutError",
+                            )
+                        except Exception:
+                            pass
                         raise LLMError(f"Gemini LLM exceeded time budget ({elapsed:.1f}s >= {wall_budget}s)")
 
                     rem_timeout = max(0.5, wall_budget - elapsed)
                     actual_timeout = httpx.Timeout(
                         min(per_call_timeout, rem_timeout),
-                        connect=min(4.0, rem_timeout),
+                        connect=min(3.0, rem_timeout),
                         read=min(per_call_timeout, rem_timeout),
                         write=min(per_call_timeout, rem_timeout),
                         pool=min(per_call_timeout, rem_timeout),
@@ -279,6 +288,20 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                         except TypeError:
                             resp = client.post(url, json=payload)
                     call_wall_ms = (time.monotonic() - call_t0) * 1000.0
+                    total_elapsed = time.monotonic() - start_time
+
+                    if (call_wall_ms >= 15000.0 or total_elapsed >= 20.0) and mode == "request":
+                        log.warning("Gemini call took >= 15.0s (call_wall_ms=%.1f, total=%.1f); discarding late answer", call_wall_ms, total_elapsed)
+                        try:
+                            record_system_event(
+                                kind="llm_slow_turn",
+                                reason=f"Gemini call exceeded 15.0s ({call_wall_ms:.1f}ms); late answer discarded",
+                                stage="llm",
+                                error_class="TimeoutError",
+                            )
+                        except Exception:
+                            pass
+                        raise LLMError(f"Gemini call exceeded 15.0s timeout ({call_wall_ms:.1f}ms); discarding late answer")
 
                     if resp.status_code == 200:
                         _last_used_model = target_model
@@ -286,6 +309,21 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                         candidates = data.get("candidates", [])
                         if not candidates:
                             raise LLMError("Gemini returned no candidates")
+
+                        finish_reason = candidates[0].get("finishReason", "")
+                        if finish_reason == "MAX_TOKENS":
+                            log.warning("Gemini finishReason is MAX_TOKENS; response was truncated")
+                            try:
+                                record_system_event(
+                                    kind="llm_truncation",
+                                    reason=f"finishReason is MAX_TOKENS on {target_model}",
+                                    stage="llm",
+                                    error_class="TruncationError",
+                                )
+                            except Exception:
+                                pass
+                            raise LLMError(f"Gemini response truncated: finishReason={finish_reason}")
+
                         parts = candidates[0].get("content", {}).get("parts", [])
                         text = parts[0].get("text", "") if parts else ""
                         usage = data.get("usageMetadata", {})
@@ -318,7 +356,21 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                             "retry_count": attempt,
                             "had_429_backoff": had_429,
                         })
-                        return _parse_json(text or "{}")
+
+                        try:
+                            return _parse_json(text or "{}")
+                        except Exception as parse_exc:
+                            log.warning("Gemini response failed to parse as JSON: %s", parse_exc)
+                            try:
+                                record_system_event(
+                                    kind="llm_json_parse_error",
+                                    reason=f"JSON parse error on {target_model}: {str(parse_exc)[:150]}",
+                                    stage="llm",
+                                    error_class="JSONDecodeError",
+                                )
+                            except Exception:
+                                pass
+                            raise LLMError(f"Gemini response did not parse as JSON: {parse_exc}") from parse_exc
 
                     if resp.status_code == 404:
                         if not is_last_model:
@@ -357,6 +409,17 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                         continue
 
                     raise LLMError(f"Gemini API error {resp.status_code}: {resp.text[:200]}")
+    except httpx.TimeoutException as exc:
+        try:
+            record_system_event(
+                kind="llm_slow_turn",
+                reason=f"httpx call timed out: {exc}",
+                stage="llm",
+                error_class="TimeoutError",
+            )
+        except Exception:
+            pass
+        raise LLMError(f"Gemini call timed out: {exc}") from exc
     except httpx.RequestError as exc:
         raise LLMError(f"Gemini connection error: {exc}") from exc
 

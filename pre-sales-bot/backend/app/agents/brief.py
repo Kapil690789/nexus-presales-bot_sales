@@ -243,6 +243,7 @@ def next_discovery_field(brief: ProjectBrief, flow: str = "classic") -> str | No
         brief.goal
         and brief.features_confirmed
         and brief.user_flow is None
+        and brief.service != "ai_product"
         and head not in {"service", "goal", "features"}
     ):
         return "user_flow"

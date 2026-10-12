@@ -70,11 +70,11 @@ def test_llm_request_time_budget_exceeded(monkeypatch):
     monkeypatch.setattr(settings, "llm_api_key", "test-key")
     monkeypatch.setattr(settings, "llm_model", "gemini-2.5-flash")
 
-    # In request mode, 1 initial attempt + 1 retry = 2 calls total before LLMError
+    # In request mode, 1 initial attempt + 2 retries = 3 calls total before LLMError
     with pytest.raises(LLMError, match="Gemini quota exceeded"):
         complete_json("system instructions", "user message", mode="request")
 
-    assert call_count == 2, f"Expected 2 attempts (initial + 1 retry), got {call_count}"
+    assert call_count == 3, f"Expected 3 attempts (initial + 2 retries), got {call_count}"
 
 
 # ---------------------------------------------------------------------------

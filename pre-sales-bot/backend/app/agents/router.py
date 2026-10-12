@@ -1159,20 +1159,32 @@ def _field_asked_count(history: list[dict], field: str | None) -> int:
     return count
 
 
+def _truncate_word_boundary(text: str, max_len: int = 35) -> str:
+    cleaned = text.strip()
+    if len(cleaned) <= max_len:
+        return cleaned
+    cut = cleaned[:max_len]
+    if " " in cut:
+        cut = cut.rsplit(" ", 1)[0]
+    return cut.rstrip(" .,!?:;")
+
+
 def format_shape_message(arch: dict, mvp_res: dict) -> str:
     channels = (arch.get("frontend") or ["Web / Mobile"])[0]
-    raw_mvp = list((mvp_res.get("mvp") or [])[:3])
+    all_mvp = list(mvp_res.get("mvp") or [])
+    core_items = [it for it in all_mvp if re.match(r"^core:\s*", str(it), flags=re.IGNORECASE)]
+    raw_mvp = core_items[:3] if core_items else all_mvp[:3]
     clean_mvp = []
     for item in raw_mvp:
         it = re.sub(r"^(Prove this outcome:\s*|Core:\s*)", "", str(item).strip(), flags=re.IGNORECASE).strip()
-        if len(it) > 35:
-            it = it[:32].rstrip(" .,!?:")
-        clean_mvp.append(it)
+        it = _truncate_word_boundary(it, 35)
+        if it:
+            clean_mvp.append(it)
     backend = (arch.get("backend") or ["API + Database"])[0]
     if clean_mvp:
         mvp_str = ", ".join(clean_mvp)
-        return f"Here is the architectural shape: {channels} for Channels and UX, Core flow: {mvp_str}, and {backend} for Backend and APIs."
-    return f"Here is the architectural shape: {channels} for Channels and UX, and {backend} for Backend and APIs."
+        return f"Channels and UX: {channels}. Core flow: {mvp_str}. Backend and APIs: {backend}."
+    return f"Channels and UX: {channels}. Backend and APIs: {backend}."
 
 
 def build_shape_card(arch: dict, mvp_res: dict) -> dict:

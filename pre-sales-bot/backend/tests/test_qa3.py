@@ -259,9 +259,9 @@ def test_shape_message_uses_top_mvp_items():
         "later": ["Admin analytics dashboard"],
     }
     shape_msg = format_shape_message(arch, mvp_res)
-    assert "React Native for Channels and UX" in shape_msg
+    assert "Channels and UX: React Native" in shape_msg
     assert "Core flow: User auth & profiles, Push notifications, Real-time location" in shape_msg
-    assert "FastAPI + PostgreSQL for Backend and APIs" in shape_msg
+    assert "Backend and APIs: FastAPI + PostgreSQL" in shape_msg
     assert "for the Core flow" not in shape_msg
 
 

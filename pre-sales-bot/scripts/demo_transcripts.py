@@ -152,6 +152,8 @@ def check_midword_cut(text: str) -> list[str]:
     bad = []
     if re.search(r"\b(cha|direct|appli|devel):\s*(that gives me|clear priority)", text, re.IGNORECASE):
         bad.append("mid-word truncation before punctuation")
+    if re.search(r"\bagre\b", text, re.IGNORECASE):
+        bad.append("mid-word truncation 'agre'")
     return bad
 
 
@@ -674,17 +676,22 @@ def run_mode_scenarios(client: TestClient, is_live: bool, mode_title: str) -> tu
 
     md = [
         f"## {mode_title}\n",
-        "### 1. QA Checks Summary Table (QA-3 Strict Validation)\n",
-        "| Scenario | Title | Opener | Max 2Sent/320c | Brief Match | Recap Exact | No Recap Reps | Objection Valid | No Guard Pre-Est | No Dup Bot | Est Once | Banned Strings | Latency & Calls | Turns to Est |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "### 1. QA Checks Summary Table (Complete QA-2 + QA-3 Validation)\n",
+        "| Scenario | Title | Opener | Max 2Sent/320c | No Placeholders | Platform Casing | No Mid-Word Cut | No Verbatim Repeat | Shape Card (S7) | Brief Match | Recap Exact | No Recap Reps | Objection Valid | No Guard Pre-Est | No Dup Bot | Est Once | Banned Strings | Latency & Calls | Turns to Est |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
 
     for r in results:
         c = r["checks"]
         row = (
-            f"| **{r['id']}** | {r['title'][:28]}... | "
+            f"| **{r['id']}** | {r['title'][:25]}... | "
             f"{'✓' if c['opener_chips_valid'] else '✗'} | "
             f"{'✓' if c['max_2_sentences_320_chars'] else '✗'} | "
+            f"{'✓' if c['no_placeholders'] else '✗'} | "
+            f"{'✓' if c['platform_casing'] else '✗'} | "
+            f"{'✓' if c['no_midword_cut'] else '✗'} | "
+            f"{'✓' if c['no_verbatim_repeat'] else '✗'} | "
+            f"{'✓' if c['shape_card_ok'] else '✗'} | "
             f"{'✓' if c['brief_matches_expected'] else '✗'} | "
             f"{'✓' if c['recap_exact_slots'] else '✗'} | "
             f"{'✓' if c['no_words_repeated_in_recap'] else '✗'} | "
@@ -737,6 +744,7 @@ def main():
     parser = argparse.ArgumentParser(description="Run demo transcripts.")
     parser.add_argument("--live", action="store_true", help="Run live LLM mode only.")
     parser.add_argument("--stub", action="store_true", help="Run stub mode only.")
+    parser.add_argument("--flow", choices=["classic", "fast", "both"], default="both", help="Flow mode to evaluate (classic, fast, or both).")
     args = parser.parse_args()
 
     settings = get_settings()
@@ -749,28 +757,72 @@ def main():
     client = TestClient(app)
 
     sections = [
-        "# DEMO TRANSCRIPTS & QA CHECKS (QA-3 STRICT VALIDATION)",
+        "# DEMO TRANSCRIPTS & QA CHECKS (COMPLETE QA-2 + QA-3 + QA-4 VALIDATION)",
         f"\nGenerated: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}",
         f"Primary model configured: `{settings.llm_model}` (thinkingLevel: `{settings.llm_thinking_level or 'low'}`)\n",
     ]
+    live_sections = []
 
-    # Section 1: In-Process Deterministic Stub
-    if not args.live or args.stub:
-        settings.llm_api_key = ""
-        settings.embedding_backend = "hash"
-        stub_md, stub_res = run_mode_scenarios(client, is_live=False, mode_title="Section 1: In-Process Deterministic Stub (Offline / Fallback)")
-        sections.extend(stub_md)
+    run_classic = args.flow in ("classic", "both")
+    run_fast = args.flow in ("fast", "both")
 
-    # Section 2: Live LLM Mode (if key is present and not explicitly --stub)
-    if not args.stub and saved_key:
-        settings.llm_api_key = saved_key
-        settings.embedding_backend = "gemini"
-        live_md, live_res = run_mode_scenarios(client, is_live=True, mode_title="Section 2: Live LLM Evaluation (Primary Provider: gemini-3.8-flash)")
-        sections.extend(live_md)
+    # 1. Classic Flow Evaluation
+    if run_classic:
+        os.environ["ENABLE_FAST_FLOW"] = "false"
+        if not args.live or args.stub:
+            settings.llm_api_key = ""
+            settings.embedding_backend = "hash"
+            stub_c_md, stub_c_res = run_mode_scenarios(
+                client, is_live=False, mode_title="Classic Flow: In-Process Deterministic Stub (Offline / Fallback)"
+            )
+            sections.extend(stub_c_md)
+
+        if not args.stub and saved_key:
+            settings.llm_api_key = saved_key
+            settings.embedding_backend = "gemini"
+            live_c_md, live_c_res = run_mode_scenarios(
+                client, is_live=True, mode_title="Classic Flow: Live LLM Evaluation (Primary Provider: gemini-3.8-flash)"
+            )
+            sections.extend(live_c_md)
+            live_sections.extend(live_c_md)
+
+    # 2. Fast Flow Evaluation
+    if run_fast:
+        os.environ["ENABLE_FAST_FLOW"] = "true"
+        if not args.live or args.stub:
+            settings.llm_api_key = ""
+            settings.embedding_backend = "hash"
+            stub_f_md, stub_f_res = run_mode_scenarios(
+                client, is_live=False, mode_title="Fast Flow: In-Process Deterministic Stub (Offline / Fallback)"
+            )
+            sections.extend(stub_f_md)
+
+        if not args.stub and saved_key:
+            settings.llm_api_key = saved_key
+            settings.embedding_backend = "gemini"
+            live_f_md, live_f_res = run_mode_scenarios(
+                client, is_live=True, mode_title="Fast Flow: Live LLM Evaluation (Primary Provider: gemini-3.8-flash)"
+            )
+            sections.extend(live_f_md)
+            live_sections.extend(live_f_md)
+
+    # Restore default
+    os.environ.pop("ENABLE_FAST_FLOW", None)
+    settings.llm_api_key = saved_key
 
     out_path = ROOT / "docs" / "DEMO_TRANSCRIPTS.md"
     out_path.write_text("\n".join(sections), encoding="utf-8")
     print(f"\nSuccessfully written {out_path.relative_to(ROOT)}.")
+
+    if live_sections:
+        live_header = [
+            "# DEMO TRANSCRIPTS LIVE (UPLOAD-READY EVALUATION)",
+            f"\nGenerated: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}",
+            f"Primary model configured: `{settings.llm_model}` (thinkingLevel: `{settings.llm_thinking_level or 'low'}`)\n",
+        ]
+        out_live_path = ROOT / "docs" / "DEMO_TRANSCRIPTS_LIVE.md"
+        out_live_path.write_text("\n".join(live_header + live_sections), encoding="utf-8")
+        print(f"Successfully written upload-ready {out_live_path.relative_to(ROOT)}.")
 
 
 if __name__ == "__main__":
