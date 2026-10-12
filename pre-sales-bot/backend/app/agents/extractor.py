@@ -164,7 +164,7 @@ def _heuristic_extract(
     has_ai = bool(re.search(r"\b(ai|llm|gpt|chatgpt|openai|chatbot|chat bot|machine learning|nlp)\b", lowered))
 
     # Service
-    if "mobile" in lowered or "mobil" in lowered or "ios" in lowered or "android" in lowered or "cross-platform" in lowered or "uber" in lowered:
+    if any(k in lowered for k in ("mobile", "mobil", "ios", "android", "cross-platform", "uber", "delivery app", "dating app", "fitness app", "taxi app", "social app", "chat app", "ecommerce app", "grocery app", "healthcare app", "clinic app")):
         res["service"] = "mobile_app"
     elif "web" in lowered or "saas" in lowered or "portal" in lowered:
         res["service"] = "web_app"
@@ -196,7 +196,7 @@ def _heuristic_extract(
             res["features"] = valid_items
 
     # Timeline
-    if any(term in lowered for term in ("urgently", "asap", "immediate", "rush", "this month")):
+    if any(term in lowered for term in ("urgently", "asap", "immediate", "rush", "this month", "urgent", "as soon as possible")):
         res["timeline"] = "asap"
     elif any(term in lowered for term in ("2 months", "1 month", "3 months", "2-3 months", "2 to 3 months", "60 days", "8 weeks", "two months", "one month", "3 mahine", "mahine")):
         res["timeline"] = "1_3_months"
@@ -206,11 +206,22 @@ def _heuristic_extract(
         res["timeline"] = "flexible"
 
     # Budget — only match if there is a currency indicator or explicitly in budget context
-    has_budget_context = bool(re.search(r"(\$|usd|dollars?|budget|spend|invest)", lowered))
+    has_budget_context = bool(re.search(r"(\$|usd|dollars?|budget|spend|invest|lakh|lac|inr)", lowered))
     has_user_metric = bool(re.search(r"\b(users?|visitors?|people|accounts|downloads?|devices?)\b", lowered))
 
     budget_nums = []
-    if has_budget_context or (not has_user_metric and re.search(r"\$\d+|\d+k\b", lowered)):
+    # Check INR lakh / lac
+    lakh_match = re.findall(r"(\d+(?:\.\d+)?)\s*(?:-|to|–)?\s*(\d+(?:\.\d+)?)?\s*(?:lakh|lakhs|lac|lacs)\b", lowered)
+    if lakh_match:
+        try:
+            l_low = float(lakh_match[0][0])
+            l_high = float(lakh_match[0][1]) if lakh_match[0][1] else l_low
+            # 1 Lakh INR is approx $1.2k USD
+            mid_usd = ((l_low + l_high) / 2.0) * 1.2
+            budget_nums = [int(mid_usd)]
+        except (ValueError, IndexError):
+            pass
+    if not budget_nums and (has_budget_context or (not has_user_metric and re.search(r"\$\d+|\d+k\b", lowered))):
         budget_nums = [int(n) for n in re.findall(r"\$?(\d+)k\b", lowered)]
         if not budget_nums and has_budget_context:
             comma_nums = [int(n.replace(",", "")) for n in re.findall(r"\$?([\d,]{4,9})\b", lowered) if "," in n]
@@ -423,9 +434,11 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
         applied_any = True
 
     # 9. Timeline
-    if extracted.get("timeline") and not brief.timeline:
-        brief.timeline = str(extracted["timeline"]).strip()
-        applied_any = True
+    if extracted.get("timeline"):
+        new_timeline = str(extracted["timeline"]).strip()
+        if not brief.timeline or new_timeline != brief.timeline:
+            brief.timeline = new_timeline
+            applied_any = True
 
     # 10. Budget band & budget_text
     if extracted.get("budget_text"):
@@ -440,20 +453,23 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
             applied_any = True
 
     # 11. Decision role
-    if extracted.get("decision_role") and not brief.decision_role:
+    if extracted.get("decision_role"):
         role_val = str(extracted["decision_role"]).strip()
-        if role_val == "intern_or_student":
-            brief.role_unconfirmed = True
-            applied_any = True
-        else:
-            brief.decision_role = role_val
-            brief.role_unconfirmed = False
-            applied_any = True
+        if not brief.decision_role or role_val != brief.decision_role:
+            if role_val == "intern_or_student":
+                brief.role_unconfirmed = True
+                applied_any = True
+            else:
+                brief.decision_role = role_val
+                brief.role_unconfirmed = False
+                applied_any = True
 
     # 12. Company size
-    if extracted.get("company_size") and not brief.company_size:
-        brief.company_size = str(extracted["company_size"]).strip()
-        applied_any = True
+    if extracted.get("company_size"):
+        new_size = str(extracted["company_size"]).strip()
+        if not brief.company_size or new_size != brief.company_size:
+            brief.company_size = new_size
+            applied_any = True
 
     # 13. If user is uncertain on pending field, apply sensible default
     if extracted.get("uncertain"):
