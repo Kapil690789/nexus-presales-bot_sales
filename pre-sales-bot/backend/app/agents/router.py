@@ -87,6 +87,21 @@ _SLOT_ANSWER_RE = re.compile(
 )
 
 
+_HUMAN_CUES = re.compile(
+    r"\b("
+    r"talk\s+to\s+a?\s*(?:human|person|someone|team)|"
+    r"speak\s+(?:to|with)\s+a?\s*(?:human|person|agent|representative|someone)|"
+    r"connect\s+(?:me\s+)?(?:with|to)\s+a?\s*(?:human|person|real\s+person|someone)|"
+    r"chat\s+with\s+a?\s*(?:human|person|someone)|"
+    r"(?:don'?t|not)\s+want\s+to\s+chat\s+with\s+a?\s*bot|"
+    r"stop\s+talking\s+to\s+a?\s*bot|"
+    r"real\s+person|"
+    r"human\s+agent"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
 def _is_objection_eligible(text: str) -> bool:
     if not text:
         return False
@@ -227,6 +242,8 @@ def run_turn(
     brief = _brief(session)
     contact = _json(session.contact_json)
     text = (user_text or "").strip()
+    if text and "<" in text and ">" in text:
+        text = re.sub(r"<[^>]+>", "", text).strip()
     session._latest_user_text = text
     chip = chip or {}
     field = str(chip.get("field") or "").strip()
@@ -641,6 +658,23 @@ def run_turn(
             timings=timings,
         )
 
+    is_human_request = field == "talk_human" or bool(text and _HUMAN_CUES.search(text))
+    if is_human_request:
+        human_chips = [
+            {"label": "Book a call", "field": "booking_window", "value": "this_week"},
+            PORTFOLIO_CHIP,
+        ]
+        if not brief_ready(brief):
+            human_chips.append({"label": "Continue in chat", "field": "continue_discovery", "value": "continue"})
+        return _finish(
+            session, brief, contact, summary,
+            message="I'd be glad to connect you with our engineering team! You can schedule a direct discovery call below, or we can keep building your project scope and estimate right here in chat.",
+            stage=session.stage or "discovery",
+            route="human_escalation",
+            chips=human_chips,
+            timings=timings,
+        )
+
     direct_objection = match_objection(text, config.objections) if (text and not field and _is_objection_eligible(text)) else None
     if direct_objection:
         return _finish(
@@ -729,6 +763,24 @@ def run_turn(
             elif any(k in lt for k in ("startup", "enterprise", "scaleup")):
                 brief.company_size = "startup" if "startup" in lt else ("enterprise" if "enterprise" in lt else "scaleup")
                 filled = True
+            else:
+                is_tech_inquiry = any(k in lt for k in ("do you use", "can you use", "what tech", "what stack", "what framework", "how do you build", "tell me about"))
+                if not is_tech_inquiry:
+                    new_budget = _budget(text)
+                    if new_budget and new_budget != brief.budget_band:
+                        brief.budget_band = new_budget
+                        if re.search(r"\d", text):
+                            brief.budget_text = text.strip()[:40]
+                        filled = True
+                    new_timeline = _timeline(text)
+                    if new_timeline and new_timeline != brief.timeline:
+                        brief.timeline = new_timeline
+                        filled = True
+                    if not _is_question_like(text) or any(k in lt for k in ("switch", "change", "instead", "make it", "platforms")):
+                        new_platforms = _platforms(text)
+                        if new_platforms and set(new_platforms) != set(brief.platforms or []):
+                            brief.platforms = new_platforms
+                            filled = True
 
         if not filled:
             has_pending_discovery = (
@@ -764,9 +816,10 @@ def run_turn(
                     chips=_next_chips(brief, has_booking=bool(session.booking_json)),
                     timings=timings,
                 )
-            if extracted and not extracted.get("is_question") and apply_extracted_slots(brief, extracted, pending):
+            if extracted and apply_extracted_slots(brief, extracted, pending):
                 _note_flags(brief)
-                filled = True
+                if not extracted.get("is_question") or brief_ready(brief):
+                    filled = True
             elif not extracted.get("is_question") and not _is_question_like(text) and not OPEN.search(text) and pending and _apply_free_text(brief, pending, text, out_of_scope=config.services.out_of_scope):
                 # 2. Fallback to deterministic regex matching
                 _note_flags(brief)
@@ -1852,7 +1905,9 @@ def _budget(text: str) -> str | None:
         return None
 
     upper = max(vals)
-    if upper < 15000:
+    if re.search(r"\bunder\b", lowered):
+        upper = upper - 1.0
+    if upper <= 15000:
         return "under_15k"
     elif upper < 40000:
         return "15_40k"
@@ -2048,7 +2103,7 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
     if payload.get("handoff_summary"):
         session.handoff_summary = payload["handoff_summary"]
     chips = list(payload.get("chips") or [])
-    if not chips:
+    if not chips and payload.get("route") != "email_capture" and payload.get("stage") != "email_capture":
         chips = ensure_chips(
             brief,
             str(payload.get("message") or ""),

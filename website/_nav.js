@@ -1,4 +1,4 @@
-document.write(`<header class="site-header"><div class="wrap header-inner"><a class="brand" href="/">DevConsult</a><nav>
+document.write(`<header class="site-header"><div class="wrap header-inner"><a class="brand" href="/">Nexus</a><nav>
 <a href="/">Home</a>
 <a href="/web-app-development.html">Website</a>
 <a href="/mobile-app-development.html">Mobile apps</a>
@@ -7,7 +7,7 @@ document.write(`<header class="site-header"><div class="wrap header-inner"><a cl
 <a href="/staff-augmentation.html">Staff aug</a>
 <a href="/work.html">Work</a>
 <a href="/contact.html">Contact</a>
-<button type="button" class="btn" style="padding: 7px 16px; font-size: 13px; margin-left: 6px; cursor: pointer;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">⚡ Talk to Advisor</button>
+<button type="button" class="btn" style="padding: 7px 16px; font-size: 13px; margin-left: 6px; cursor: pointer;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">⚡ Talk to Mike</button>
 </nav></div></header>`);
 
 (function () {

@@ -21,5 +21,5 @@ document.write(`<footer class="site-footer"><div class="wrap footer-inner">
 <a href="/insights.html">Insights</a>
 </div>
 </div>
-<p class="footer-note">Estimates from the advisor are indicative dummy data, not a formal quote.</p>
+<p class="footer-note">Estimates from the advisor are indicative estimates, not a formal quote.</p>
 </div></footer>`);

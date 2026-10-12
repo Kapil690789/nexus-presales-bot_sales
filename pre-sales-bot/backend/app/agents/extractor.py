@@ -17,9 +17,24 @@ _STARTER_PHRASES = frozenset({
 })
 
 
+_HUMAN_CUES = re.compile(
+    r"\b("
+    r"talk\s+to\s+a?\s*(?:human|person|someone|team)|"
+    r"speak\s+(?:to|with)\s+a?\s*(?:human|person|agent|representative|someone)|"
+    r"connect\s+(?:me\s+)?(?:with|to)\s+a?\s*(?:human|person|real\s+person|someone)|"
+    r"chat\s+with\s+a?\s*(?:human|person|someone)|"
+    r"(?:don'?t|not)\s+want\s+to\s+chat\s+with\s+a?\s*bot|"
+    r"stop\s+talking\s+to\s+a?\s*bot|"
+    r"real\s+person|"
+    r"human\s+agent"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
 def is_product_idea(s: str) -> bool:
     cleaned_s = s.strip().lower()
-    if cleaned_s in _STARTER_PHRASES:
+    if cleaned_s in _STARTER_PHRASES or _HUMAN_CUES.search(cleaned_s):
         return False
     tokens = set(re.findall(r"\b[a-z0-9$]+\b", cleaned_s))
     meta_tokens = {
@@ -100,7 +115,7 @@ def _heuristic_extract(
     has_question_mark = "?" in lowered
     is_q_inquiry = bool(re.search(r"\b(i\s+want\s+to\s+know|i'?d\s+like\s+to\s+know|i\s+would\s+like\s+to\s+know|i\s+would\s+like\s+to\s+understand|want\s+to\s+understand|wondering|curious|need\s+more\s+(info|information|details)|looking\s+for\s+(info|information|details)|more\s+about)\b", lowered))
     is_your_noun = bool(re.match(r"^\s*your\s+[a-z0-9_-]+(\s+[a-z0-9_-]+){0,4}\s*$", lowered))
-    is_brief_inquiry = any(k in lowered for k in ("we need", "i am", "founder", "budget is", "timeline is", "looking to build", "want to build", "building a", "need a", "chahiye", "delivery app", "want a", "app idea", "app for", "platform for"))
+    is_brief_inquiry = any(k in lowered for k in ("we need", "i am", "founder", "budget is", "timeline is", "looking to build", "want to build", "building a", "build a", "build an", "need a", "chahiye", "delivery app", "want a", "app idea", "app for", "platform for", "clone"))
 
     if (is_q_start or has_question_mark or is_q_inquiry or is_your_noun) and not is_brief_inquiry and len(text.split()) < 15:
         res["is_question"] = True
@@ -126,7 +141,7 @@ def _heuristic_extract(
     has_web_p = "web" in lowered or "browser" in lowered
     has_ios_p = "ios" in lowered or "iphone" in lowered
     has_android_p = "android" in lowered
-    has_mobile_p = "mobile" in lowered or "both" in lowered or "phone" in lowered
+    has_mobile_p = "mobile" in lowered or "mobil" in lowered or "both" in lowered or "phone" in lowered or "uber" in lowered
 
     if "web and mobile" in lowered or "mobile and web" in lowered or (has_web_p and (has_mobile_p or (has_ios_p and has_android_p))):
         res["platforms"] = ["web", "ios", "android"]
@@ -149,7 +164,7 @@ def _heuristic_extract(
     has_ai = bool(re.search(r"\b(ai|llm|gpt|chatgpt|openai|chatbot|chat bot|machine learning|nlp)\b", lowered))
 
     # Service
-    if "mobile" in lowered or "ios" in lowered or "android" in lowered or "cross-platform" in lowered:
+    if "mobile" in lowered or "mobil" in lowered or "ios" in lowered or "android" in lowered or "cross-platform" in lowered or "uber" in lowered:
         res["service"] = "mobile_app"
     elif "web" in lowered or "saas" in lowered or "portal" in lowered:
         res["service"] = "web_app"
@@ -250,6 +265,11 @@ def _heuristic_extract(
                     if is_product_idea(cand):
                         clean_g = cand
                 res["goal"] = clean_g[:120].strip()
+
+    is_q_start = bool(re.match(r"^\s*(what|how|why|when|where|who|can|could|do|does|will|would|is|are|tell me|explain)\b", lowered))
+    has_qm = "?" in text
+    if is_q_start or has_qm:
+        res["is_question"] = True
 
     return res
 
