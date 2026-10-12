@@ -738,13 +738,20 @@
         var href = safeUrl(item.url);
         var title = esc(item.title || "Project");
         var isSample = item.is_sample || card.is_sample;
-        html += "<p>";
+        html += '<div style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;margin:8px 0;">';
         if (isSample) {
-          html += '<span class="ps-badge-sample" style="display:inline-block;font-size:11px;padding:2px 6px;border-radius:4px;background:#fef3c7;color:#92400e;margin-bottom:4px;font-weight:600;">Sample project (demo data)</span><br>';
+          html += '<span class="ps-badge-sample" style="display:inline-block;font-size:10px;letter-spacing:0.02em;padding:2px 8px;border-radius:999px;background:rgba(245,158,11,0.12);color:#FBBF24;border:1px solid rgba(245,158,11,0.25);margin-bottom:6px;font-weight:600;">Sample project (demo data)</span><br>';
         }
-        html += href ? '<a href="' + href + '" target="_blank" rel="noreferrer">' + title + "</a>" : title;
-        if (item.outcome) html += "<br>" + esc(item.outcome);
-        html += "</p>";
+        html += href ? '<a href="' + href + '" target="_blank" rel="noreferrer" style="font-weight:600;color:#60A5FA;text-decoration:none;">' + title + '</a>' : '<strong style="color:#EDEDED;">' + title + '</strong>';
+        if (item.stacks && item.stacks.length) {
+          html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin:6px 0 4px;">';
+          item.stacks.forEach(function (st) {
+            html += '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:#A1A1AA;border:1px solid rgba(255,255,255,0.08);">' + esc(st) + '</span>';
+          });
+          html += '</div>';
+        }
+        if (item.outcome) html += '<div style="margin-top:4px;font-size:12px;color:#A1A1AA;line-height:1.45;">' + esc(item.outcome) + '</div>';
+        html += '</div>';
       });
     } else if (card.type === "shape") {
       html = "<h4>" + esc(card.title || "Project shape") + "</h4>";

@@ -637,12 +637,36 @@ def run_turn(
         for c in cases:
             if is_sample or c.get("is_sample"):
                 c["is_sample"] = True
+        # Tailor message to what the client actually discussed!
+        context_phrase = ""
+        if brief.goal:
+            clean_g = brief.goal.strip().rstrip(".")
+            context_phrase = f" for {clean_g}"
+        elif brief.service:
+            s_name = brief.service.replace("_", " ")
+            context_phrase = f" for your {s_name} project"
+
+        if is_sample:
+            reply_msg = f"Sample case study: Based on what you're building{context_phrase}, here is relevant work and similar projects from our portfolio:"
+        else:
+            reply_msg = f"Based on what you're building{context_phrase}, here are relevant case studies and similar projects from our past work:"
+
+        portfolio_chips = [
+            BOOK_CHIP,
+            {"label": "Ask about tech stack", "field": "ask", "value": "What tech stack do you recommend for this?"},
+            {"label": "Talk to a human", "field": "talk_human", "value": "human"},
+        ]
+        if session.estimate_json:
+            portfolio_chips.append({"label": "Review estimate", "field": "sharpen_estimate", "value": "estimate"})
+        elif brief.service:
+            portfolio_chips.append({"label": "Continue in chat", "field": "continue_discovery", "value": "continue"})
+
         return _finish(
             session, brief, contact, summary,
-            message="Sample case study: Here is relevant work and similar projects from our portfolio:" if is_sample else "Here are relevant case studies and similar projects from our past work:",
+            message=reply_msg,
             stage=session.stage or "advising",
             route="portfolio",
-            chips=[BOOK_CHIP],
+            chips=portfolio_chips,
             cards=[{"type": "portfolio", "title": "Similar work", "cases": cases, "is_sample": is_sample}],
             portfolio=cases,
             timings=timings,

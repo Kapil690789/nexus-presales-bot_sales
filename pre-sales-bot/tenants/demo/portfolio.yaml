@@ -41,6 +41,51 @@ cases:
     service: ui_ux
     platforms: [web]
     stacks: [Figma]
-    tags: [saas, onboarding]
+    tags: [saas, onboarding, design, ui_ux]
     outcome: Redesigned activation; trial-to-paid conversion up 22 percent.
     url: /work/northstar.html
+  - id: swiftdrop-delivery
+    title: SwiftDrop — on-demand delivery & quick commerce
+    industry: logistics
+    service: mobile_app
+    platforms: [ios, android]
+    stacks: [Flutter, Node.js, WebSockets, PostgreSQL]
+    tags: [delivery, logistics, food, grocery, zepto, blinkit, uber, marketplace, tracking, payments, mobile]
+    outcome: Built driver dispatch, real-time GPS tracking, and customer app supporting 25k daily orders.
+    url: /work/swiftdrop.html
+  - id: aura-commerce
+    title: Aura Commerce — headless retail & marketplace
+    industry: ecommerce
+    service: web_app
+    platforms: [web, ios, android]
+    stacks: [Next.js, FastAPI, Stripe, PostgreSQL]
+    tags: [ecommerce, marketplace, retail, shopping, store, cart, payments, web, mobile]
+    outcome: Scaled high-converting multi-vendor marketplace with 99.98% checkout uptime and $4M GMV in year one.
+    url: /work/aura.html
+  - id: novapay-fintech
+    title: NovaPay — digital wallet & payment gateway
+    industry: fintech
+    service: mobile_app
+    platforms: [ios, android, web]
+    stacks: [Flutter, Go, PostgreSQL]
+    tags: [fintech, banking, wallet, payments, crypto, transactions, money, mobile]
+    outcome: Bank-grade biometric authentication and instant P2P payments handling $10M+ monthly transfer volume.
+    url: /work/novapay.html
+  - id: kinetix-fitness
+    title: Kinetix — personalized fitness & workout companion
+    industry: fitness
+    service: mobile_app
+    platforms: [ios, android]
+    stacks: [React Native, Python, PostgreSQL]
+    tags: [fitness, health, workout, habit, gym, exercise, wellness, mobile]
+    outcome: Reached 80,000 active subscribers with personalized workout routines and wearable device sync.
+    url: /work/kinetix.html
+  - id: omni-ai-copilot
+    title: OmniCopilot — enterprise domain AI assistant
+    industry: ai
+    service: ai_product
+    platforms: [web, api]
+    stacks: [Python, FastAPI, Gemini, Pinecone]
+    tags: [ai, llm, chatbot, rag, documents, search, automation, assistant]
+    outcome: Automated 70% of tier-1 support queries with grounded RAG and latency under 1.2 seconds.
+    url: /work/omni-ai.html
