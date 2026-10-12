@@ -2138,6 +2138,21 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
                 engine_weeks = None
         visitor_text = payload.get("visitor_text") or getattr(session, "_latest_user_text", "") or ""
         sanitized_message = sanitize_duration_leaks(sanitized_message, engine_weeks=engine_weeks, visitor_message=visitor_text)
+    visitor_text = payload.get("visitor_text") or getattr(session, "_latest_user_text", "") or ""
+    if visitor_text and route in ("fallback", "rag", "objection", "faq") and not payload.get("cards"):
+        try:
+            from backend.app.agents.critic import verify_and_refine_turn
+            sanitized_message, chips = verify_and_refine_turn(
+                user_text=visitor_text,
+                draft_message=sanitized_message,
+                draft_chips=chips,
+                brief=brief,
+                config=payload.get("config"),
+                route=route,
+                passages=passages,
+            )
+        except Exception:
+            pass
     result = {
         "message": sanitized_message,
         "stage": payload.get("stage") or "discovery",
