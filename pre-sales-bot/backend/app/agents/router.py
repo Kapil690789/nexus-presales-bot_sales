@@ -1071,7 +1071,8 @@ def run_turn(
             PORTFOLIO_CHIP,
         ] if session.booking_json else [BOOK_CHIP, PORTFOLIO_CHIP]
     else:
-        chips = []
+        from backend.app.agents.suggestions import ensure_chips
+        chips = ensure_chips(brief, message, [h.content for h in strong] if (decision == "show" and strong) else None)
 
     last_assistant_msg = ""
     for item in reversed(history or []):

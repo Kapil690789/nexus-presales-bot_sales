@@ -372,25 +372,26 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
                                 pass
                             raise LLMError(f"Gemini response did not parse as JSON: {parse_exc}") from parse_exc
 
-                    if resp.status_code == 404:
+                    if resp.status_code in (404, 500, 502, 503, 504):
                         if not is_last_model:
                             next_model = models_to_try[m_idx + 1]
                             log.warning(
-                                "Gemini model '%s' returned 404, falling back to '%s'",
+                                "Gemini model '%s' returned %d, falling back to '%s'",
                                 target_model,
+                                resp.status_code,
                                 next_model,
                             )
                             try:
                                 record_system_event(
                                     kind="model_fallback",
-                                    reason=f"404 from {target_model}, falling back to {next_model}",
+                                    reason=f"{resp.status_code} from {target_model}, falling back to {next_model}",
                                     stage="llm",
                                     error_class="HTTPStatusError",
                                 )
                             except Exception:
                                 pass
                             break
-                        raise LLMError(f"Gemini API model '{target_model}' not found (404)")
+                        raise LLMError(f"Gemini API model '{target_model}' error ({resp.status_code})")
 
                     if resp.status_code == 429:
                         had_429 = True
