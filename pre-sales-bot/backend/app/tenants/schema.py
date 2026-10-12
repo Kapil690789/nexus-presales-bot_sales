@@ -66,7 +66,7 @@ class BrandConfig(BaseModel):
     timezone: str = "Asia/Kolkata"
 
     # E1 fields
-    advisor_name: str = "Alex"
+    advisor_name: str = "Mike"
     advisor_title: str = "AI project advisor"
     advisor_avatar: str = ""
     human_label: str = "Talk to a human"

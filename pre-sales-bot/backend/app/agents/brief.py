@@ -163,8 +163,12 @@ def named_features(brief: ProjectBrief) -> list[str]:
 
 
 def needs_feature_detail(brief: ProjectBrief) -> bool:
-    """Short labels need one explanation. A sentence, or no features, does not."""
+    """Short labels need one explanation. A sentence, or no features, does not.
+    ai_product features (AI chat, Document processing) are self-explanatory — skip detail."""
     if not brief.features_confirmed or brief.feature_detail is not None:
+        return False
+    # AI product features are industry-standard terms; no detail question needed
+    if brief.service == "ai_product":
         return False
     named = named_features(brief)
     if not named:
@@ -194,7 +198,8 @@ def fast_engine_gaps(brief: ProjectBrief) -> list[str]:
         gaps.append("service")
     if not brief.goal:
         gaps.append("goal")
-    if not brief.platforms and brief.service != "ui_ux":
+    # ai_product integrates into an existing product — platform is not required
+    if not brief.platforms and brief.service not in ("ui_ux", "ai_product"):
         gaps.append("platforms")
     if not brief.timeline:
         gaps.append("timeline")

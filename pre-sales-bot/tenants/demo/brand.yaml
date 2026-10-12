@@ -19,4 +19,5 @@ nda_text: Some project stories are confidential. Accept to see them in this chat
 nda_version: "2026-01"
 booking_handoff_text: "The team will see this whole conversation, so you won't need to repeat anything."
 flow: classic
+advisor_name: Mike
 

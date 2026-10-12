@@ -398,7 +398,7 @@
     launcher.classList.add(pos);
     panel.classList.remove("bottom-left", "bottom-right");
     panel.classList.add(pos);
-    var advName = brand.advisor_name || "Alex";
+    var advName = brand.advisor_name || "Mike";
     var advTitle = brand.advisor_title || "AI project advisor";
     titleEl.textContent = advName + " · " + advTitle;
     statusEl.textContent = "Online";

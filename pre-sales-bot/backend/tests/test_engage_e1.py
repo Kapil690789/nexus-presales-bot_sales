@@ -10,7 +10,7 @@ from backend.app.core.settings import ROOT
 
 def test_schema_defaults_load():
     brand = BrandConfig()
-    assert brand.advisor_name == "Alex"
+    assert brand.advisor_name == "Mike"
     assert brand.advisor_title == "AI project advisor"
     assert brand.advisor_avatar == ""
     assert brand.human_label == "Talk to a human"
@@ -57,7 +57,7 @@ def test_opener_word_count_and_content(client):
     msg = data["message"]
     words = msg.split()
     assert len(words) <= 40, f"Opener has {len(words)} words, max is 40"
-    assert "Alex" in msg
+    assert "Mike" in msg
     assert "Nexus" in msg
     assert re.search(r"\bAI\b", msg)
 
@@ -172,7 +172,7 @@ def test_public_config_exposes_advisor_fields(client):
     res = client.get("/api/v1/public-config?tenant=demo")
     assert res.status_code == 200
     brand = res.json()["brand"]
-    assert brand["advisor_name"] == "Alex"
+    assert brand["advisor_name"] == "Mike"
     assert "AI" in brand["advisor_title"]
     assert "advisor_avatar" in brand
     assert brand["human_label"] == "Talk to a human"

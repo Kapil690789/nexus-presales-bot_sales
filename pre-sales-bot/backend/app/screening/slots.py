@@ -234,9 +234,15 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
                 chips.append({"label": item["label"], "field": "features", "value": [item["value"]]})
             chips.append({"label": "Not sure yet", "field": "features", "value": []})
     elif field == "feature_detail":
-        chips = [{"label": "That's enough", "field": "feature_detail", "value": "not_specified"}]
+        chips = [
+            {"label": "Standard functionality is fine", "field": "feature_detail", "value": "not_specified"},
+            {"label": "Skip detail & continue →", "field": "feature_detail", "value": "not_specified"},
+        ]
     elif field == "user_flow":
-        chips = [{"label": "Skip for now", "field": "user_flow", "value": "not_specified"}]
+        chips = [
+            {"label": "Standard flow is fine", "field": "user_flow", "value": "not_specified"},
+            {"label": "Skip for now", "field": "user_flow", "value": "not_specified"},
+        ]
     elif field == "users":
         chips = [
             {"label": "Consumers", "field": "users", "value": "consumers"},

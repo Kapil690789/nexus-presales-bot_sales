@@ -260,8 +260,9 @@ def synthesize_discovery_prompt(
     recent_acks_str = ", ".join(f'"{a}"' for a in brief.recent_acks) if brief.recent_acks else "None"
     banned_str = ", ".join(f'"{p}"' for p in voice.banned_phrases) if voice.banned_phrases else "None"
 
+    adv_name = getattr(config.brand, "advisor_name", "Mike") if hasattr(config, "brand") else "Mike"
     prompt = (
-        f"You are Alex, the senior AI project advisor and enterprise software consultant at {brand_name}. "
+        f"You are {adv_name}, the senior AI project advisor and enterprise software consultant at {brand_name}. "
         f"The client just shared: {wrap_visitor(user_text)}. "
         f"Values updated this turn: [{', '.join(changed_fields) if changed_fields else 'None'}]. "
         f"Current scoped brief: [{captured_str}]. "

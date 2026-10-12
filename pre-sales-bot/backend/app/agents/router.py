@@ -701,6 +701,25 @@ def run_turn(
             ):
                 brief.admin = False
                 filled = True
+            elif lowered_text in (
+                "that's enough", "thats enough", "enough", "that's all", "thats all", "that is all",
+                "skip", "skip this", "skip for now", "no more", "nothing else", "no need",
+                "move on", "next", "continue", "done", "ready",
+            ):
+                if pending == "features":
+                    brief.features_confirmed = True
+                    if brief.features is None:
+                        brief.features = []
+                    filled = True
+                elif pending == "feature_detail":
+                    brief.feature_detail = "not_specified"
+                    filled = True
+                elif pending == "user_flow":
+                    brief.user_flow = "not_specified"
+                    filled = True
+                elif pending == "integrations":
+                    brief.integrations = ["none"]
+                    filled = True
 
         if not filled and session.estimate_json and text:
             lt = text.lower().strip()
@@ -965,6 +984,7 @@ def run_turn(
 
     decision, score = grade(queries[0], hits)
     strong = _strong_hits(hits)
+    estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
     if decision == "show" and strong:
         t0_ans = time.perf_counter()
         message = grounded_answer(queries[0], strong)
@@ -975,7 +995,6 @@ def run_turn(
         if has_sample and "sample" not in message.lower():
             message = f"Sample case study: {message}"
     else:
-        estimate = estimate_project(brief, config.pricing) if brief_ready(brief) else None
         platform = get_platform()
         is_weak = decision == "weak" or (platform.weak_min_score <= score < platform.show_min_score)
         weak_notes = hits[:3] if is_weak and hits else None
@@ -1022,7 +1041,7 @@ def run_turn(
         chunk_ids=chunk_ids,
         query=queries[0] if text else "",
         score=score,
-        estimate=estimate_project(brief, config.pricing) if brief_ready(brief) else None,
+        estimate=estimate,
         timings=timings,
     )
 
@@ -1646,10 +1665,7 @@ def _next_chips(brief: ProjectBrief, has_booking: bool = False) -> list[dict]:
 
 def _pending(brief: ProjectBrief) -> str | None:
     if not brief_ready(brief):
-        field = next_discovery_field(brief)
-        if field and field != "company_size":
-            return field
-        return field
+        return next_discovery_field(brief)
     return None
 
 
