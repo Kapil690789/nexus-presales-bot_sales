@@ -86,9 +86,9 @@ def fallback_message(
             )
     elif not is_ack:
         notes_instruction = (
-            "\n\nYou have NO verified knowledge about this topic in the knowledge base. "
-            "Do NOT make up, assume, or guess specific capabilities, frameworks, or past client projects. "
-            "Clearly state that you do not have this information on hand and offer to connect them with the technical team."
+            "\n\nIf the visitor is asking about software engineering concepts, tech stack options, architecture, integrations, or development best practices: "
+            "provide an expert, consultative, and positive explanation of how modern engineering squads build this. "
+            "For specific company facts, guarantees, past client names, or custom pricing, do not guess and offer to connect them with the technical team."
         )
 
     if llm_available() and query:
