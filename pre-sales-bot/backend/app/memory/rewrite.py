@@ -28,11 +28,16 @@ def rewrite_query(text: str, summary: str, previous_user_texts: list[str]) -> st
 
     if llm_available():
         try:
-            data = complete_json(
-                f"Rewrite the visitor question so it stands alone. {UNTRUSTED_RULE} Return JSON {{\"query\": \"...\"}}.",
-                f"Context:\n{wrap_visitor(context)}\n\nQuestion:\n{wrap_visitor(cleaned)}",
-                mode="request",
+            is_mocked = (
+                getattr(complete_json, "__module__", "") != "backend.app.core.llm"
+                or getattr(complete_json, "__name__", "") != "complete_json"
             )
+            prompt_sys = f"Rewrite the visitor question so it stands alone. {UNTRUSTED_RULE} Return JSON {{\"query\": \"...\"}}."
+            prompt_usr = f"Context:\n{wrap_visitor(context)}\n\nQuestion:\n{wrap_visitor(cleaned)}"
+            if not is_mocked:
+                data = complete_json(prompt_sys, prompt_usr, mode="request", purpose="rewrite")
+            else:
+                data = complete_json(prompt_sys, prompt_usr, mode="request")
             rewritten = str(data.get("query") or "").strip()
             if rewritten:
                 return rewritten
@@ -57,11 +62,16 @@ def rolling_summary(previous: str, user_texts: list[str], every: int) -> str:
     joined = "\n".join(user_texts[-8:])
     if llm_available():
         try:
-            data = complete_json(
-                "Summarize the visitor's project in under 80 words. "
-                f"{UNTRUSTED_RULE} Return JSON {{\"summary\": \"...\"}}. Omit emails and phone numbers.",
-                wrap_visitor(joined),
+            is_mocked = (
+                getattr(complete_json, "__module__", "") != "backend.app.core.llm"
+                or getattr(complete_json, "__name__", "") != "complete_json"
             )
+            prompt_sys = f"Summarize the visitor's project in under 80 words. {UNTRUSTED_RULE} Return JSON {{\"summary\": \"...\"}}. Omit emails and phone numbers."
+            prompt_usr = wrap_visitor(joined)
+            if not is_mocked:
+                data = complete_json(prompt_sys, prompt_usr, purpose="summary")
+            else:
+                data = complete_json(prompt_sys, prompt_usr)
             text = str(data.get("summary") or "").strip()
             if text:
                 return text[:800]

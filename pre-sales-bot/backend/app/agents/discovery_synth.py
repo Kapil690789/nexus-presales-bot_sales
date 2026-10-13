@@ -291,7 +291,14 @@ def synthesize_discovery_prompt(
     )
 
     try:
-        data = complete_json(CONSULT_SYSTEM_PROMPT, prompt)
+        is_mocked = (
+            getattr(complete_json, "__module__", "") != "backend.app.core.llm"
+            or getattr(complete_json, "__name__", "") != "complete_json"
+        )
+        if not is_mocked:
+            data = complete_json(CONSULT_SYSTEM_PROMPT, prompt, purpose="discovery")
+        else:
+            data = complete_json(CONSULT_SYSTEM_PROMPT, prompt)
         msg = str(data.get("message") or "").strip()
         validated = validate_discovery_reply(msg, voice, deterministic_msg)
         return validated

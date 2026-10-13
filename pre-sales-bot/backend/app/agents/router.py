@@ -818,6 +818,13 @@ def run_turn(
                 extracted = {}
             elif bool(session.estimate_json) and _is_question_like(text):
                 extracted = {"is_question": True}
+            elif (
+                _is_question_like(text)
+                and not is_product_idea(text)
+                and not any(k in text.lower() for k in ("budget", "timeline", "dollar", "month", "week", "founder", "intern", "student", "startup", "enterprise", "chahiye"))
+                and not re.search(r"\b\d+k\b", text.lower())
+            ):
+                extracted = {"is_question": True}
             else:
                 t0_ext = time.perf_counter()
                 try:

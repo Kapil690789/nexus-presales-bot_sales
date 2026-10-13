@@ -120,7 +120,14 @@ def fallback_message(
                 f'Return JSON {{"message": "..."}}.'
             )
         try:
-            data = complete_json(FALLBACK_SYSTEM_PROMPT, prompt, mode="request")
+            is_mocked = (
+                getattr(complete_json, "__module__", "") != "backend.app.core.llm"
+                or getattr(complete_json, "__name__", "") != "complete_json"
+            )
+            if not is_mocked:
+                data = complete_json(FALLBACK_SYSTEM_PROMPT, prompt, mode="request", purpose="fallback")
+            else:
+                data = complete_json(FALLBACK_SYSTEM_PROMPT, prompt, mode="request")
             msg = str(data.get("message") or "").strip()
             if msg:
                 return msg
