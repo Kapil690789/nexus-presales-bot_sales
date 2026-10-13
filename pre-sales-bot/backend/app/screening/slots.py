@@ -218,6 +218,13 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
                 {"label": "Analytics & reporting", "value": "Analytics"},
             ]
 
+        from backend.app.engines.domains import detect_domain, get_domain_blueprint
+        domain_id = detect_domain(brief=brief) if brief else None
+        bp = get_domain_blueprint(domain_id) if domain_id else None
+        if bp and bp.key_features:
+            seen_vals = {item["value"].lower() for item in bp.key_features}
+            catalog = list(bp.key_features) + [c for c in catalog if c["value"].lower() not in seen_vals]
+
         available = [
             item for item in catalog
             if item["value"].lower().strip() not in existing

@@ -2090,6 +2090,12 @@ def _handoff(config, brief, contact, qual, estimate, booked) -> str:
         f"Goal: {brief.goal or '—'}",
         f"Score: {qual.get('score')} ({qual.get('band')})",
     ]
+    from backend.app.engines.domains import detect_domain, get_domain_blueprint
+    dom = detect_domain(brief=brief)
+    if dom:
+        bp = get_domain_blueprint(dom)
+        if bp:
+            lines.append(f"Domain: {bp.label} (Compliance: {bp.compliance})")
     if estimate:
         lines.append(f"Range: {estimate['range_label']} / {estimate['timeline_weeks']} weeks")
     if booked:

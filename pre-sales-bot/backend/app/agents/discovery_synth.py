@@ -261,11 +261,20 @@ def synthesize_discovery_prompt(
     banned_str = ", ".join(f'"{p}"' for p in voice.banned_phrases) if voice.banned_phrases else "None"
 
     adv_name = getattr(config.brand, "advisor_name", "Mike") if hasattr(config, "brand") else "Mike"
+    from backend.app.engines.domains import detect_domain, get_domain_blueprint
+    domain_id = detect_domain(user_text, brief)
+    domain_line = ""
+    if domain_id:
+        bp = get_domain_blueprint(domain_id)
+        if bp:
+            domain_line = f"Domain architecture context: {bp.label} (Industry standards: {bp.compliance}).\n"
+
     prompt = (
         f"You are {adv_name}, the senior AI project advisor and enterprise software consultant at {brand_name}. "
         f"The client just shared: {wrap_visitor(user_text)}. "
         f"Values updated this turn: [{', '.join(changed_fields) if changed_fields else 'None'}]. "
-        f"Current scoped brief: [{captured_str}]. "
+        f"Current scoped brief: [{captured_str}].\n"
+        f"{domain_line}"
         f"The next discovery parameter to uncover: '{field}'. "
         f"Standard consultative question: '{question}'. "
         f"Advisory instructions:\n"

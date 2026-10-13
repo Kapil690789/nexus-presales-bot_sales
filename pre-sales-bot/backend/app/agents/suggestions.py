@@ -91,6 +91,10 @@ def _llm_chips(
             bits.append(f"Service: {brief.service}")
         if brief.goal:
             bits.append(f"Goal: {brief.goal}")
+        from backend.app.engines.domains import detect_domain
+        dom = brief.industry or detect_domain(brief=brief)
+        if dom:
+            bits.append(f"Industry: {dom}")
         if brief.platforms:
             bits.append(f"Platforms: {', '.join(brief.platforms)}")
         if brief.features:

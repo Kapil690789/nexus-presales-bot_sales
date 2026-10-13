@@ -28,6 +28,17 @@ def recommend_architecture(brief: ProjectBrief, services: ServicesConfig) -> dic
         notes.append("We stop at a build-ready prototype unless you also want engineering.")
     if brief.auth:
         notes.append("Plan for auth, roles, and a password-reset path in the MVP.")
+
+    from backend.app.engines.domains import detect_domain, get_domain_blueprint
+
+    domain_id = detect_domain(brief=brief)
+    if domain_id:
+        bp = get_domain_blueprint(domain_id)
+        if bp:
+            for arch_note in bp.architecture_notes:
+                if arch_note not in notes:
+                    notes.append(arch_note)
+
     return {
         "service": brief.service,
         "label": service.label,
