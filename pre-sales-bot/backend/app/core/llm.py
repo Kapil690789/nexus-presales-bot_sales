@@ -200,7 +200,7 @@ def _gemini(system: str, user: str, api_key: str, model: str, mode: str = "reque
 
     settings = get_settings()
     primary_model = (model or "").strip() or settings.llm_model
-    if purpose in ("critic", "chips", "suggestions") and not (model and model.strip()):
+    if purpose in ("critic", "chips", "suggestions", "extractor", "classifier") and not (model and model.strip()):
         primary_model = "gemini-3.1-flash-lite"
     models_to_try = [primary_model]
     if settings.llm_model_fallbacks.strip():
