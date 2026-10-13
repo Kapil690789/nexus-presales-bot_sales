@@ -34,7 +34,7 @@ class SessionIn(BaseModel):
 
 class ChipIn(BaseModel):
     label: str | None = None
-    field: str
+    field: str = "ask"
     value: Any = None
 
 

@@ -109,6 +109,8 @@
     ".ps-chip:nth-child(3){animation-delay:80ms}",
     ".ps-chip:nth-child(4){animation-delay:120ms}",
     ".ps-chip:hover{background:#FFFFFF;color:#000000;border-color:#FFFFFF}",
+    ".ps-chip.ps-chip-primary{background:rgba(59,130,246,0.16);border-color:rgba(59,130,246,0.4);color:#60A5FA;font-weight:600}",
+    ".ps-chip.ps-chip-primary:hover{background:#2563EB;color:#FFFFFF;border-color:#2563EB}",
     ".ps-thumb{display:flex;gap:10px;margin-top:8px}",
     ".ps-thumb button{border:0;background:transparent;color:#71717A;font:inherit;font-size:11px;font-weight:500;cursor:pointer;padding:0}",
     ".ps-thumb button:hover{color:#FFFFFF}",
@@ -684,13 +686,17 @@
       if (chip.label === "Email me instead" || chip.label === "Show a leaner cut") {
         button.setAttribute("data-chip", chip.label);
       }
+      if (chip.field === "features_done" || (chip.label && chip.label.indexOf("→") !== -1)) {
+        button.classList.add("ps-chip-primary");
+      }
       button.onclick = function () {
         if (!sessionId || busy) return;
         setChips([]);
-        var displayText = (chip.field === "ask" && typeof chip.value === "string" && chip.value) ? chip.value : (chip.label || "");
-        say("user", displayText);
+        var rawText = (chip.field === "ask" && typeof chip.value === "string" && chip.value) ? chip.value : (chip.label || "");
+        var cleanText = rawText.replace(/^\+\s*/, "");
+        say("user", cleanText);
         if (!beginWait()) return;
-        post("/api/v1/sessions/" + sessionId + "/messages", { content: displayText, chip: chip }).then(deliverReply).catch(deliverFail);
+        post("/api/v1/sessions/" + sessionId + "/messages", { content: cleanText, chip: chip }).then(deliverReply).catch(deliverFail);
       };
       chipsBox.appendChild(button);
     });

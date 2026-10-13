@@ -104,12 +104,24 @@ def verify_and_refine_turn(
         final_chips = list(draft_chips)
         if isinstance(verified_chips_raw, list) and len(verified_chips_raw) >= 2:
             cleaned_chips = []
+            valid_fields = set(ProjectBrief.model_fields.keys()) | {
+                "confirm_role", "features_done", "booking_window", "booking_slot",
+                "show_portfolio", "nda", "view_mvp", "email_instead"
+            }
             for item in verified_chips_raw:
                 if isinstance(item, dict) and item.get("label"):
+                    lbl = str(item["label"]).strip()[:36]
+                    fld = str(item.get("field") or "ask").strip()
+                    val = item.get("value")
+                    if fld not in valid_fields or fld == "ask" or lbl.endswith("?"):
+                        fld = "ask"
+                        val = str(val or lbl).strip()
+                    elif val in (None, ""):
+                        val = lbl
                     cleaned_chips.append({
-                        "label": str(item["label"]).strip()[:32],
-                        "field": str(item.get("field") or "ask").strip(),
-                        "value": item.get("value", str(item["label"]).strip()),
+                        "label": lbl,
+                        "field": fld,
+                        "value": val,
                     })
             if len(cleaned_chips) >= 2:
                 final_chips = cleaned_chips[:4]

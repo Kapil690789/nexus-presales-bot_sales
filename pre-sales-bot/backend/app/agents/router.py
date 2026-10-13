@@ -252,6 +252,11 @@ def run_turn(
         field = ""
         value = None
 
+    valid_brief_fields = set(ProjectBrief.model_fields.keys()) | {"confirm_role", "features_done"}
+    if field and field not in valid_brief_fields and field not in ACTION:
+        field = ""
+        value = None
+
     timings = {
         "extractor": 0.0,
         "query_embedding": 0.0,
@@ -712,7 +717,7 @@ def run_turn(
 
     filled = False
     extracted: dict = {}
-    if field and field not in ACTION and field != "ask":
+    if field and field in valid_brief_fields and field not in ACTION and field != "ask":
         brief.apply_chip(field, value)
         _note_flags(brief)
         filled = True
@@ -1537,7 +1542,8 @@ def _after_brief(
         if not field:
             break
         attempts = brief.field_attempts.get(field, 0)
-        if attempts >= 2:
+        max_att = 3 if (field == "features" and brief and brief.features) else 2
+        if attempts >= max_att:
             # The same field is asked at most twice (Rule 4d).
             # On third time, leave slot unknown and move on.
             if field == "features":
@@ -1574,7 +1580,7 @@ def _after_brief(
     attempts = brief.field_attempts.get(field or "", 0)
     repeat = attempts >= 1
     if field:
-        if changed_fields:
+        if changed_fields and field not in changed_fields:
             brief.field_attempts[field] = 1
             repeat = False
         else:
