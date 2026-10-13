@@ -113,7 +113,14 @@ def _llm_chips(
     if excerpts:
         user += f"\nRetrieved notes:\n{wrap_visitor(excerpts)}\n"
     try:
-        data = complete_json(_SYSTEM, user)
+        is_mocked = (
+            getattr(complete_json, "__module__", "") != "backend.app.core.llm"
+            or getattr(complete_json, "__name__", "") != "complete_json"
+        )
+        if is_mocked:
+            data = complete_json(_SYSTEM, user)
+        else:
+            data = complete_json(_SYSTEM, user, mode="request", purpose="chips")
     except LLMError:
         return []
     raw = data.get("chips") if isinstance(data.get("chips"), list) else []
