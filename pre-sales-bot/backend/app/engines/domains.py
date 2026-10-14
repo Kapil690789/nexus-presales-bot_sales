@@ -272,9 +272,40 @@ DOMAIN_BLUEPRINTS: dict[str, DomainBlueprint] = {
         ],
         discovery_question="What device telemetry frequency are you targeting, and will we ingest over MQTT or WebSockets?",
     ),
+    "taxtech": DomainBlueprint(
+        id="taxtech",
+        label="TaxTech & Accounting Compliance",
+        keywords=(
+            "tax", "taxes", "taxation", "accounting", "accountant", "gst", "vat",
+            "sales tax", "1099", "w-2", "w2", "w-9", "w9", "irs", "audit", "invoicing",
+            "invoice", "payroll", "quickbooks", "xero", "avalara", "taxjar", "deduction",
+            "expense tracking", "receipt ocr", "tax filing", "income tax", "corporate tax",
+        ),
+        compliance="SOC 2 Type II, IRS Pub 1075 data security, AES-256 encrypted tax forms, immutable double-entry ledger audit trails, multi-jurisdiction rules engine",
+        architecture_notes=[
+            "Store all PII, SSN/EIN, and tax returns in a dedicated AES-256 encrypted vault with access audit logging.",
+            "Implement a deterministic, multi-jurisdiction tax calculation engine (integrating Stripe Tax / Avalara / TaxJar).",
+            "Deploy an asynchronous document parsing pipeline (OCR + LLM extraction) for receipts, invoices, and bank statements.",
+        ],
+        frontend_recommendations=["Next.js Secure Client Portal", "Flutter Mobile Tax & Receipt Scanner"],
+        backend_recommendations=["FastAPI / Node.js + PostgreSQL (Double-Entry Ledger) + Redis Queue (OCR/Calculation)"],
+        key_features=[
+            {"label": "Automated GST / VAT calculation", "value": "Automated tax calculation"},
+            {"label": "1099 & W-2 / W-9 filing", "value": "Tax forms filing"},
+            {"label": "Stripe Tax & Avalara integration", "value": "Tax API integration"},
+            {"label": "Receipt OCR & deduction tracker", "value": "Receipt OCR"},
+        ],
+        discovery_question="Will you need multi-jurisdiction sales tax calculations (like Avalara/Stripe Tax) or direct government e-filing (IRS/GST)?",
+    ),
 }
 
 DOMAIN_ALIASES: dict[str, str] = {
+    "tax": "taxtech",
+    "taxes": "taxtech",
+    "taxation": "taxtech",
+    "accounting": "taxtech",
+    "payroll": "taxtech",
+    "invoicing": "taxtech",
     "healthtech": "health",
     "healthcare": "health",
     "telehealth": "health",

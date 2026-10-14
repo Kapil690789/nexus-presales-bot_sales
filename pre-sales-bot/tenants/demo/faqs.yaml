@@ -144,3 +144,18 @@ items:
     topic: support
     question: Do you provide emergency on-call support for critical production outages?
     answer: We offer tiered Service Level Agreements (SLAs) with 24/7 monitoring and rapid emergency response protocols for critical enterprise applications.
+  - id: tax_calculation_engine
+    topic: stack
+    tags: [tax, taxes, accounting, gst, vat, avalara, stripe_tax]
+    question: Can you build custom tax calculation software with GST, VAT, and sales tax?
+    answer: Yes, we build deterministic tax calculation engines supporting multi-state sales tax, VAT, and GST rules. We integrate enterprise tax APIs like Stripe Tax, Avalara, and TaxJar, alongside custom rate matrices and localized rule sets.
+  - id: tax_filing_compliance
+    topic: legal
+    tags: ["tax", "compliance", "irs", "security", "1099", "w2", "soc2"]
+    question: How do you handle compliance and security for tax filing and financial data?
+    answer: We enforce SOC 2 Type II controls and IRS data security guidelines, storing all tax forms (1099, W-2, W-9) in AES-256 encrypted vaults with immutable double-entry ledger audit trails and role-based access.
+  - id: receipt_ocr_accounting
+    topic: stack
+    tags: [tax, ocr, ai, receipts, accounting, deductions]
+    question: Can you integrate receipt OCR and automated expense deduction tracking?
+    answer: Yes, we deploy asynchronous computer vision pipelines using high-accuracy document OCR to automatically parse receipts, categorize business expenses, and calculate deductible write-offs directly into your accounting ledger.

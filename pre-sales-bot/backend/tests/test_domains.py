@@ -11,7 +11,7 @@ from backend.app.engines.domains import (
 def test_domain_blueprints_completeness():
     expected_domains = {
         "health", "fintech", "logistics", "ecommerce", "saas",
-        "ai_product", "edtech", "proptech", "legaltech", "iot"
+        "ai_product", "edtech", "proptech", "legaltech", "iot", "taxtech"
     }
     assert set(DOMAIN_BLUEPRINTS.keys()) == expected_domains
     for domain_id, bp in DOMAIN_BLUEPRINTS.items():
@@ -37,6 +37,7 @@ def test_detect_domain_from_text():
     assert detect_domain("Real estate property management with MLS IDX feed sync and tenant portal") == "proptech"
     assert detect_domain("Legal contract analyzer with OCR clause extraction and compliance audit") == "legaltech"
     assert detect_domain("IoT hardware sensor telemetry with MQTT ingestion and TimescaleDB") == "iot"
+    assert detect_domain("Automated tax calculation with GST filing and receipt OCR") == "taxtech"
 
 
 def test_detect_domain_from_brief_context():
@@ -45,6 +46,9 @@ def test_detect_domain_from_brief_context():
 
     brief_logistics = ProjectBrief(goal="Courier fleet dispatch", features=["Live GPS driver tracking"])
     assert detect_domain(brief=brief_logistics) == "logistics"
+
+    brief_tax = ProjectBrief(goal="Freelance tax return preparation", features=["Automated tax calculation"])
+    assert detect_domain(brief=brief_tax) == "taxtech"
 
 
 def test_detect_domain_returns_none_for_generic():
@@ -58,5 +62,6 @@ def test_get_domain_blueprint_aliases():
     assert get_domain_blueprint("banking").id == "fintech"
     assert get_domain_blueprint("delivery").id == "logistics"
     assert get_domain_blueprint("e-commerce").id == "ecommerce"
+    assert get_domain_blueprint("accounting").id == "taxtech"
     assert get_domain_blueprint("b2b_saas").id == "saas"
     assert get_domain_blueprint("unknown_xyz") is None

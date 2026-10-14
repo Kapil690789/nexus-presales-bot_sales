@@ -89,3 +89,12 @@ cases:
     tags: [ai, llm, chatbot, rag, documents, search, automation, assistant]
     outcome: Automated 70% of tier-1 support queries with grounded RAG and latency under 1.2 seconds.
     url: /work/omni-ai.html
+  - id: taxpulse-platform
+    title: TaxPulse — automated tax calculation & filing platform
+    industry: taxtech
+    service: web_app
+    platforms: [web, ios, android]
+    stacks: [Next.js, FastAPI, PostgreSQL, Redis, Stripe Tax]
+    tags: [tax, taxes, accounting, gst, vat, compliance, invoicing, ocr, fintech, web, mobile]
+    outcome: Architected multi-state sales tax calculation and automated 1099 filing handling $45M+ in processed transactions with 99.98% compliance accuracy.
+    url: /work/taxpulse.html
