@@ -23,6 +23,8 @@ def match_portfolio(brief: ProjectBrief, portfolio: PortfolioConfig, limit: int 
             inferred_industry = "logistics"
         elif any(w in full_text_context for w in ("health", "clinic", "doctor", "patient", "medical", "telemedicine", "hospital", "prescription")):
             inferred_industry = "health"
+        elif any(w in full_text_context for w in ("tax", "taxes", "taxation", "cpa", "gst", "vat")):
+            inferred_industry = "taxtech"
         elif any(w in full_text_context for w in ("fintech", "finance", "bank", "wallet", "crypto", "payment", "ledger", "invoice", "accounting")):
             inferred_industry = "fintech"
         elif any(w in full_text_context for w in ("shop", "ecommerce", "e-commerce", "retail", "store", "cart", "checkout")):

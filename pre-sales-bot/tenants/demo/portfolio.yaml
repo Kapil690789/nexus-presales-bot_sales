@@ -98,3 +98,12 @@ cases:
     tags: [tax, taxes, accounting, gst, vat, compliance, invoicing, ocr, fintech, web, mobile]
     outcome: Architected multi-state sales tax calculation and automated 1099 filing handling $45M+ in processed transactions with 99.98% compliance accuracy.
     url: /work/taxpulse.html
+  - id: taxadvisor-cpa-bot
+    title: TaxAdvisor AI — client intake & consultation bot for CPA firms
+    industry: taxtech
+    service: ai_product
+    platforms: [web, mobile]
+    stacks: [Next.js, FastAPI, Gemini, LangChain, Calendly, AWS Textract]
+    tags: [tax, taxes, cpa, chatbot, ai, assistant, consultation, intake, booking, ocr, "1099", "w2", rag, web, mobile]
+    outcome: Deployed an AI intake and consultation booking agent for a 40-CPA tax advisory practice, automating 68% of pre-season inquiries and booking 1,200+ qualified consultation calls in Q1.
+    url: /work/taxadvisor.html

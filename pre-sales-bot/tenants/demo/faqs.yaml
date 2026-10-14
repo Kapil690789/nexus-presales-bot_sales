@@ -159,3 +159,8 @@ items:
     tags: [tax, ocr, ai, receipts, accounting, deductions]
     question: Can you integrate receipt OCR and automated expense deduction tracking?
     answer: Yes, we deploy asynchronous computer vision pipelines using high-accuracy document OCR to automatically parse receipts, categorize business expenses, and calculate deductible write-offs directly into your accounting ledger.
+  - id: tax_consultation_chatbot
+    topic: stack
+    tags: [tax, taxes, cpa, chatbot, consultation, accounting, advisor, intake, booking]
+    question: Can you build an AI chatbot for a tax consultation company or CPA firm?
+    answer: Yes, we build secure AI intake and consultation bots tailored for CPA firms and tax practices. Core capabilities include automated client triage (1040 individual vs 1099 contractor vs corporate entity), tax document checklist delivery, receipt/W-2 OCR uploads, automated CPA appointment booking (Calendly/HubSpot), and grounded tax FAQ answers equipped with IRS Circular 230 compliance disclaimers.
