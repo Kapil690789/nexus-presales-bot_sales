@@ -184,4 +184,30 @@ items:
     tags: [tax, security, ssn, pii, encryption, irs, soc2, privacy]
     question: How do you protect sensitive tax documents, Social Security Numbers (SSN), and EINs?
     answer: We enforce AES-256 encryption at rest and TLS 1.3 in transit adhering to FTC Safeguards and IRS Pub 1075 standards. Sensitive PII like SSNs and bank details are masked before LLM ingestion, and zero customer data is used to train public foundation models.
+  - id: mvp_definition_scope
+    topic: process
+    tags: [mvp, "minimum viable product", definition, scope, concept, prototype, validate, v1]
+    question: What is an MVP (Minimum Viable Product) and how does it work?
+    answer: An MVP (Minimum Viable Product) is the leanest functional version of your product containing only core features needed to solve the primary problem and validate product-market fit with real users. We scope MVPs tightly into "Core vs Later" tiers, building a production-ready v1 in 4 to 8 weeks so you launch fast without burning budget on unvalidated features.
+  - id: mvp_vs_prototype
+    topic: process
+    tags: [prototype, mvp, figma, design, difference, proof_of_concept, poc]
+    question: What is the difference between a prototype, a POC, and an MVP?
+    answer: A prototype is an interactive design mockup (in Figma) to visualize UX and pitch investors. A POC (Proof of Concept) tests technical feasibility. An MVP is a live, working software product with real database, security, and authentication that actual customers can use and pay for.
+  - id: us_tax_state_filing
+    topic: stack
+    tags: [tax, irs, federal, "1040", "1099", "1120-s", state, nexus, sales_tax]
+    question: Can the tax bot handle both US Federal (IRS) and multi-state tax filing inquiries?
+    answer: Yes, the assistant handles federal 1040/1099 triage as well as multi-state sales tax and corporate nexus calculations, organizing forms by state and federal tax jurisdictions.
+  - id: india_gst_itr_ca
+    topic: stack
+    tags: [tax, gst, itr, ca, "chartered accountant", india, tds, tally, zoho]
+    question: Can the tax chatbot support Indian Chartered Accountant (CA) firms for GST and ITR filing?
+    answer: Yes, we support CA practices with automated ITR categorization (ITR-1 through ITR-4), GST filing reminders, GSTIN validation, and integration with accounting platforms like Tally and Zoho Books.
+  - id: uae_corporate_tax_vat
+    topic: stack
+    tags: [tax, uae, "corporate tax", vat, fta, dubai, middle_east]
+    question: Can you configure the chatbot for UAE Corporate Tax and VAT consultation?
+    answer: Yes, we support UAE Federal Tax Authority (FTA) compliance workflows, corporate tax registration triage, and VAT return preparation checklists for Middle East advisory firms.
+
 

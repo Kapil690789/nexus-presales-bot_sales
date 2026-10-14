@@ -83,6 +83,10 @@
     ".ps-panel.is-centered .ps-compose{padding:4px 16px 16px}",
     ".ps-thread{flex:1;min-height:0;overflow-x:hidden;overflow-y:auto;padding:16px 16px 8px;background:#0A0A0A}",
     ".ps-msg{width:fit-content;max-width:86%;margin:0 0 10px;padding:10px 12px;border-radius:14px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;animation:ps-msg-in 220ms ease-out}",
+    ".ps-msg-body{word-break:break-word}",
+    ".ps-msg-time{display:block;font-size:10px;line-height:1;margin-top:5px;opacity:0.65;user-select:none;font-weight:400}",
+    ".ps-msg.assistant .ps-msg-time{text-align:left;color:#A1A1AA}",
+    ".ps-msg.user .ps-msg-time{text-align:right;color:#E0E7FF}",
     ".ps-msg.assistant{background:#141518;color:#EDEDED;border:1px solid rgba(255,255,255,0.06);margin-right:auto;border-radius:4px 14px 14px 14px}",
     ".ps-msg.user{background:#2563EB;color:#fff;margin-left:auto;border-radius:14px 4px 14px 14px}",
     ".ps-msg.ps-typing{min-width:180px;padding:14px;animation:none}",
@@ -445,14 +449,24 @@
     return safe;
   }
 
+  function formatMsgTime() {
+    var now = new Date();
+    return now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
   function say(role, text) {
     if (!text) return null;
     var node = el("div", "ps-msg " + (role === "user" ? "user" : "assistant"));
+    var body = el("div", "ps-msg-body");
     if (role === "assistant") {
-      node.innerHTML = renderMarkdown(text);
+      body.innerHTML = renderMarkdown(text);
     } else {
-      node.textContent = text;
+      body.textContent = text;
     }
+    node.appendChild(body);
+    var timeNode = el("div", "ps-msg-time");
+    timeNode.textContent = formatMsgTime();
+    node.appendChild(timeNode);
     thread.appendChild(node);
     scrollThread();
     return node;
@@ -817,7 +831,12 @@
         };
         thumbs.appendChild(button);
       });
-      node.appendChild(thumbs);
+      var timeEl = node.querySelector(".ps-msg-time");
+      if (timeEl) {
+        node.insertBefore(thumbs, timeEl);
+      } else {
+        node.appendChild(thumbs);
+      }
     }
     scrollThread();
   }
@@ -990,7 +1009,7 @@
         if (m.classList.contains("ps-msg")) {
           var sender = m.classList.contains("user") ? "You" : (brand.widget_title || "Advisor");
           var clone = m.cloneNode(true);
-          var thumbs = clone.querySelectorAll(".ps-thumb, .ps-thumb-btn");
+          var thumbs = clone.querySelectorAll(".ps-thumb, .ps-thumb-btn, .ps-msg-time");
           for (var t = 0; t < thumbs.length; t++) thumbs[t].remove();
           var txt = clone.innerText.trim();
           lines.push("[" + sender + "]");
