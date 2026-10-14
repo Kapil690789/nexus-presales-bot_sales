@@ -24,3 +24,18 @@ items:
     reply: >
       We staff a named delivery lead and keep the core team stable. The consultation is where
       we introduce who would actually do the work.
+  tax_bad_advice:
+    topic: compliance
+    triggers: [wrong advice, hallucinate, sued, audit, bad tax advice, inaccurate advice]
+    reply: >
+      The AI is restricted by strict IRS Circular 230 guardrails to intake triage,
+      document collection, and scheduling. It never generates unreviewed tax positions
+      and hands off complex inquiries to your licensed CPAs.
+  tax_security_ssn:
+    topic: security
+    triggers: [ssn safe, leak tax data, privacy leak, steal tax docs, ssn breach]
+    reply: >
+      All tax forms and client records are encrypted with AES-256 and compliant with
+      IRS Pub 1075 protocols. SSNs and financial identifiers are masked before LLM
+      processing, and client data is never used to train models.
+

@@ -164,3 +164,24 @@ items:
     tags: [tax, taxes, cpa, chatbot, consultation, accounting, advisor, intake, booking]
     question: Can you build an AI chatbot for a tax consultation company or CPA firm?
     answer: Yes, we build secure AI intake and consultation bots tailored for CPA firms and tax practices. Core capabilities include automated client triage (1040 individual vs 1099 contractor vs corporate entity), tax document checklist delivery, receipt/W-2 OCR uploads, automated CPA appointment booking (Calendly/HubSpot), and grounded tax FAQ answers equipped with IRS Circular 230 compliance disclaimers.
+  - id: tax_liability_guardrails
+    topic: legal
+    tags: [tax, liability, compliance, circular230, cpa, hallucination, guardrails, advice]
+    question: What if the AI chatbot gives inaccurate tax advice or hallucinates tax deductions?
+    answer: We implement strict guardrails and IRS Circular 230 disclaimers to ensure the bot acts solely as an informational intake and scheduling assistant. It never provides unauthorized tax or legal opinions. Any edge-case or high-complexity tax scenario is automatically escalated to a licensed CPA.
+  - id: tax_software_integrations
+    topic: stack
+    tags: [tax, cpa, integration, karbon, canopy, taxdome, quickbooks, xero, drake, crm]
+    question: Can the tax chatbot integrate with our existing CPA software like Karbon, Canopy, or QuickBooks?
+    answer: Yes, we integrate with major tax practice management suites (Karbon, Canopy, TaxDome), accounting systems (QuickBooks Online, Xero), and scheduling tools (Calendly, Microsoft Bookings) via REST APIs and webhooks to synchronize client intake data and uploaded files automatically.
+  - id: tax_whatsapp_channel
+    topic: stack
+    tags: [tax, whatsapp, mobile, receipts, ocr, cpa, intake]
+    question: Can tax clients interact with the chatbot and submit receipts over WhatsApp?
+    answer: Yes, we deploy omnichannel bots via the official WhatsApp Business Cloud API. Clients can complete tax intake questionnaires, receive filing deadline reminders, and photograph tax receipts or forms directly in WhatsApp for automated OCR extraction.
+  - id: tax_ssn_data_security
+    topic: security
+    tags: [tax, security, ssn, pii, encryption, irs, soc2, privacy]
+    question: How do you protect sensitive tax documents, Social Security Numbers (SSN), and EINs?
+    answer: We enforce AES-256 encryption at rest and TLS 1.3 in transit adhering to FTC Safeguards and IRS Pub 1075 standards. Sensitive PII like SSNs and bank details are masked before LLM ingestion, and zero customer data is used to train public foundation models.
+
