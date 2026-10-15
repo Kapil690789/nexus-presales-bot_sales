@@ -22,7 +22,8 @@ JAILBREAK_RE = re.compile(
     r"|forget\s+(?:all\s+|your\s+|previous\s+|any\s+|the\s+)*(?:instructions?|rules?|guidelines?|constraints?)"
     r"|developer\s+mode(?:\s*:\s*|\s+enabled|\s+on\b)"
     r"|do\s+anything\s+now"
-    r"|\bDAN\s+(?:mode|prompt|jailbreak|protocol|\d+)\b|\b(?:mode|protocol)\s+DAN\b|\bDAN(?:\s*:\s*|\s+says\s+)|\byou\s+are\s+(?:now\s+)?DAN\b",
+    r"|\bDAN\s+(?:mode|prompt|jailbreak|protocol|\d+)\b|\b(?:mode|protocol)\s+DAN\b|\bDAN(?:\s*:\s*|\s+says\s+)|\byou\s+are\s+(?:now\s+)?DAN\b"
+    r"|<\|im_start\|>|<\|im_end\|>|<\|system\|>|\[/?INST\]|<<?/?SYS>>?|\[/?SYSTEM_INSTRUCTION\]",
     re.IGNORECASE,
 )
 LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "@": "a"})

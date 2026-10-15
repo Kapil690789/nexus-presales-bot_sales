@@ -39,6 +39,10 @@ def match_portfolio(brief: ProjectBrief, portfolio: PortfolioConfig, limit: int 
             inferred_industry = "marketplace"
         elif any(w in full_text_context for w in ("saas", "dashboard", "b2b", "portal", "ops", "admin")):
             inferred_industry = "saas"
+        elif any(w in full_text_context for w in ("real estate", "proptech", "property", "properties", "realtor", "broker", "mls", "idx", "leasing", "housing")):
+            inferred_industry = "proptech"
+        elif any(w in full_text_context for w in ("legal", "law", "lawyer", "attorney", "contract", "contracts", "litigation", "paralegal", "court")):
+            inferred_industry = "legaltech"
         elif any(w in full_text_context for w in ("design", "figma", "ui", "ux", "prototype")):
             inferred_industry = "b2b"
 

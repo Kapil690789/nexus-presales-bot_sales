@@ -209,5 +209,45 @@ items:
     tags: [tax, uae, "corporate tax", vat, fta, dubai, middle_east]
     question: Can you configure the chatbot for UAE Corporate Tax and VAT consultation?
     answer: Yes, we support UAE Federal Tax Authority (FTA) compliance workflows, corporate tax registration triage, and VAT return preparation checklists for Middle East advisory firms.
+  - id: hourly_rate_vs_fixed
+    topic: pricing
+    tags: [hourly, rate, pricing, retainer, fixed, cost, billing, milestone]
+    question: What is your hourly rate or billing structure?
+    answer: We typically work on dedicated monthly agile squad retainers (starting from $8,000 to $15,000 per month for a dedicated team) or fixed-milestone budgets for well-defined MVPs ($25,000 to $75,000). We avoid hourly billing so our team is incentivized to ship working software fast rather than padding hours.
+  - id: typical_mvp_timeline
+    topic: delivery
+    tags: [timeline, weeks, duration, launch, schedule, delivery, fast]
+    question: How long does a typical MVP or chatbot take to build and deploy?
+    answer: A focused v1 MVP or custom conversational AI assistant typically ships in 4 to 8 weeks from scoping sign-off to production launch. Larger enterprise systems with custom legacy database integrations generally take 10 to 16 weeks across 2-week agile sprints.
+  - id: proptech_chatbot_mls
+    topic: stack
+    tags: [proptech, "real estate", property, mls, idx, broker, buyer, tours, showings]
+    question: Can you build a Real Estate chatbot that integrates with MLS or IDX property feeds?
+    answer: Yes, we connect with MLS and IDX feeds via RESO Web API and PostGIS geospatial indexing. The bot qualifies prospective buyers, filters listings by neighborhood and budget, and books private showing tours directly onto agents' Google or Outlook calendars.
+  - id: legaltech_chatbot_intake
+    topic: stack
+    tags: [legal, legaltech, law, lawyer, attorney, intake, consultation, clio]
+    question: Can you build an AI intake chatbot for law firms and legal practices?
+    answer: Yes, we build 24/7 law firm intake bots equipped with Model Rule 1.6 non-legal-advice disclaimers. The assistant collects case specifics, flags preliminary opposing-party conflicts, syncs case notes to Clio or MyCase, and books paid attorney consultations.
+  - id: ai_models_supported
+    topic: stack
+    tags: [models, gemini, claude, gpt, gpt4, llm, anthropic, openai]
+    question: Which AI models and LLMs do you use for custom chatbots?
+    answer: We support and integrate all leading foundation models including Google Gemini 1.5/2.0 Flash and Pro, Anthropic Claude 3.5 Sonnet, OpenAI GPT-4o, as well as private self-hosted open-source models like Llama 3 on vLLM when data residency demands on-premise execution.
+  - id: prevent_ai_hallucinations
+    topic: delivery
+    tags: [hallucination, accuracy, rag, grounding, guardrails, reliability]
+    question: How do you prevent AI chatbots from hallucinating or providing inaccurate information?
+    answer: We implement strict Retrieval-Augmented Generation (RAG) with relevance grading, confidence thresholds, and citation verification. If the system does not find verified internal documentation to answer a visitor query, it automatically refuses to guess and offers to connect them with a human specialist.
+  - id: multilingual_voice_support
+    topic: stack
+    tags: [language, multilingual, voice, hindi, spanish, arabic, whatsapp, audio]
+    question: Can your chatbots support multilingual visitors and WhatsApp voice notes?
+    answer: Yes, our assistants support over 50 languages natively (including English, Spanish, French, Hindi, and Arabic). On channels like WhatsApp, we pipe voice notes through OpenAI Whisper for instant transcription and conversational responses.
+  - id: crm_enterprise_integrations
+    topic: stack
+    tags: [crm, hubspot, salesforce, zoho, slack, webhook, integration]
+    question: Can the chatbot push leads directly into our CRM like HubSpot, Salesforce, or Zoho?
+    answer: Yes, we build two-way webhook integrations with HubSpot, Salesforce, Zoho CRM, Pipedrive, and Slack. Every captured lead, project brief, and booking is dished into your CRM with full qualification scores and conversation summaries in real time.
 
 

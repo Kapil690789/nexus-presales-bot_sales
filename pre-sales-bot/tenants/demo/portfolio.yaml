@@ -107,3 +107,21 @@ cases:
     tags: [tax, taxes, cpa, chatbot, ai, assistant, consultation, intake, booking, ocr, "1099", "w2", rag, web, mobile]
     outcome: Deployed an AI intake and consultation booking agent for a 40-CPA tax advisory practice, automating 68% of pre-season inquiries and booking 1,200+ qualified consultation calls in Q1.
     url: /work/taxadvisor.html
+  - id: propadvisor-real-estate
+    title: PropAdvisor AI — buyer qualification & showing scheduler
+    industry: proptech
+    service: ai_product
+    platforms: [web, mobile]
+    stacks: [Next.js, FastAPI, RESO Web API, PostGIS, Google Calendar]
+    tags: [proptech, "real estate", property, mls, idx, broker, buyer, qualification, scheduler, booking, ai, chatbot]
+    outcome: Deployed an automated MLS buyer qualification assistant for a 60-agent residential brokerage, qualifying 4,500+ home buyers and scheduling 850+ verified property showings.
+    url: /work/propadvisor.html
+  - id: lexilead-legal-intake
+    title: LexiLead AI — 24/7 client intake & conflict check assistant
+    industry: legaltech
+    service: ai_product
+    platforms: [web]
+    stacks: [Next.js, FastAPI, PostgreSQL, Clio API, DocuSign]
+    tags: [legal, legaltech, law, lawyer, attorney, intake, consultation, conflict, compliance, nda, ai, chatbot]
+    outcome: Automated after-hours legal consultation intake for a 35-attorney litigation firm, processing 450+ qualified case evaluations monthly with zero unauthorized advice disclaimers.
+    url: /work/lexilead.html

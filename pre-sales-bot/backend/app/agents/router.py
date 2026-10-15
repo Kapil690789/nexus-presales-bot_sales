@@ -55,7 +55,7 @@ EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 OPEN = re.compile(r"\?|^(what|how|who|why|when|where|can|do|does|is|are|have)\b", re.IGNORECASE)
 BOOK = re.compile(r"\b(book|schedule|reschedule)\b.{0,40}\b(call|meeting|consultation|time)\b|\breschedule\b", re.IGNORECASE)
 OUT_OF_SCOPE = ("shopify", "crypto", "web3", "homework", "student project")
-ACTION = {"show_portfolio", "booking_window", "booking_slot", "nda", "close_out", "view_mvp", "email_instead", "continue_discovery", "sharpen_estimate"}
+ACTION = {"show_portfolio", "booking_window", "booking_slot", "nda", "close_out", "view_mvp", "email_instead", "continue_discovery", "sharpen_estimate", "talk_human"}
 
 _OBJECTION_CUES = re.compile(
     r"\b(expensive|cost|costly|price|pricing|cheaper|discount|afford|budget\s+is\s+tight|too\s+long|slow|faster|fixed\s+price|fixed\s+bid|lump\s+sum|offshore|outsourced|negotiate|guarantee)\b",
@@ -200,7 +200,11 @@ QUESTION_INQUIRY_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 YOUR_NOUN_PHRASE = re.compile(r"^\s*your\s+[a-z0-9_-]+(\s+[a-z0-9_-]+){0,4}\s*$", re.IGNORECASE)
-KNOWN_CASE_STUDIES = {"zephyr", "harbor", "atlas", "ledgerly", "harvest", "northstar"}
+KNOWN_CASE_STUDIES = {
+    "zephyr", "harbor", "atlas", "ledgerly", "harvest", "northstar",
+    "swiftdrop", "aura", "novapay", "kinetix", "omnicopilot",
+    "taxpulse", "taxadvisor", "propadvisor", "lexilead",
+}
 
 
 def _is_question_like(text: str) -> bool:
@@ -625,18 +629,23 @@ def run_turn(
             )
 
     is_portfolio_request = field == "show_portfolio" or bool(
-        text and re.search(r"\b(show|see|any|have)\b.{0,30}\b(clients?|case\s+stud|portfolio|examples?)\b|\b(client\s+in|case\s+study\s+in)\b", text, re.IGNORECASE)
+        text and re.search(r"\b(show|see|any|have)\b.{0,30}\b(clients?|case\s+stud(?:y|ies)?|portfolio|examples?)\b|\b(client\s+in|case\s+stud(?:y|ies)?\s+in)\b", text, re.IGNORECASE)
     )
     if is_portfolio_request:
         brief_for_match = brief
         if not brief.industry and text:
-            low_t = text.lower()
-            if "health" in low_t:
-                brief_for_match = brief.model_copy(update={"industry": "health"})
-            elif "fintech" in low_t or "finance" in low_t:
-                brief_for_match = brief.model_copy(update={"industry": "fintech"})
-            elif "market" in low_t:
-                brief_for_match = brief.model_copy(update={"industry": "marketplace"})
+            from backend.app.engines.domains import detect_domain
+            detected = detect_domain(text=text, brief=brief)
+            if detected:
+                brief_for_match = brief.model_copy(update={"industry": detected})
+            else:
+                low_t = text.lower()
+                if "health" in low_t:
+                    brief_for_match = brief.model_copy(update={"industry": "health"})
+                elif "fintech" in low_t or "finance" in low_t:
+                    brief_for_match = brief.model_copy(update={"industry": "fintech"})
+                elif "market" in low_t:
+                    brief_for_match = brief.model_copy(update={"industry": "marketplace"})
         cases = match_portfolio(brief_for_match, config.portfolio)
         is_sample = getattr(config, "slug", "") == "demo" or tenant.slug == "demo"
         for c in cases:

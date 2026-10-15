@@ -167,10 +167,34 @@ def model_source(model_id: str) -> str:
     return model_id if model_id != HASH_MODEL else BASE_MODEL
 
 
+_QUERY_EMBED_CACHE: dict[tuple[str, str], EmbeddingBatch] = {}
+_QUERY_EMBED_LOCK = threading.Lock()
+_MAX_QUERY_CACHE = 500
+
+
+def clear_query_embedding_cache() -> None:
+    with _QUERY_EMBED_LOCK:
+        _QUERY_EMBED_CACHE.clear()
+
+
 def embed_query(query: str, model_id: str | None = None) -> EmbeddingBatch:
     t0 = time.perf_counter()
+    target_model = model_id or (HASH_MODEL if embedding_backend() == "hash" else model_id_for(None))
+    cache_key = (query.strip(), target_model)
+    with _QUERY_EMBED_LOCK:
+        if cache_key in _QUERY_EMBED_CACHE:
+            batch = _QUERY_EMBED_CACHE[cache_key]
+            elapsed_ms = (time.perf_counter() - t0) * 1000.0
+            query_embedding_duration_ms.set(query_embedding_duration_ms.get() + elapsed_ms)
+            return batch
     try:
-        return embed_texts([query], model_id=model_id, mode="query")
+        batch = embed_texts([query], model_id=model_id, mode="query")
+        if batch and batch.vectors:
+            with _QUERY_EMBED_LOCK:
+                if len(_QUERY_EMBED_CACHE) >= _MAX_QUERY_CACHE:
+                    _QUERY_EMBED_CACHE.pop(next(iter(_QUERY_EMBED_CACHE)))
+                _QUERY_EMBED_CACHE[cache_key] = batch
+        return batch
     finally:
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         query_embedding_duration_ms.set(query_embedding_duration_ms.get() + elapsed_ms)
