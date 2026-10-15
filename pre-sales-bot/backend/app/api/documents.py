@@ -80,6 +80,8 @@ async def upload_document(
         return _refused_upload(db, session, config)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Could not read document contents. Please upload an unencrypted, valid PDF, DOCX, TXT, or Markdown file.") from exc
 
     # Keep only extracted text (max 20000 characters), file is not saved to disk
     excerpt = excerpt[:20000]

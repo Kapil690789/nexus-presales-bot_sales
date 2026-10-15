@@ -6,19 +6,21 @@ import unicodedata
 ZERO_WIDTH = re.compile(r"[\u200b\u200c\u200d\ufeff]")
 VISITOR_TAG = re.compile(r"<\s*/?\s*visitor\s*>", re.IGNORECASE)
 JAILBREAK_RE = re.compile(
-    r"ignore\s+previous"
-    r"|ignore\s+all\s+instructions"
+    r"ignore\s+(?:all\s+|previous\s+|any\s+|the\s+)*(?:instructions?|rules?|guidelines?|constraints?|prompts?|directives?)"
+    r"|ignore\s+previous"
     r"|system\s+prompt"
     r"|you\s+are\s+now\s+an?\s+unrestricted"
     r"|you\s+are\s+now\s+(?:a\s+)?(?:free|unrestricted|jailbroken)"
     r"|you\s+are\s+now(?!\s+(?:able|allowed|ready|set))"
-    r"|disregard\s+your\s+rules"
-    r"|reveal\s+(?:your\s+)?(?:system|backend|api|database|internal)"
+    r"|disregard\s+(?:all\s+|your\s+|previous\s+|any\s+|the\s+)*(?:rules?|instructions?|guidelines?|safety|constraints?)"
+    r"|(?:reveal|show|print|output|repeat|dump)\s+(?:all\s+|your\s+|the\s+)*(?:system|backend|api|database|internal|developer\s+instructions?|instructions?|everything\s+above)"
+    r"|(?:what\s+are|what\s+is)\s+(?:all\s+|your\s+|the\s+)*(?:developer\s+instructions?|system\s+prompts?|hidden\s+rules?)"
     r"|act\s+as\s+(?:an?\s+)?(?:unrestricted|uncensored|evil|dan|jailbroken)"
     r"|pretend\s+(?:you\s+are|to\s+be)\s+(?:an?\s+)?(?:unrestricted|uncensored|different)"
-    r"|override\s+your\s+(?:instructions|rules|programming|guidelines)"
-    r"|bypass\s+your\s+(?:instructions|rules|safety|filter)"
-    r"|forget\s+(?:your\s+)?(?:previous\s+)?instructions"
+    r"|override\s+(?:all\s+|your\s+|previous\s+|any\s+|the\s+)*(?:instructions?|rules?|programming|guidelines?|safety|filters?)"
+    r"|bypass\s+(?:all\s+|your\s+|previous\s+|any\s+|the\s+)*(?:instructions?|rules?|safety|filters?|guardrails?|guidelines?)"
+    r"|forget\s+(?:all\s+|your\s+|previous\s+|any\s+|the\s+)*(?:instructions?|rules?|guidelines?|constraints?)"
+    r"|developer\s+mode(?:\s*:\s*|\s+enabled|\s+on\b)"
     r"|do\s+anything\s+now"
     r"|\bDAN\s+(?:mode|prompt|jailbreak|protocol|\d+)\b|\b(?:mode|protocol)\s+DAN\b|\bDAN(?:\s*:\s*|\s+says\s+)|\byou\s+are\s+(?:now\s+)?DAN\b",
     re.IGNORECASE,
