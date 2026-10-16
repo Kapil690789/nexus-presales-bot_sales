@@ -106,9 +106,13 @@ def _heuristic_extract(
         if out_of_scope is None
         else tuple(t.lower().strip() for t in out_of_scope if t and t.strip())
     )
-    if any(token in lowered for token in oos_tokens):
-        res["service"] = "out_of_scope"
-        return res
+    is_chatbot_integration = any(k in lowered for k in ("chatbot", "bot", "assistant", "ai integration", "integrate", "integration"))
+    for token in oos_tokens:
+        if token in lowered:
+            if token == "shopify" and is_chatbot_integration:
+                continue
+            res["service"] = "out_of_scope"
+            return res
 
     # Check question
     is_q_start = bool(re.match(r"^(how|what|who|why|when|where|can|do|does|is|are|have|tell me about)\b", lowered))

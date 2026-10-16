@@ -125,3 +125,39 @@ cases:
     tags: [legal, legaltech, law, lawyer, attorney, intake, consultation, conflict, compliance, nda, ai, chatbot]
     outcome: Automated after-hours legal consultation intake for a 35-attorney litigation firm, processing 450+ qualified case evaluations monthly with zero unauthorized advice disclaimers.
     url: /work/lexilead.html
+  - id: talentflow-hr-ai
+    title: TalentFlow AI — candidate screening & interview scheduler
+    industry: hrtech
+    service: ai_product
+    platforms: [web, mobile]
+    stacks: [Next.js, FastAPI, LayoutLM, Greenhouse API, Calendly]
+    tags: [hr, hrtech, recruiting, staffing, interview, ats, resume, screening, greenhouse, ai, chatbot]
+    outcome: Deployed an AI candidate pre-screening and interview scheduling assistant for a 200-person tech recruiter, reviewing 8,000+ resumes and booking 950+ qualified technical screens with zero scheduling conflicts.
+    url: /work/talentflow.html
+  - id: claimscout-insurance-ai
+    title: ClaimScout AI — FNOL claims intake & damage inspection assistant
+    industry: insurtech
+    service: ai_product
+    platforms: [web, mobile]
+    stacks: [Next.js, Flutter, FastAPI, Gemini Vision, S3, Guidewire API]
+    tags: [insurance, insurtech, claim, fnol, policy, damage, inspection, adjuster, ai, chatbot]
+    outcome: Automated First Notice of Loss (FNOL) intake for a regional casualty insurer, reducing initial claim submission time from 45 minutes to 6 minutes with instant damage photo AI severity classification.
+    url: /work/claimscout.html
+  - id: drivepulse-auto-ai
+    title: DrivePulse AI — dealership test drive & service scheduler
+    industry: auto
+    service: ai_product
+    platforms: [web, mobile]
+    stacks: [Next.js, FastAPI, DealerSocket API, NHTSA VIN API, Twilio]
+    tags: [auto, automotive, dealership, car, test drive, trade-in, inventory, vin, dealersocket, ai, chatbot]
+    outcome: Built an automated showroom assistant for an 8-rooftop automotive dealer group, generating 2,100+ qualified test drive appointments and delivering 3.4x faster lead response times.
+    url: /work/drivepulse.html
+  - id: staywise-hospitality-ai
+    title: StayWise AI — 24/7 guest concierge & dining reservation assistant
+    industry: hospitality
+    service: ai_product
+    platforms: [web, mobile]
+    stacks: [Next.js, FastAPI, OpenTable API, Opera PMS, WhatsApp]
+    tags: [hospitality, hotel, restaurant, dining, reservation, concierge, opentable, pms, ai, chatbot]
+    outcome: Deployed a multi-lingual guest concierge assistant across 4 boutique hotel properties, handling 85% of guest dining and amenity requests and increasing direct on-premise dining bookings by 38%.
+    url: /work/staywise.html

@@ -249,5 +249,46 @@ items:
     tags: [crm, hubspot, salesforce, zoho, slack, webhook, integration]
     question: Can the chatbot push leads directly into our CRM like HubSpot, Salesforce, or Zoho?
     answer: Yes, we build two-way webhook integrations with HubSpot, Salesforce, Zoho CRM, Pipedrive, and Slack. Every captured lead, project brief, and booking is dished into your CRM with full qualification scores and conversation summaries in real time.
+  - id: health_hipaa_telehealth
+    topic: security
+    tags: [health, telehealth, hipaa, clinic, doctor, ehr, fhir, baa]
+    question: Can you build a healthcare or telehealth chatbot that is HIPAA compliant?
+    answer: Yes, we build HIPAA and HITECH compliant healthcare chatbots. All protected health information (PHI) is encrypted at rest (AES-256) and in transit (TLS 1.3), hosted on dedicated BAA-covered cloud infrastructure (AWS GovCloud or HIPAA-compliant ECS), with WebRTC end-to-end encrypted video for telehealth consultations.
+  - id: health_ehr_integration
+    topic: stack
+    tags: [health, ehr, emr, epic, cerner, kareo, fhir, hl7]
+    question: Can the medical chatbot integrate with our EHR or practice management systems like Epic, Cerner, or Kareo?
+    answer: Yes, we integrate with major electronic health record (EHR) and practice management systems via HL7 and FHIR REST APIs. The assistant can check appointment availability, register new patients, triage intake questionnaires, and sync visit summaries directly into Epic, Cerner, AthenaHealth, or Kareo.
+  - id: ecommerce_shopify_order_tracking
+    topic: stack
+    tags: [ecommerce, shopify, tracking, returns, orders, woocommerce, klaviyo]
+    question: Can you build an e-commerce chatbot for Shopify or WooCommerce to track orders and handle returns?
+    answer: Yes, we connect directly with Shopify, WooCommerce, and Magento APIs. The bot authenticates shoppers via order number or phone, provides real-time courier tracking updates, processes automated return authorizations (RMA), and handles self-service order cancellations without human intervention.
+  - id: fintech_loan_prequalification
+    topic: stack
+    tags: [fintech, loan, lending, mortgage, banking, pci, plaid, kyc]
+    question: Can you build an AI assistant for banking or fintech loan pre-qualification?
+    answer: Yes, we deploy conversational loan pre-qualification bots equipped with bank-grade KYC/AML verification (Plaid, Persona) and credit bureau score estimations. The bot collects borrower income, calculates debt-to-income (DTI) ratios, and routes pre-approved files into your loan origination system (LOS).
+  - id: hr_candidate_screening_bot
+    topic: stack
+    tags: [hr, recruiting, staffing, greenhouse, lever, ats, interview, hiring]
+    question: Can you build an AI HR chatbot for candidate screening, interview scheduling, and ATS integration?
+    answer: Yes, we build 24/7 talent acquisition assistants that pre-screen job applicants, parse resumes, verify minimum role requirements, and sync qualified candidate profiles into ATS platforms like Greenhouse, Lever, and Workday, booking initial phone screens directly into recruiters' calendars.
+  - id: insurance_fnol_claims_bot
+    topic: stack
+    tags: [insurance, claims, fnol, policy, damage, adjuster, insurtech]
+    question: Can you build an insurance chatbot for First Notice of Loss (FNOL) claims and policy quote generation?
+    answer: Yes, we build automated insurance FNOL bots that guide policyholders through claim reporting, collect incident timestamps and location data, ingest photo evidence of vehicle or property damage, verify policy deductibles, and dispatch files to claims adjusters or Guidewire systems.
+  - id: auto_dealership_test_drive_bot
+    topic: stack
+    tags: [auto, dealership, car, "test drive", "trade-in", vin, dealersocket]
+    question: Can you build an automotive chatbot for dealership test drives, inventory lookup, and trade-in appraisals?
+    answer: Yes, we connect with dealer management systems (DMS) like DealerSocket and Reynolds & Reynolds to search live lot inventory, decode VINs via NHTSA, calculate Kelly Blue Book trade-in estimates, and schedule confirmed test drive appointments onto showroom sales calendars.
+  - id: hospitality_restaurant_hotel_bot
+    topic: stack
+    tags: [hospitality, hotel, restaurant, dining, reservation, concierge, opentable, toast]
+    question: Can you build an AI reservation and concierge bot for restaurants or hotels with OpenTable or PMS integration?
+    answer: Yes, we build multi-lingual reservation and concierge assistants that lock real-time dining tables via OpenTable or Toast POS, answer dietary and menu questions, recommend local attractions, and integrate hotel bookings into PMS systems like Opera.
+
 
 

@@ -43,6 +43,14 @@ def match_portfolio(brief: ProjectBrief, portfolio: PortfolioConfig, limit: int 
             inferred_industry = "proptech"
         elif any(w in full_text_context for w in ("legal", "law", "lawyer", "attorney", "contract", "contracts", "litigation", "paralegal", "court")):
             inferred_industry = "legaltech"
+        elif any(w in full_text_context for w in ("hr", "recruiting", "recruitment", "staffing", "talent", "hiring", "applicant", "resume", "ats", "greenhouse", "lever")):
+            inferred_industry = "hrtech"
+        elif any(w in full_text_context for w in ("insurance", "insurtech", "claim", "claims", "fnol", "policy", "underwriting", "adjuster", "deductible", "insuretech")):
+            inferred_industry = "insurtech"
+        elif any(w in full_text_context for w in ("auto", "automotive", "dealership", "car", "cars", "vehicle", "test drive", "trade-in", "dealersocket", "reynolds")):
+            inferred_industry = "auto"
+        elif any(w in full_text_context for w in ("hotel", "hotels", "hospitality", "restaurant", "dining", "reservation", "concierge", "opentable", "sevenrooms", "toast")):
+            inferred_industry = "hospitality"
         elif any(w in full_text_context for w in ("design", "figma", "ui", "ux", "prototype")):
             inferred_industry = "b2b"
 

@@ -218,3 +218,56 @@ def test_tech_stack_inquiry_chip_click_with_tax_brief():
         assert "Tax" in msg or "Double-Entry" in msg or "PostgreSQL" in msg or "FastAPI" in msg
         assert any(c.get("type") == "shape" for c in res.get("cards", []))
 
+
+def test_multidomain_portfolio_and_case_studies():
+    config = load_tenant("demo")
+
+    brief_hr = ProjectBrief(goal="Talent acquisition screening and candidate interview booking")
+    matched_hr = match_portfolio(brief_hr, config.portfolio, limit=3)
+    assert any("talentflow" in c["id"] for c in matched_hr)
+
+    brief_ins = ProjectBrief(goal="Insurance claims First Notice of Loss with vehicle damage photo assessment")
+    matched_ins = match_portfolio(brief_ins, config.portfolio, limit=3)
+    assert any("claimscout" in c["id"] for c in matched_ins)
+
+    brief_auto = ProjectBrief(goal="Automotive dealership test drive appointments with live lot inventory")
+    matched_auto = match_portfolio(brief_auto, config.portfolio, limit=3)
+    assert any("drivepulse" in c["id"] for c in matched_auto)
+
+    brief_hosp = ProjectBrief(goal="Hotel guest concierge and restaurant dining table reservations")
+    matched_hosp = match_portfolio(brief_hosp, config.portfolio, limit=3)
+    assert any("staywise" in c["id"] for c in matched_hosp)
+
+
+def test_multidomain_rag_faq_retrieval():
+    with SessionLocal() as db:
+        from backend.app.rag.ingest import ingest_all
+        ingest_all(db)
+        from backend.app.tenants.loader import ensure_tenant_row
+        tenant_row = ensure_tenant_row(db, "demo")
+        config = load_tenant("demo")
+        def ask_faq(q: str):
+            sess = SessionRow(tenant_id=tenant_row.id, stage="discovery")
+            return run_turn(db=db, tenant=tenant_row, config=config, session=sess, history=[], user_text=q, chip=None)
+
+        # Test HIPAA telehealth FAQ retrieval
+        res_health = ask_faq("Can you build a healthcare or telehealth chatbot that is HIPAA compliant?")
+        assert res_health["route"] == "faq"
+        assert "HIPAA" in res_health["message"]
+
+        # Test Shopify order tracking FAQ retrieval
+        res_ecom = ask_faq("Can you build an e-commerce chatbot for Shopify or WooCommerce to track orders and handle returns?")
+        assert res_ecom["route"] == "faq"
+        assert "Shopify" in res_ecom["message"]
+
+        # Test HR candidate screening FAQ retrieval
+        res_hr = ask_faq("Can you build an AI HR chatbot for candidate screening, interview scheduling, and ATS integration?")
+        assert res_hr["route"] == "faq"
+        assert "Greenhouse" in res_hr["message"] or "screening" in res_hr["message"].lower()
+
+        # Test Insurance FNOL claims FAQ retrieval
+        res_ins = ask_faq("Can you build an insurance chatbot for First Notice of Loss (FNOL) claims and policy quote generation?")
+        assert res_ins["route"] == "faq"
+        assert "FNOL" in res_ins["message"] or "claims" in res_ins["message"].lower()
+
+

@@ -204,6 +204,7 @@ KNOWN_CASE_STUDIES = {
     "zephyr", "harbor", "atlas", "ledgerly", "harvest", "northstar",
     "swiftdrop", "aura", "novapay", "kinetix", "omnicopilot",
     "taxpulse", "taxadvisor", "propadvisor", "lexilead",
+    "talentflow", "claimscout", "drivepulse", "staywise",
 }
 
 
