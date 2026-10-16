@@ -113,3 +113,108 @@ def test_talk_human_action_chip_unblocked():
         )
         assert res["route"] == "human_escalation"
         assert "connect you with our engineering team" in res["message"]
+
+
+def test_recommend_architecture_domain_adaptation():
+    from backend.app.engines.architecture import recommend_architecture
+    config = load_tenant("demo")
+
+    # AI Product (Web)
+    brief_ai = ProjectBrief(service="ai_product", goal="Enterprise AI assistant with RAG", platforms=["web"])
+    arch_ai = recommend_architecture(brief_ai, config.services)
+    assert any("Vercel AI SDK" in f or "Next.js" in f for f in arch_ai["frontend"])
+    assert any("pgvector" in b or "FastAPI" in b for b in arch_ai["backend"])
+    assert any("Redis semantic caching" in n for n in arch_ai["notes"])
+
+    # TaxTech (Web)
+    brief_tax = ProjectBrief(service="web_app", goal="Tax consultation and CPA client intake portal", platforms=["web"])
+    arch_tax = recommend_architecture(brief_tax, config.services)
+    assert any("Client Portal" in f or "Next.js" in f for f in arch_tax["frontend"])
+    assert any("Double-Entry" in b for b in arch_tax["backend"])
+    assert any("IRS" in n or "AES-256" in n or "CPA" in n for n in arch_tax["notes"])
+
+    # TaxTech (Mobile)
+    brief_tax_mob = ProjectBrief(service="mobile_app", goal="Tax consultation and receipt scanner", platforms=["ios", "android"])
+    arch_tax_mob = recommend_architecture(brief_tax_mob, config.services)
+    assert any("Flutter" in f or "Mobile" in f for f in arch_tax_mob["frontend"])
+
+    # PropTech (Web)
+    brief_prop = ProjectBrief(service="web_app", goal="Real estate property search with MLS IDX feed", platforms=["web"])
+    arch_prop = recommend_architecture(brief_prop, config.services)
+    assert any("Mapbox" in f for f in arch_prop["frontend"])
+    assert any("PostGIS" in b for b in arch_prop["backend"])
+
+
+def test_tech_stack_inquiry_with_scoped_ai_brief():
+    with SessionLocal() as db:
+        tenant_row = TenantRow(slug="demo", name="Nexus")
+        config = load_tenant("demo")
+        # When brief is fully ready and has estimate
+        brief = ProjectBrief(
+            service="ai_product",
+            goal="I want to add AI to my product",
+            platforms=["web"],
+            features=["Human-in-the-loop review"],
+            timeline="1_to_3_months",
+            budget_band="tier_30_50k",
+            decision_role="founder_exec",
+        )
+        session = SessionRow(
+            tenant_id=tenant_row.id,
+            stage="advising",
+            brief_json=brief.model_dump_json(),
+            estimate_json='{"range_label": "$38,000–$47,500 USD", "timeline_weeks": 14}',
+        )
+
+        res = run_turn(
+            db=db,
+            tenant=tenant_row,
+            config=config,
+            session=session,
+            history=[],
+            user_text="What tech stack do you recommend for this?",
+            chip=None,
+        )
+        msg = res["message"]
+        # Must not be the generic static agency FAQ line
+        assert "We build modern web, mobile, and cloud solutions using frameworks like React, Node.js" not in msg
+        # Must provide tailored architecture
+        assert "Next.js" in msg or "FastAPI" in msg or "Frontend" in msg or "Channels" in msg
+        # Must attach shape card
+        cards = res.get("cards") or []
+        assert any(c.get("type") == "shape" for c in cards)
+        # Must offer consultative next steps
+        chips = res.get("chips") or []
+        assert any(c.get("field") == "booking_window" for c in chips)
+
+
+def test_tech_stack_inquiry_chip_click_with_tax_brief():
+    with SessionLocal() as db:
+        tenant_row = TenantRow(slug="demo", name="Nexus")
+        config = load_tenant("demo")
+        brief = ProjectBrief(
+            service="ai_product",
+            goal="AI client intake and consultation assistant for CPA tax practice",
+            platforms=["web"],
+        )
+        session = SessionRow(
+            tenant_id=tenant_row.id,
+            stage="advising",
+            brief_json=brief.model_dump_json(),
+        )
+
+        # Triggered via chip click
+        res = run_turn(
+            db=db,
+            tenant=tenant_row,
+            config=config,
+            session=session,
+            history=[],
+            user_text="",
+            chip={"field": "ask", "value": "What tech stack do you recommend for this?"},
+        )
+        msg = res["message"]
+        assert "We build modern web, mobile, and cloud solutions using frameworks like React, Node.js" not in msg
+        assert "Tax" in msg or "Double-Entry" in msg or "PostgreSQL" in msg or "FastAPI" in msg
+        assert any(c.get("type") == "shape" for c in res.get("cards", []))
+

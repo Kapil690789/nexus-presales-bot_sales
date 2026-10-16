@@ -252,6 +252,8 @@ def run_turn(
     chip = chip or {}
     field = str(chip.get("field") or "").strip()
     value = chip.get("value")
+    if not text and value and field == "ask":
+        text = str(value).strip()
     if field == "ask":
         field = ""
         value = None
@@ -1051,6 +1053,38 @@ def run_turn(
                         timings=timings,
                     )
 
+            # If this is a tech stack FAQ hit and the client has a scoped project, provide tailored architecture
+            is_stack_hit = getattr(hit, "id", "") == "stack" or getattr(hit, "topic", "") == "stack" or bool(TECH_STACK_INQUIRY_RE.search(text))
+            if is_stack_hit and (brief.service or brief.goal):
+                arch = recommend_architecture(brief, config.services)
+                mvp_res = recommend_mvp(brief)
+                message = _tailored_architecture_advisory(config, brief, text)
+                extra = _continuation(brief, history) if not brief_ready(brief) else None
+                if extra:
+                    message = f"{message}\n\n{extra[0]}"
+                    chips = list(extra[1])
+                else:
+                    chips = [
+                        {"label": "Book a call", "field": "booking_window", "value": "this_week"},
+                        {"label": "See sample projects", "field": "show_portfolio", "value": "yes"},
+                        {"label": "Talk to a human", "field": "talk_human", "value": "human"},
+                    ] if (brief_ready(brief) or session.estimate_json) else _next_chips(brief)
+
+                cards = [build_shape_card(arch, mvp_res)]
+                return _finish(
+                    session, brief, contact, summary,
+                    message=message,
+                    stage=session.stage or ("advising" if brief_ready(brief) else "discovery"),
+                    route="faq",
+                    chips=chips,
+                    cards=cards,
+                    passages=[hit.content],
+                    chunk_ids=[hit.id],
+                    query=queries[0],
+                    score=hit.score,
+                    timings=timings,
+                )
+
             message = hit.content
             extra = _continuation(brief, history)
             if extra:
@@ -1096,6 +1130,33 @@ def run_turn(
         platform = get_platform()
         is_weak = decision == "weak" or (platform.weak_min_score <= score < platform.show_min_score)
         weak_notes = hits[:3] if is_weak and hits else None
+
+        is_stack_fallback = bool(TECH_STACK_INQUIRY_RE.search(text)) and (brief.service or brief.goal) and not weak_notes
+        if is_stack_fallback:
+            arch = recommend_architecture(brief, config.services)
+            mvp_res = recommend_mvp(brief)
+            message = _tailored_architecture_advisory(config, brief, text)
+            extra = _continuation(brief, history) if not brief_ready(brief) else None
+            if extra:
+                message = f"{message}\n\n{extra[0]}"
+                chips = list(extra[1])
+            else:
+                chips = [
+                    {"label": "Book a call", "field": "booking_window", "value": "this_week"},
+                    {"label": "See sample projects", "field": "show_portfolio", "value": "yes"},
+                    {"label": "Talk to a human", "field": "talk_human", "value": "human"},
+                ] if (brief_ready(brief) or session.estimate_json) else _next_chips(brief)
+            cards = [build_shape_card(arch, mvp_res)]
+            return _finish(
+                session, brief, contact, summary,
+                message=message,
+                stage=session.stage or ("advising" if brief_ready(brief) else "discovery"),
+                route="faq",
+                chips=chips,
+                cards=cards,
+                timings=timings,
+            )
+
         t0_ans = time.perf_counter()
         message = fallback_message(config, brief, estimate, query=queries[0], notes=weak_notes)
         timings["answer_llm"] += (time.perf_counter() - t0_ans) * 1000.0
@@ -1313,6 +1374,73 @@ def build_shape_card(arch: dict, mvp_res: dict) -> dict:
         "core_flow": list((mvp_res.get("mvp") or [])[:3]),
         "backend_apis": list(arch.get("backend") or []),
     }
+
+
+TECH_STACK_INQUIRY_RE = re.compile(
+    r"\b(what|which|recommend|suggest|explain|tell\s+me\s+about)\b.{0,35}\b(tech\s+stack|technology\s+stack|stack|architecture|database|db|framework|frameworks|backend|frontend|technologies)\b"
+    r"|\b(tech\s+stack|recommended\s+stack|recommend\s+a\s+stack|suggest\s+a\s+stack|which\s+database|what\s+database|why\s+next\.?js|why\s+fastapi|why\s+python|why\s+postgres)\b",
+    re.IGNORECASE,
+)
+
+
+def _tailored_architecture_advisory(config: TenantConfig, brief: ProjectBrief, user_query: str) -> str:
+    """Generate an authoritative, domain-tailored technical architecture recommendation."""
+    from backend.app.engines.architecture import recommend_architecture
+    from backend.app.engines.domains import detect_domain, get_domain_blueprint
+
+    arch = recommend_architecture(brief, config.services)
+    domain_id = detect_domain(text=user_query, brief=brief)
+    bp = get_domain_blueprint(domain_id) if domain_id else None
+
+    frontend_str = ", ".join(arch.get("frontend") or ["Next.js (Web)"])
+    backend_str = ", ".join(arch.get("backend") or ["FastAPI + PostgreSQL"])
+    notes_list = arch.get("notes") or []
+    notes_str = "\n".join(f"• {n}" for n in notes_list[:3])
+
+    domain_label = bp.label if bp else (arch.get("label") or brief.service or "custom software")
+    project_label = brief.goal or domain_label
+
+    fallback_lines = [
+        f"For your {domain_label} build ({project_label}), here is our recommended production stack based on our engineering blueprints:",
+        f"• **Frontend & Channels:** {frontend_str}",
+        f"• **Backend & APIs:** {backend_str}",
+    ]
+    if notes_list:
+        fallback_lines.append(f"• **Key Architectural Pillars:**\n{notes_str}")
+    fallback_lines.append(
+        "We assert this stack because it guarantees requisite data security, sub-second query performance, and clean scalability without premature operational overhead."
+    )
+    fallback = "\n\n".join(fallback_lines)
+
+    if not llm_available():
+        return fallback
+
+    brand_name = getattr(config.brand, "name", "Nexus")
+    prompt = (
+        f"You are Mike, senior solutions architect and technical advisor at {brand_name}. "
+        f"A prospective client is scoping a project:\n"
+        f"- Goal: '{brief.goal or 'Custom solution'}'\n"
+        f"- Domain: '{domain_label}'\n"
+        f"- Platforms: {', '.join(brief.platforms) if brief.platforms else 'Web / Mobile'}\n"
+        f"- Integrations: {', '.join(brief.integrations) if brief.integrations else 'Standard'}\n"
+        f"- Recommended Frontend: {frontend_str}\n"
+        f"- Recommended Backend: {backend_str}\n"
+        f"- Architecture Pillars: {'; '.join(notes_list[:3])}\n"
+        f"Client question: '{user_query}'\n\n"
+        f"Explain authoritatively why this specific architecture and stack is optimal for their requirements. "
+        f"Highlight data security, database performance, and developer velocity. "
+        f"Never ask the client to choose frameworks or databases—assert the architectural decision with confidence. "
+        f"Keep the tone consultative, senior, and concise (under 160 words). "
+        f'Return JSON {{"message": "..."}}.'
+    )
+    try:
+        data = complete_json(SOLUTION_SYSTEM_PROMPT, prompt, mode="request")
+        msg = str(data.get("message") or "").strip()
+        if msg:
+            return msg
+    except Exception:
+        pass
+    return fallback
 
 
 def budget_fit_line(
