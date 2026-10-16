@@ -15,7 +15,7 @@ in_scope:
     label: AI product
     summary: Assistants, RAG, document intelligence, and agent workflows
     platforms: [web, api, embedded]
-    stacks: [Python + FastAPI, Next.js]
+    stacks: [Next.js, React]
     backend_stacks: [Python FastAPI + PostgreSQL, PostgreSQL]
   ui_ux:
     label: UI/UX design
