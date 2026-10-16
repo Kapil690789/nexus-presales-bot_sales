@@ -2,34 +2,95 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>About — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>About Nexus — Autonomous AI & Product Engineering Studio</title>
+  <meta name="description" content="Nexus engineers mission-critical software and AI systems for ambitious founders and enterprises. Learn about our philosophy, engineering standards, and leadership." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Company</p>
-    <h1>About Nexus</h1>
-    <p class="lede">B2B software consulting for ambitious companies. We help teams define, design, and ship custom software — with a clear MVP, an honest first-pass range, and a named delivery lead before you take a call.</p>
-  </section>
-  <section class="page-layout">
-    <div class="grid">
-      <div class="card"><strong>Consultative, not theatrical</strong><p>We sanity-check scope, recommend an approved stack, and say when work is outside what we take on.</p></div>
-      <div class="card"><strong>Markets</strong><p>US, UK, EU, and IN. Conversations and ranges are in USD unless a strategist agrees otherwise.</p></div>
-      <div class="card"><strong>Named lead</strong><p>A Nexus strategist confirms scope, commercial terms, and timeline on a consultation — the advisor does not issue a final quote.</p></div>
+    <div class="badge-pill">
+      <span>🏛️</span>
+      <span>Our Story &amp; Philosophy</span>
     </div>
-    <figure class="art"><img src="/art/meeting.svg" alt="Consulting workshop with product and engineering" /></figure>
+    <h1>About Nexus Product Studio</h1>
+    <p class="lede">
+      We are a technical software consulting and AI engineering studio. We help ambitious companies define, architect, and ship high-velocity custom software — backed by deterministic guardrails, honest first-pass ranges, and senior named delivery leads.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Talk with Mike (AI Advisor)</span>
+      </button>
+      <a class="btn btn-ghost" href="/work.html">View Our Work</a>
+    </div>
   </section>
+
   <section class="section">
-    <h2>How we work</h2>
-    <p class="lede">Discovery, an MVP cut, an indicative range, then a conversation with a named lead. Read the <a href="/process.html">process</a> or <a href="/work.html">selected work</a>.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="card-icon">🎯</div>
+        <strong>Consultative, Never Theatrical</strong>
+        <p>We sanity-check architecture feasibility before committing to code. If a feature is unnecessary or risky, we tell you immediately rather than billing inflated agency hours.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🌍</div>
+        <strong>Global Delivery Standards</strong>
+        <p>Serving tech leaders across the US, UK, EU, and APAC. We build to international compliance standards including SOC-2 Type II, HIPAA, and GDPR.</p>
+      </div>
+      <div class="card">
+        <div class="card-icon">🛡️</div>
+        <strong>Named Technical Leadership</strong>
+        <p>You never talk to junior account managers. Every engagement is paired with a dedicated solutions architect and senior delivery lead from sprint planning to production cutover.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title-wrap">
+        <span class="kicker">How We Operate</span>
+        <h2>Engineering Principles</h2>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <strong>100% IP Ownership</strong>
+        <p>Everything we write belongs to you. Full GitHub repository transfers, Figma source assets, Dockerfiles, and CI/CD pipelines.</p>
+      </div>
+      <div class="card">
+        <strong>Weekly Live Demonstrations</strong>
+        <p>No waiting 6 months for a big-bang reveal. We deploy to live staging environments and share recorded walkthroughs every single week.</p>
+      </div>
+      <div class="card">
+        <strong>Zero Hallucination Tolerance</strong>
+        <p>In AI projects, we enforce strict document grounding, cross-encoder reranking, and automated eval harnesses to ensure answers are strictly factual.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Banner -->
+  <section class="section">
+    <div class="cta-banner">
+      <span class="kicker">Let's Build Something Exceptional</span>
+      <h2 class="cta-title">Start Your Project with Clear Architecture</h2>
+      <p class="cta-lede">
+        Talk to Mike to get an instant scope breakdown, tech stack recommendations, and indicative pricing in 3 minutes.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch Instant Discovery with Mike</span>
+      </button>
+    </div>
   </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

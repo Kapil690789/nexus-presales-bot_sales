@@ -2,31 +2,76 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Web app development — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Enterprise Web App Development & SaaS Engineering — Nexus</title>
+  <meta name="description" content="High-performance web applications, customer portals, and enterprise SaaS platforms built on Next.js 15, FastAPI, and PostgreSQL." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Website</p>
-    <h1>Web app development</h1>
-    <p class="lede">The consultant on this page opens as a web-product analyst — scope an MVP, pick an approved stack, and take an indicative range to stakeholders.</p>
-  </section>
-  <section class="page-layout">
-    <div class="grid">
-      <div class="card"><strong>Stack we default to</strong><p>Next.js, Node or FastAPI, PostgreSQL.</p></div>
-      <div class="card"><strong>Typical first release</strong><p>Auth, an ops console, and one customer-facing journey — not the whole product.</p></div>
-      <div class="card"><strong>How to start</strong><p>Open the advisor and say whether this is customer-facing or internal.</p></div>
+    <div class="badge-pill">
+      <span>🌐</span>
+      <span>Enterprise SaaS &amp; Web Applications</span>
     </div>
+    <h1>Modern Web Product Engineering</h1>
+    <p class="lede">
+      We build ultra-fast web platforms, customer-facing portals, and operations consoles designed for scale from day one — with sub-second page loads, role-based authorization, and resilient APIs.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Scope Your Web Product with Mike</span>
+      </button>
+      <a class="btn btn-ghost" href="/work.html">View Case Studies</a>
+    </div>
+  </section>
+
+  <section class="page-layout">
+    <div class="grid" style="grid-template-columns: 1fr;">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <strong>Approved Modern Stack</strong>
+        <p>Next.js 15 (App Router, Server Actions, SSR), React 19, Python FastAPI or Node.js microservices, and PostgreSQL with Redis caching.</p>
+        <div class="card-tags">
+          <span>Next.js 15</span>
+          <span>FastAPI</span>
+          <span>PostgreSQL</span>
+          <span>Tailwind CSS</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎯</div>
+        <strong>Focused First Release</strong>
+        <p>Clean authentication, role-based access control (RBAC), ops dashboard, and your core customer journey shipped in an agile 8–12 week sprint.</p>
+        <div class="card-tags">
+          <span>Auth0 / Supabase</span>
+          <span>RBAC</span>
+          <span>Stripe Billing</span>
+          <span>Audit Trails</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📈</div>
+        <strong>Scale &amp; Security Ready</strong>
+        <p>Automated database migration scripts, Docker containerization, CI/CD pipeline triggers, and sub-second Time to First Byte (TTFB).</p>
+        <div class="card-tags">
+          <span>Docker</span>
+          <span>AWS / Vercel</span>
+          <span>SOC-2 Ready</span>
+        </div>
+      </div>
+    </div>
+
     <div class="dummy dummy-web" aria-hidden="true">
       <div class="dummy-chrome">
         <span class="dummy-dot"></span><span class="dummy-dot"></span><span class="dummy-dot"></span>
-        <span class="dummy-url">app.acme.test/orders</span>
+        <span class="dummy-url">app.nexus.studio/analytics</span>
       </div>
       <div class="dummy-web-body">
         <aside class="dummy-side"><b></b><b></b><b></b></aside>
@@ -38,7 +83,23 @@
       </div>
     </div>
   </section>
+
+  <!-- CTA Banner -->
+  <section class="section" style="margin-top: 10px;">
+    <div class="cta-banner">
+      <span class="kicker">Ready to Build Your Web Platform?</span>
+      <h2 class="cta-title">Get an Architecture Proposal in 3 Minutes</h2>
+      <p class="cta-lede">
+        Talk to Mike to define your target users, database architecture, and integration requirements.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch Instant Discovery with Mike</span>
+      </button>
+    </div>
+  </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

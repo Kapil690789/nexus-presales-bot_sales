@@ -177,7 +177,7 @@
     ".ps-brief-field-val{color:#EDEDED;font-weight:600}",
     ".ps-brief-change-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);color:#60A5FA;border-radius:6px;font-size:11px;padding:2px 8px;cursor:pointer;transition:all 150ms ease}",
     ".ps-brief-change-btn:hover{background:#2563EB;color:#FFFFFF;border-color:#2563EB}",
-    "@media (max-width:520px){.ps-panel,.ps-panel.bottom-right,.ps-panel.bottom-left{width:100vw;height:100vh;height:100dvh;right:0 !important;left:0 !important;bottom:0 !important;border-radius:0}.ps-launcher.bottom-right,.ps-launcher.bottom-left{right:16px;bottom:16px;left:auto}.ps-compose input[type=text]{font-size:16px}.ps-compose{padding-bottom:max(12px, env(safe-area-inset-bottom))}.ps-chips{flex-wrap:wrap !important;gap:6px !important;padding:4px 12px 10px !important}.ps-chip{font-size:11.5px !important;padding:6px 10px !important}.ps-teaser-bubble{display:none !important}}",
+    "@media (max-width:640px){.ps-panel,.ps-panel.bottom-right,.ps-panel.bottom-left,.ps-panel.is-centered{position:fixed !important;top:0 !important;left:0 !important;right:0 !important;bottom:0 !important;width:100% !important;width:100vw !important;width:100dvw !important;height:100% !important;height:100vh !important;height:100dvh !important;max-height:100dvh !important;max-height:-webkit-fill-available !important;transform:none !important;border-radius:0 !important;border:none !important;box-shadow:none !important;z-index:2147483002 !important}.ps-panel.is-centered .ps-thread{padding:12px 14px 8px !important}.ps-panel.is-centered .ps-msg{max-width:90% !important;font-size:14px !important}.ps-panel.is-centered .ps-compose{padding:4px 12px max(14px, env(safe-area-inset-bottom)) !important}.ps-header{padding:max(12px, env(safe-area-inset-top)) 14px 12px !important}.ps-print-btn,.ps-expand-btn{display:none !important}.ps-launcher.bottom-right,.ps-launcher.bottom-left{right:max(16px, env(safe-area-inset-right)) !important;bottom:max(16px, env(safe-area-inset-bottom)) !important;left:auto !important}.ps-compose input[type=text]{font-size:16px !important}.ps-compose{padding-bottom:max(14px, env(safe-area-inset-bottom)) !important}.ps-chips{flex-wrap:wrap !important;gap:6px !important;padding:4px 12px 10px !important}.ps-chip{font-size:11.5px !important;padding:6px 10px !important}.ps-teaser-bubble{display:none !important}.ps-thread{-webkit-overflow-scrolling:touch !important;overscroll-behavior:contain !important}.ps-guide-box{max-width:calc(100vw - 32px) !important;margin:0 16px !important}}",
     "@media (prefers-reduced-motion:reduce){.ps-launcher,.ps-panel.is-open,.ps-msg,.ps-card,.ps-chip,.ps-online-dot,.ps-shimmer-line,.ps-teaser-bubble{animation:none !important;transition:none !important}.ps-shimmer-line{background:rgba(255,255,255,0.15) !important}}",
     "@media print{body>*:not(#ps-widget-root){display:none !important}#ps-widget-root .ps-launcher{display:none !important}#ps-widget-root .ps-panel{display:block !important;position:static !important;width:100% !important;height:auto !important;max-height:none !important;border:none !important;box-shadow:none !important;background:#fff !important;color:#111 !important}#ps-widget-root .ps-header{border-bottom:1px solid #ddd !important;background:#f8fafc !important;color:#111 !important}#ps-widget-root .ps-header-actions,#ps-widget-root .ps-chips,#ps-widget-root .ps-compose,#ps-widget-root .ps-guide-overlay{display:none !important}#ps-widget-root .ps-thread{overflow:visible !important;height:auto !important;padding:16px 0 !important}#ps-widget-root .ps-msg{color:#111 !important;border:1px solid #e2e8f0 !important}#ps-widget-root .ps-msg.assistant{background:#f8fafc !important}#ps-widget-root .ps-msg.user{background:#eff6ff !important;border-color:#bfdbfe !important}#ps-widget-root .ps-card{background:#fff !important;border:1px solid #cbd5e1 !important;color:#111 !important}}"
   ].join("");
@@ -240,7 +240,7 @@
   downloadBtn.setAttribute("aria-label", "Download chat transcript");
   downloadBtn.innerHTML = ICONS.download;
 
-  var printBtn = el("button", "ps-header-btn");
+  var printBtn = el("button", "ps-header-btn ps-print-btn");
   printBtn.type = "button";
   printBtn.title = "Print conversation / PDF";
   printBtn.setAttribute("aria-label", "Print conversation / PDF");
@@ -252,7 +252,7 @@
   restartBtn.setAttribute("aria-label", "Start new conversation");
   restartBtn.innerHTML = ICONS.restart;
 
-  var expandBtn = el("button", "ps-header-btn");
+  var expandBtn = el("button", "ps-header-btn ps-expand-btn");
   expandBtn.type = "button";
   expandBtn.title = "Center studio view";
   expandBtn.setAttribute("aria-label", "Center studio view");
@@ -868,6 +868,8 @@
     panel.setAttribute("aria-hidden", "true");
     panel.style.visibility = "hidden";
     panel.style.pointerEvents = "none";
+    panel.style.height = "";
+    panel.style.top = "";
     launcher.hidden = false;
   }
 
@@ -1105,10 +1107,25 @@
     else open();
   };
 
+  if (window.visualViewport) {
+    var onViewportResize = function () {
+      if (window.innerWidth <= 640 && panel.classList.contains("is-open")) {
+        panel.style.height = window.visualViewport.height + "px";
+        panel.style.top = (window.visualViewport.offsetTop || 0) + "px";
+        scrollToBottom();
+      } else {
+        panel.style.height = "";
+        panel.style.top = "";
+      }
+    };
+    window.visualViewport.addEventListener("resize", onViewportResize);
+    window.visualViewport.addEventListener("scroll", onViewportResize);
+  }
+
   var advisorAPI = {
     open: function (centered) {
       open();
-      if (centered && !isExpanded) {
+      if (centered && !isExpanded && window.innerWidth > 640) {
         expandBtn.click();
       }
     },
@@ -1118,7 +1135,7 @@
     },
     send: function (text, centered) {
       open();
-      if (centered && !isExpanded) {
+      if (centered && !isExpanded && window.innerWidth > 640) {
         expandBtn.click();
       }
       input.value = text;

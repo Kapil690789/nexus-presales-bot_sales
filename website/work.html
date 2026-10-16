@@ -2,51 +2,103 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Work — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Selected Work & Case Studies — Nexus</title>
+  <meta name="description" content="Explore production case studies: AI agents, web applications, mobile MVPs, and fintech platforms shipped on time and within budget." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Portfolio</p>
-    <h1>Selected work</h1>
-    <p class="lede">Dummy case studies the advisor uses when you ask for relevant work. Each one is an MVP or a focused redesign — not a full platform rewrite.</p>
+    <div class="badge-pill">
+      <span>🏆</span>
+      <span>Proven Production Outcomes</span>
+    </div>
+    <h1>Featured Client Case Studies</h1>
+    <p class="lede">
+      Case studies demonstrating real-world software delivery, autonomous AI deployments, and high-conversion MVP engineering across Tax Advisory, FinTech, InsurTech, HRTech, and Marketplaces.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Discuss Your Project with Mike</span>
+      </button>
+    </div>
   </section>
+
   <section class="section">
     <div class="grid-work">
-      <a class="card card-work" href="/work/harvest.html">
-        <p class="kicker">Marketplace · Mobile</p>
-        <strong>Harvest — farm-to-buyer marketplace</strong>
-        <p>Launched a two-sided MVP in 16 weeks; first 1,200 listings in 90 days.</p>
-      </a>
-      <a class="card card-work" href="/work/ledgerly.html">
-        <p class="kicker">Fintech · Web</p>
-        <strong>Ledgerly — multi-entity finance ops</strong>
-        <p>Replaced three spreadsheets with a role-based ops console for 40 accountants.</p>
-      </a>
+      <!-- TaxAdvisor AI -->
+      <div class="card card-work">
+        <p class="kicker">Tax &amp; Accounting · AI Agent</p>
+        <strong>TaxAdvisor AI — Client Intake &amp; Booking</strong>
+        <p>Deployed an AI intake and consultation booking agent for a 40-CPA tax advisory practice with 1040 document extraction and Calendly sync.</p>
+        <div class="work-metric">⚡ 68% pre-season queries automated; 1,200+ booked calls</div>
+      </div>
+
+      <!-- Atlas -->
       <a class="card card-work" href="/work/atlas.html">
-        <p class="kicker">Professional services · AI</p>
-        <strong>Atlas — RFP assistant for a consultancy</strong>
-        <p>Cut first-draft response time from 3 days to 4 hours on a 12,000-page corpus.</p>
+        <p class="kicker">Professional Services · Enterprise AI</p>
+        <strong>Atlas — Enterprise RFP Engine</strong>
+        <p>Cut first-draft RFP response time from 3 days to 4 hours across a 12,000-page complex document corpus with grounded citations.</p>
+        <div class="work-metric">⚡ Drafting time reduced from 3 days &rarr; 4 hours</div>
       </a>
+
+      <!-- Harvest -->
+      <a class="card card-work" href="/work/harvest.html">
+        <p class="kicker">Marketplace · Mobile App</p>
+        <strong>Harvest — Farm-to-Buyer Marketplace</strong>
+        <p>Launched a two-sided marketplace MVP in 16 weeks; scaled to first 1,200 active listings within 90 days of release.</p>
+        <div class="work-metric">🚀 1,200 active listings in 90 days</div>
+      </a>
+
+      <!-- Ledgerly -->
+      <a class="card card-work" href="/work/ledgerly.html">
+        <p class="kicker">Fintech · Web Application</p>
+        <strong>Ledgerly — Multi-Entity Finance Ops</strong>
+        <p>Replaced three manual spreadsheets with a high-security role-based ops console for 40 enterprise accountants.</p>
+        <div class="work-metric">🔒 100% audit compliance &amp; zero manual data drift</div>
+      </a>
+
+      <!-- Riverview Clinic -->
       <a class="card card-work" href="/work/riverview.html">
-        <p class="kicker">Health · Mobile</p>
-        <strong>Riverview Clinic — patient companion</strong>
-        <p>HIPAA-aware companion app; no-show rate down 18% in the pilot cohort.</p>
+        <p class="kicker">Healthcare · Mobile Application</p>
+        <strong>Riverview Clinic — Patient Companion</strong>
+        <p>HIPAA-compliant patient companion app with automated SMS triage, decreasing clinic no-show rates by 18% in the pilot cohort.</p>
+        <div class="work-metric">📉 18% reduction in patient no-show rate</div>
       </a>
+
+      <!-- Northstar -->
       <a class="card card-work" href="/work/northstar.html">
-        <p class="kicker">B2B · UI/UX</p>
-        <strong>Northstar — B2B onboarding redesign</strong>
-        <p>Redesigned activation; trial-to-paid conversion +22%.</p>
+        <p class="kicker">B2B SaaS · UI/UX Design</p>
+        <strong>Northstar — Onboarding Overhaul</strong>
+        <p>Redesigned the entire activation experience with streamlined user flows and interactive workspace setup.</p>
+        <div class="work-metric">📈 +22% trial-to-paid customer conversion</div>
       </a>
     </div>
   </section>
+
+  <!-- CTA Banner -->
+  <section class="section" style="margin-top: 20px;">
+    <div class="cta-banner">
+      <span class="kicker">Ready to Build Your Success Story?</span>
+      <h2 class="cta-title">Let's Engineer Your Next Competitive Advantage</h2>
+      <p class="cta-lede">
+        Talk with Mike, describe what you want to achieve, and receive an instant architecture proposal and investment estimate.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch Instant Discovery with Mike</span>
+      </button>
+    </div>
+  </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

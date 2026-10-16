@@ -2,27 +2,71 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mobile app development — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mobile App Development (iOS, Android, React Native) — Nexus</title>
+  <meta name="description" content="Native iOS & Android and React Native mobile app development with offline data sync, smooth gestures, and biometric security." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Mobile</p>
-    <h1>Mobile app development</h1>
-    <p class="lede">The consultant on this page starts from a mobile discovery track — iOS, Android, or a shared codebase, with an honest first-release cut.</p>
-  </section>
-  <section class="page-layout">
-    <div class="grid">
-      <div class="card"><strong>Platforms</strong><p>iOS, Android, or a shared Flutter / React Native codebase.</p></div>
-      <div class="card"><strong>First user</strong><p>We will ask who the first user is before talking about the full product.</p></div>
-      <div class="card"><strong>How to start</strong><p>Open the advisor and pick iOS, Android, or both.</p></div>
+    <div class="badge-pill">
+      <span>📱</span>
+      <span>iOS, Android &amp; Cross-Platform</span>
     </div>
+    <h1>Mobile Application Engineering</h1>
+    <p class="lede">
+      We craft polished mobile experiences built for App Store excellence. From initial MVP launch to scale, we engineer with offline-first synchronization, native performance, and biometric security.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Scope Your Mobile App with Mike</span>
+      </button>
+      <a class="btn btn-ghost" href="/work.html">View Mobile Case Studies</a>
+    </div>
+  </section>
+
+  <section class="page-layout">
+    <div class="grid" style="grid-template-columns: 1fr;">
+      <div class="card">
+        <div class="card-icon">🚀</div>
+        <strong>Platform Strategy</strong>
+        <p>React Native for high-velocity cross-platform parity or Swift &amp; Kotlin for hardware-intensive mobile features. We advise on the right technical tradeoff for your product.</p>
+        <div class="card-tags">
+          <span>React Native</span>
+          <span>Swift / iOS</span>
+          <span>Kotlin / Android</span>
+          <span>Expo</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <strong>Offline First &amp; Instant Sync</strong>
+        <p>Resilient local caching using WatermelonDB or SQLite with background sync triggers ensuring zero data loss during spotty network connectivity.</p>
+        <div class="card-tags">
+          <span>SQLite / WatermelonDB</span>
+          <span>Background Fetch</span>
+          <span>Push Notifications</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <strong>Store Approval Guarantee</strong>
+        <p>Direct compliance with Apple App Store and Google Play guidelines, privacy disclosure manifests, and automated TestFlight / Internal Track pipelines.</p>
+        <div class="card-tags">
+          <span>TestFlight</span>
+          <span>CI/CD Fastlane</span>
+          <span>Biometric Auth</span>
+        </div>
+      </div>
+    </div>
+
     <div class="dummy dummy-phone-wrap" aria-hidden="true">
       <div class="dummy-phone">
         <div class="dummy-notch"></div>
@@ -35,7 +79,23 @@
       </div>
     </div>
   </section>
+
+  <!-- CTA Banner -->
+  <section class="section" style="margin-top: 10px;">
+    <div class="cta-banner">
+      <span class="kicker">Ready to Launch on App Stores?</span>
+      <h2 class="cta-title">Scope Your Mobile App in 3 Minutes</h2>
+      <p class="cta-lede">
+        Talk with Mike to analyze platform choices (iOS, Android, React Native), Day-1 APIs, and target launch timelines.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch Instant Mobile Discovery</span>
+      </button>
+    </div>
+  </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

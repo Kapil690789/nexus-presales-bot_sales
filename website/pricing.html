@@ -2,30 +2,125 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pricing — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Pricing & Commercial Engagements — Nexus</title>
+  <meta name="description" content="Transparent indicative ranges, structured MVP sprints, and dedicated engineering retainers. No opaque agency markups or hidden fees." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Commercials</p>
-    <h1>How we price</h1>
-    <p class="lede">The consultant gives a low-side indicative range after it understands scope. A strategist confirms the real number on a consultation.</p>
-  </section>
-  <section class="page-layout">
-    <div class="grid">
-      <div class="card"><strong>Indicative, not a quote</strong><p>First numbers sit below a typical close so the conversation can start.</p></div>
-      <div class="card"><strong>Protect the budget</strong><p>We cut phase-two features rather than discounting the same scope.</p></div>
-      <div class="card"><strong>How to start</strong><p>Open the advisor and tell us what you are building.</p></div>
+    <div class="badge-pill">
+      <span>💎</span>
+      <span>Transparent Commercial Models</span>
     </div>
-    <figure class="art"><img src="/art/desk.svg" alt="Advisor walking through an indicative range" /></figure>
+    <h1>How We Price &amp; Deliver</h1>
+    <p class="lede">
+      We believe software estimation should be transparent, data-driven, and honest from day one. Mike gives an instant indicative range based on your exact scope, integrations, and timeline before you take a call.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Calculate Indicative Estimate with Mike</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Engagement Models Grid -->
+  <section class="section">
+    <div class="grid">
+      <div class="card" style="border-color: rgba(59, 130, 246, 0.4); background: rgba(37, 99, 235, 0.06);">
+        <span class="kicker" style="color: #60A5FA;">MOST POPULAR FOR FOUNDERS</span>
+        <strong>Scoped MVP Delivery</strong>
+        <p>Fixed-timeline delivery of your launch-ready product. Includes architecture discovery, interactive Figma UI/UX, full-stack engineering, QA, and production release.</p>
+        <div style="font-size: 22px; font-weight: 800; color: #FFFFFF; font-family: var(--font-mono); margin-bottom: 12px;">
+          $30,000 – $65,000 <span style="font-size: 13px; font-weight: 500; color: #94A3B8;">/ project</span>
+        </div>
+        <div class="card-tags">
+          <span>8–14 Weeks</span>
+          <span>Full Dedicated Squad</span>
+          <span>Weekly Video Demos</span>
+          <span>100% IP Handover</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="kicker">FOR GROWING TEAMS</span>
+        <strong>Dedicated Squad Retainer</strong>
+        <p>Scale your velocity with an embedded squad of senior full-stack &amp; AI engineers, UX designers, and a named delivery lead working as an extension of your in-house team.</p>
+        <div style="font-size: 22px; font-weight: 800; color: #FFFFFF; font-family: var(--font-mono); margin-bottom: 12px;">
+          $12,000 – $28,000 <span style="font-size: 13px; font-weight: 500; color: #94A3B8;">/ month</span>
+        </div>
+        <div class="card-tags">
+          <span>Flexible Retainers</span>
+          <span>Zero Recruiting Fees</span>
+          <span>Sprint Planning</span>
+          <span>Direct Slack / Teams</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="kicker">AI ARCHITECTURE &amp; RAG</span>
+        <strong>AI Integration &amp; Hardening</strong>
+        <p>Ground autonomous Gemini/LLM agents into your existing software stack, private database, and CRM. Includes hybrid vector search, safety guardrails, and SOC-2 logging.</p>
+        <div style="font-size: 22px; font-weight: 800; color: #FFFFFF; font-family: var(--font-mono); margin-bottom: 12px;">
+          $20,000 – $45,000 <span style="font-size: 13px; font-weight: 500; color: #94A3B8;">/ implementation</span>
+        </div>
+        <div class="card-tags">
+          <span>4–8 Weeks</span>
+          <span>pgvector / Pinecone</span>
+          <span>Sub-second Latency</span>
+          <span>Zero Hallucination</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Principles of Estimation -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title-wrap">
+        <span class="kicker">Core Principles</span>
+        <h2>How We Scope Honestly</h2>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <strong>1. Indicative First-Pass Range</strong>
+        <p>Mike calculates an initial low-to-mid range based on squad composition and delivery cadence. This grounds expectations before scheduling a live call with a delivery lead.</p>
+      </div>
+      <div class="card">
+        <strong>2. Protect Scope &amp; Budget</strong>
+        <p>If budget constraints arise, we recommend aggressive MVP scoping (cutting secondary bells and whistles) rather than compromising code quality or cutting corners.</p>
+      </div>
+      <div class="card">
+        <strong>3. No Vendor Lock-In</strong>
+        <p>You retain 100% intellectual property rights. All repositories, Docker containers, infrastructure scripts, and design tokens belong entirely to you from day one.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="section">
+    <div class="cta-banner">
+      <span class="kicker">Instant Scoping Engine</span>
+      <h2 class="cta-title">Get a Tailored Estimate in 3 Minutes</h2>
+      <p class="cta-lede">
+        Answer a few quick questions with Mike to generate a detailed breakdown of your project's architecture, squad composition, and indicative range.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Start Discovery with Mike</span>
+      </button>
+    </div>
   </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

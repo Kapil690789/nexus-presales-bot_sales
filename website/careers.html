@@ -2,39 +2,71 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Careers — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Careers at Nexus — Join Our Elite Engineering Studio</title>
+  <meta name="description" content="Explore open roles at Nexus: Senior AI Engineers, Full-Stack Developers, Product Designers, and Solutions Architects." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Careers</p>
-    <h1>Work with us</h1>
-    <p class="lede">Dummy roles for the demo site. There is no applicant tracker — mention the role in the advisor or write to hello@devconsult.example.</p>
+    <div class="badge-pill">
+      <span>🚀</span>
+      <span>Join Our Team</span>
+    </div>
+    <h1>Build the Future of Software with Us</h1>
+    <p class="lede">
+      We are a high-velocity product studio of senior engineers, AI architects, and systems designers. We build meaningful production software without corporate red tape or ticket mills.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Ask Mike About Open Roles</span>
+      </button>
+    </div>
   </section>
+
   <section class="list-stack">
     <div class="list-row">
-      <p class="kicker">Engineering · Remote / hybrid</p>
-      <strong>Product engineer</strong>
-      <p>Ship MVPs on Next.js, Flutter, or React Native with Node or FastAPI. You will work with a named delivery lead, not a ticket mill.</p>
+      <p class="kicker">Engineering · Remote (US / EU / APAC)</p>
+      <strong>Senior AI &amp; Systems Engineer</strong>
+      <p>Architect production RAG pipelines, dense vector search systems, and deterministic agent guardrails with Python 3.13, FastAPI, Gemini 2.5, and pgvector.</p>
+      <div class="card-tags" style="margin-top: 10px;">
+        <span>Python</span>
+        <span>FastAPI</span>
+        <span>Gemini API</span>
+        <span>pgvector</span>
+      </div>
     </div>
     <div class="list-row">
-      <p class="kicker">Design · Remote / hybrid</p>
-      <strong>Product designer</strong>
-      <p>Figma systems, activation flows, and prototype tests for B2B products. Northstar-style onboarding work is typical.</p>
+      <p class="kicker">Engineering · Remote (US / EU / APAC)</p>
+      <strong>Senior Full-Stack Product Engineer</strong>
+      <p>Ship responsive web and mobile MVPs using Next.js 15, React 19, TypeScript, and React Native with robust PostgreSQL backends and weekly delivery cadences.</p>
+      <div class="card-tags" style="margin-top: 10px;">
+        <span>Next.js 15</span>
+        <span>TypeScript</span>
+        <span>React Native</span>
+        <span>Tailwind</span>
+      </div>
     </div>
     <div class="list-row">
-      <p class="kicker">Consulting · Remote / hybrid</p>
-      <strong>Engagement strategist</strong>
-      <p>Turn advisor handoffs into scoped consultations. Comfortable saying no to out-of-scope work and defending an MVP cut.</p>
+      <p class="kicker">Design · Remote (US / EU / APAC)</p>
+      <strong>Lead Product Designer (UI/UX)</strong>
+      <p>Own end-to-end design systems in Figma, craft interactive prototypes, and lead user research workshops to turn ambiguous briefs into stunning interfaces.</p>
+      <div class="card-tags" style="margin-top: 10px;">
+        <span>Figma Systems</span>
+        <span>Micro-interactions</span>
+        <span>Design Tokens</span>
+      </div>
     </div>
   </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

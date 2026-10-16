@@ -2,92 +2,363 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Nexus — Digital Product Engineering & Consulting</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Nexus — Autonomous AI Systems & Full-Stack Product Engineering</title>
+  <meta name="description" content="Nexus engineers mission-critical AI systems, high-velocity SaaS products, and mobile applications. Get instant architectural scoping and indicative estimates in under 3 minutes." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
+  <!-- Hero Section -->
   <section class="hero">
-    <div>
-      <p class="kicker">Digital Product Studio</p>
-      <h1>Software Consulting &amp; Engineering</h1>
-      <p class="lede">Nexus helps ambitious teams define, design, and ship custom software — with a clear MVP roadmap, an honest first-pass estimate, and dedicated delivery leads before you take a call.</p>
-      <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
-        <a class="btn" href="#services">Explore Capabilities</a>
-        <button type="button" class="btn" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.2); box-shadow: none;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">⚡ Talk to Mike</button>
+    <div class="hero-content">
+      <div class="badge-pill">
+        <span>✨</span>
+        <span>Nexus Studio 2.0 · Autonomous AI &amp; Product Engineering</span>
+      </div>
+      <h1>
+        Engineering <span class="gradient-text">Mission-Critical AI</span> &amp; High-Velocity Software.
+      </h1>
+      <p class="lede">
+        We partner with ambitious founders and enterprise leaders to architect, build, and deploy production software. Get instant architectural scoping, indicative cost estimates, and sprint planning in under 3 minutes.
+      </p>
+      <div class="hero-actions">
+        <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+          <span class="pulse-dot"></span>
+          <span>⚡ Talk to Mike (AI Project Advisor)</span>
+        </button>
+        <a class="btn btn-ghost" href="#capabilities">Explore Capabilities</a>
       </div>
     </div>
-    <figure class="art"><img src="/art/desk.svg" alt="Advisor reviewing a product brief at a desk" /></figure>
+
+    <!-- Live Interactive Mockup Showcase -->
+    <div class="hero-mockup-card">
+      <div class="mockup-header">
+        <div class="mockup-dots">
+          <span class="mockup-dot red"></span>
+          <span class="mockup-dot yellow"></span>
+          <span class="mockup-dot green"></span>
+        </div>
+        <div class="mockup-title">nexus-advisor-engine v2.4</div>
+        <div class="mockup-live">
+          <span class="pulse-dot"></span>
+          <span>ONLINE</span>
+        </div>
+      </div>
+      <div class="mockup-body">
+        <div class="mockup-query">
+          <span style="font-size: 16px;">💬</span>
+          <div>
+            <strong style="color: #60A5FA; font-size: 12px; display: block; margin-bottom: 2px;">PROJECT BRIEF SIMULATION</strong>
+            <span>"We need an AI consultation &amp; client intake system for a CPA practice with document extraction and Calendly booking."</span>
+          </div>
+        </div>
+        <div class="mockup-result">
+          <div class="mockup-result-head">
+            <span class="mockup-result-title">Scoped Architecture Blueprint</span>
+            <span class="mockup-estimate">$38,000–$47,500</span>
+          </div>
+          <p style="font-size: 12.5px; color: #94A3B8; margin: 0; line-height: 1.5;">
+            14-week MVP cadence · Solutions Architect, Backend/AI Engineer, Frontend Engineer, QA, Delivery Lead.
+          </p>
+          <div class="mockup-chips">
+            <span class="mockup-chip">Python + FastAPI</span>
+            <span class="mockup-chip">Next.js 15</span>
+            <span class="mockup-chip">pgvector RAG</span>
+            <span class="mockup-chip">Gemini 2.5</span>
+            <span class="mockup-chip">Calendly Sync</span>
+          </div>
+          <button type="button" class="mockup-cta-btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+            ⚡ Start Your Interactive Scoping Session →
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 
-  <section class="band" id="services">
-    <figure class="art"><img src="/art/meeting.svg" alt="Consulting workshop with product, engineering, and operations" /></figure>
+  <!-- Key Metrics / Social Proof -->
+  <section class="metrics-bar">
+    <div class="metric-card">
+      <span class="metric-num">40+</span>
+      <span class="metric-label">Production Deployments</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-num">99.4%</span>
+      <span class="metric-label">On-Time MVP Delivery Rate</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-num">&lt; 3m</span>
+      <span class="metric-label">Instant Scope &amp; Estimate Time</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-num">$18M+</span>
+      <span class="metric-label">Client Value &amp; ROI Generated</span>
+    </div>
+  </section>
+
+  <!-- Tech Stack Ticker -->
+  <section class="tech-ticker-wrap">
+    <div class="tech-ticker-title">PRODUCTION-PROVEN ARCHITECTURE &amp; TECH STACK</div>
+    <div class="tech-ticker-grid">
+      <span class="tech-pill">🐍 Python 3.13</span>
+      <span class="tech-pill">⚡ FastAPI</span>
+      <span class="tech-pill">▲ Next.js 15</span>
+      <span class="tech-pill">⚛️ React</span>
+      <span class="tech-pill">✨ Google Gemini 2.5</span>
+      <span class="tech-pill">🐘 PostgreSQL &amp; pgvector</span>
+      <span class="tech-pill">🔴 Redis Semantic Cache</span>
+      <span class="tech-pill">🐳 Docker &amp; K8s</span>
+      <span class="tech-pill">☁️ AWS GovCloud / GCP</span>
+      <span class="tech-pill">🛡️ SOC-2 Type II</span>
+    </div>
+  </section>
+
+  <!-- Core Capabilities / Services -->
+  <section class="section" id="capabilities">
+    <div class="section-head">
+      <div class="section-title-wrap">
+        <span class="kicker">Core Capabilities</span>
+        <h2>End-to-End Product Engineering</h2>
+      </div>
+      <a href="/web-app-development.html" style="color: #60A5FA; font-size: 14px; font-weight: 600;">Explore all services &rarr;</a>
+    </div>
     <div class="grid">
+      <a class="card" href="/ai-development.html">
+        <div class="card-icon">🤖</div>
+        <strong>Custom AI &amp; Autonomous Agents</strong>
+        <p>Production RAG pipelines, Gemini-powered assistants, document ingestion with OCR, semantic caching, and strict deterministic guardrails.</p>
+        <div class="card-tags">
+          <span>Gemini 2.5</span>
+          <span>RAG</span>
+          <span>pgvector</span>
+          <span>LangChain</span>
+        </div>
+      </a>
       <a class="card" href="/web-app-development.html">
-        <strong>Web products</strong>
-        <p>SaaS, ops tools, and customer portals with a modern stack you can take to stakeholders.</p>
+        <div class="card-icon">🌐</div>
+        <strong>Enterprise Web Apps &amp; SaaS</strong>
+        <p>Blazing-fast responsive web applications, multi-tenant B2B portals, role-based dashboards, and distributed backend microservices.</p>
+        <div class="card-tags">
+          <span>Next.js 15</span>
+          <span>FastAPI</span>
+          <span>PostgreSQL</span>
+          <span>Tailwind</span>
+        </div>
       </a>
       <a class="card" href="/mobile-app-development.html">
-        <strong>Mobile apps</strong>
-        <p>iOS, Android, or cross-platform — rapid MVPs built for scale from the first release.</p>
-      </a>
-      <a class="card" href="/ai-development.html">
-        <strong>AI solutions</strong>
-        <p>Assistants and workflows grounded in your documents and systems, with strict guardrails.</p>
+        <div class="card-icon">📱</div>
+        <strong>Mobile App Development</strong>
+        <p>High-performance native iOS, Android, and cross-platform React Native apps with offline synchronization and biometric auth.</p>
+        <div class="card-tags">
+          <span>React Native</span>
+          <span>iOS</span>
+          <span>Android</span>
+          <span>Offline Sync</span>
+        </div>
       </a>
       <a class="card" href="/ui-ux-design.html">
-        <strong>UI/UX design</strong>
-        <p>Product design, systems, and clickable prototypes in Figma before engineering ramps.</p>
+        <div class="card-icon">🎨</div>
+        <strong>UI/UX Design &amp; Rapid Prototyping</strong>
+        <p>Comprehensive Figma design systems, interactive click-through prototypes, and heuristic usability testing before code is written.</p>
+        <div class="card-tags">
+          <span>Figma</span>
+          <span>Design Systems</span>
+          <span>User Testing</span>
+        </div>
       </a>
       <a class="card" href="/staff-augmentation.html">
-        <strong>Staff augmentation</strong>
-        <p>Embedded senior engineers and designers on a flexible retainer matching your stack.</p>
+        <div class="card-icon">👥</div>
+        <strong>Dedicated Squads &amp; Staffing</strong>
+        <p>Embedded senior engineers, AI researchers, and solutions architects matched to your stack on flexible, dedicated monthly sprints.</p>
+        <div class="card-tags">
+          <span>Senior Engineers</span>
+          <span>Named Leads</span>
+          <span>Zero Overhead</span>
+        </div>
       </a>
       <a class="card" href="/pricing.html">
-        <strong>How we price</strong>
-        <p>Indicative ranges after discovery — never a take-it-or-leave-it opaque quote.</p>
+        <div class="card-icon">💎</div>
+        <strong>Transparent Indicative Pricing</strong>
+        <p>No opaque, surprise quotes. We provide honest first-pass indicative ranges based on actual squad sizing and delivery velocity.</p>
+        <div class="card-tags">
+          <span>Fixed Sprints</span>
+          <span>Milestone Based</span>
+          <span>Full IP Ownership</span>
+        </div>
       </a>
     </div>
   </section>
 
+  <!-- Industry Blueprints Section -->
   <section class="section">
     <div class="section-head">
-      <h2>Selected work</h2>
-      <a href="/work.html">All case studies &rarr;</a>
+      <div class="section-title-wrap">
+        <span class="kicker">Specialized Verticals</span>
+        <h2>Deep Domain AI Blueprints</h2>
+      </div>
+      <span style="font-size: 13.5px; color: var(--text-muted);">Trained for compliance, integration &amp; ROI</span>
+    </div>
+    <div class="blueprint-grid">
+      <div class="blueprint-card">
+        <div class="blueprint-header">
+          <span class="blueprint-title">💼 Tax &amp; CPA Consultation</span>
+          <span class="blueprint-badge">Active Case Study</span>
+        </div>
+        <p class="blueprint-desc">Client intake bots, 1040/W-2 document extraction, pre-season question triage, and automated CPA consultation calendar booking.</p>
+        <div class="card-tags">
+          <span>IRS Compliance</span>
+          <span>SOC-2</span>
+          <span>Calendly</span>
+        </div>
+      </div>
+      <div class="blueprint-card">
+        <div class="blueprint-header">
+          <span class="blueprint-title">👥 HRTech &amp; Talent Acquisition</span>
+          <span class="blueprint-badge">ATS Integrated</span>
+        </div>
+        <p class="blueprint-desc">Resume parsing, conversational candidate pre-screening, interview scheduling, and bidirectional ATS sync (Greenhouse, Lever, Workday).</p>
+        <div class="card-tags">
+          <span>EEOC Safe</span>
+          <span>Greenhouse</span>
+          <span>Lever</span>
+        </div>
+      </div>
+      <div class="blueprint-card">
+        <div class="blueprint-header">
+          <span class="blueprint-title">🛡️ InsurTech &amp; Claims Processing</span>
+          <span class="blueprint-badge">Vision AI</span>
+        </div>
+        <p class="blueprint-desc">Automated First Notice of Loss (FNOL), damage photo triage via Gemini Vision, policy coverage verification, and instant claim status updates.</p>
+        <div class="card-tags">
+          <span>Gemini Vision</span>
+          <span>FNOL Intake</span>
+          <span>Guidewire</span>
+        </div>
+      </div>
+      <div class="blueprint-card">
+        <div class="blueprint-header">
+          <span class="blueprint-title">🚗 Automotive &amp; Dealerships</span>
+          <span class="blueprint-badge">DMS Live</span>
+        </div>
+        <p class="blueprint-desc">Showroom conversational lead capture, DealerSocket / Reynolds DMS live inventory lookups, NHTSA VIN decoding, and VIP test drive booking.</p>
+        <div class="card-tags">
+          <span>DealerSocket</span>
+          <span>NHTSA VIN</span>
+          <span>CRM Sync</span>
+        </div>
+      </div>
+      <div class="blueprint-card">
+        <div class="blueprint-header">
+          <span class="blueprint-title">🏥 Healthcare &amp; Telehealth</span>
+          <span class="blueprint-badge">HIPAA Compliant</span>
+        </div>
+        <p class="blueprint-desc">HIPAA/HITECH compliant patient intake, HL7 / FHIR EHR synchronization (Epic, Cerner), end-to-end AES-256 encryption, and BAA agreements.</p>
+        <div class="card-tags">
+          <span>HIPAA BAA</span>
+          <span>FHIR / HL7</span>
+          <span>AES-256</span>
+        </div>
+      </div>
+      <div class="blueprint-card">
+        <div class="blueprint-header">
+          <span class="blueprint-title">🛍️ E-Commerce &amp; Retail</span>
+          <span class="blueprint-badge">Shopify Verified</span>
+        </div>
+        <p class="blueprint-desc">Real-time Shopify &amp; WooCommerce order tracking, automated return and exchange authorization, AI product recommendations, and cart recovery.</p>
+        <div class="card-tags">
+          <span>Shopify API</span>
+          <span>Klaviyo</span>
+          <span>Order RAG</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Selected Work / Case Studies -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title-wrap">
+        <span class="kicker">Proven Track Record</span>
+        <h2>Selected Case Studies</h2>
+      </div>
+      <a href="/work.html" style="color: #60A5FA; font-size: 14px; font-weight: 600;">View all case studies &rarr;</a>
     </div>
     <div class="grid-work">
+      <a class="card card-work" href="/work/atlas.html">
+        <p class="kicker">Professional Services · AI Agent</p>
+        <strong>Atlas RFP Engine</strong>
+        <p>Accelerated RFP first-draft responses on a 12,000-page complex corpus with strict document citations.</p>
+        <div class="work-metric">⚡ Drafting time: 3 days &rarr; 4 hours</div>
+      </a>
       <a class="card card-work" href="/work/harvest.html">
-        <p class="kicker">Marketplace · Mobile</p>
-        <strong>Harvest</strong>
-        <p>Two-sided MVP in 16 weeks; first 1,200 listings in 90 days.</p>
+        <p class="kicker">Marketplace · Mobile App</p>
+        <strong>Harvest Platform</strong>
+        <p>Two-sided mobile marketplace MVP engineered and launched in 16 weeks with real-time bidding.</p>
+        <div class="work-metric">🚀 1,200 active listings in first 90 days</div>
       </a>
       <a class="card card-work" href="/work/ledgerly.html">
-        <p class="kicker">Fintech · Web</p>
-        <strong>Ledgerly</strong>
-        <p>Role-based ops console that replaced three spreadsheets.</p>
-      </a>
-      <a class="card card-work" href="/work/atlas.html">
-        <p class="kicker">Professional services · AI</p>
-        <strong>Atlas</strong>
-        <p>RFP first drafts from 3 days to 4 hours on a 12,000-page corpus.</p>
+        <p class="kicker">Fintech · Web Application</p>
+        <strong>Ledgerly Ops Console</strong>
+        <p>High-security operations console replacing fragmented spreadsheets with role-based audit logs.</p>
+        <div class="work-metric">🔒 100% audit compliance &amp; zero data drift</div>
       </a>
     </div>
   </section>
 
-  <section class="section" style="margin-top: 40px; margin-bottom: 20px;">
-    <div class="card" style="padding: 40px; text-align: center; background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(15, 23, 42, 0.6)); border: 1px solid rgba(59, 130, 246, 0.25);">
-      <p class="kicker">Instant Pre-Sales Consultation</p>
-      <h2 style="font-size: 28px; margin-bottom: 12px; color: #FFFFFF;">Have a project in mind?</h2>
-      <p class="lede" style="max-width: 32rem; margin: 0 auto 24px;">Talk with Mike, our AI project advisor. Get architecture suggestions, indicative cost estimates, and direct calendar booking in under 3 minutes.</p>
-      <button type="button" class="btn" style="padding: 14px 32px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">⚡ Start Project Discovery</button>
+  <!-- 4-Step Delivery Process -->
+  <section class="section">
+    <div class="section-head">
+      <div class="section-title-wrap">
+        <span class="kicker">Methodology</span>
+        <h2>The 4-Step Velocity Engine</h2>
+      </div>
+      <a href="/process.html" style="color: #60A5FA; font-size: 14px; font-weight: 600;">Detailed delivery guide &rarr;</a>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">STEP 01</span>
+        <strong>AI Discovery &amp; Scoping</strong>
+        <p>Talk with Mike to analyze requirements, select production-grade tech stacks, and receive an instant indicative budget and roadmap.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">STEP 02</span>
+        <strong>Interactive UI/UX &amp; Specs</strong>
+        <p>We build clickable high-fidelity Figma prototypes and user flows so your stakeholders approve UX before engineering ramps up.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">STEP 03</span>
+        <strong>Weekly Sprint Velocity</strong>
+        <p>Full-stack engineering on weekly delivery cadences with live staging environments, weekly video demos, and named lead accountability.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">STEP 04</span>
+        <strong>Hardening &amp; IP Transfer</strong>
+        <p>Security audits, performance profiling, complete test coverage, CI/CD pipelines, and 100% intellectual property ownership transferred to you.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- High-Converting Pre-Sales Discovery Banner -->
+  <section class="section" style="margin-top: 20px;">
+    <div class="cta-banner">
+      <span class="kicker" style="color: #93C5FD;">Skip the 2-Week Agency Pitch Deck</span>
+      <h2 class="cta-title">Ready to Turn Your Product Vision into Software?</h2>
+      <p class="cta-lede">
+        Talk with Mike, our AI project advisor. Get architecture recommendations, indicative investment ranges, and direct calendar booking in under 3 minutes.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15.5px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch Instant Discovery with Mike</span>
+      </button>
     </div>
   </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

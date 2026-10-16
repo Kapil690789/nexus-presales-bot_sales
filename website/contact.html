@@ -2,31 +2,86 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Contact — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Contact & Live Consultation Booking — Nexus</title>
+  <meta name="description" content="Book a technical discovery consultation with a Nexus solutions architect or talk to Mike for an instant architecture scoping and indicative estimate." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Contact</p>
-    <h1>Book a live consultation</h1>
-    <p class="lede">Open the advisor to scope a product, get an indicative range, and pick a real time on the team calendar. A strategist joins a 45-minute Google Meet.</p>
-    <button class="btn" type="button" id="book-call">Book a live consultation</button>
-  </section>
-  <section class="page-layout">
-    <div class="grid">
-      <div class="card"><strong>Hours</strong><p>Monday–Friday, 10:00–17:00 IST. Times in the chat are converted to your local timezone.</p></div>
-      <div class="card"><strong>What happens</strong><p>Share a work email, accept the confidentiality notice, and choose a slot. You get a calendar invite and a Meet link immediately.</p></div>
-      <div class="card"><strong>Email</strong><p>hello@devconsult.example — dummy address for this site. Prefer the advisor if you already know what you want to build.</p></div>
+    <div class="badge-pill">
+      <span>📅</span>
+      <span>Direct Strategic Consultation</span>
     </div>
-    <figure class="art"><img src="/art/meeting.svg" alt="Advisor ready to take a product brief" /></figure>
+    <h1>Schedule a Technical Discovery Session</h1>
+    <p class="lede">
+      Connect directly with our solutions architects. Open Mike to scope your product and select a live slot on our team calendar, or speak directly with a dedicated delivery lead.
+    </p>
+    <div class="hero-actions">
+      <button class="btn" type="button" id="book-call">
+        <span class="pulse-dot"></span>
+        <span>⚡ Book Live 45-Min Video Consultation</span>
+      </button>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="grid">
+      <div class="card">
+        <div class="card-icon">⏱️</div>
+        <strong>Operating Hours &amp; Timezones</strong>
+        <p>Global coverage supporting US, UK, EU, and APAC teams. Meeting slots in our calendar automatically adapt to your local timezone.</p>
+        <div class="card-tags">
+          <span>Global Timezones</span>
+          <span>Google Meet</span>
+          <span>Zoom</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📋</div>
+        <strong>What Happens on the Call</strong>
+        <p>A named solutions architect reviews your architecture requirements, data pipeline needs, Day-1 integrations, and delivery milestones.</p>
+        <div class="card-tags">
+          <span>NDA Protected</span>
+          <span>Technical Lead</span>
+          <span>Actionable Roadmap</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <strong>Prefer Instant Scoping?</strong>
+        <p>Skip the scheduling delay. Mike, our autonomous AI advisor, can analyze your scope, recommend architecture, and provide indicative estimates in 3 minutes.</p>
+        <div class="card-tags">
+          <span>Sub-3-minute</span>
+          <span>Live Scoping</span>
+          <span>Instant Blueprints</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Banner -->
+  <section class="section" style="margin-top: 10px;">
+    <div class="cta-banner">
+      <span class="kicker">Ready to Start?</span>
+      <h2 class="cta-title">Talk to Mike Now</h2>
+      <p class="cta-lede">
+        Our AI advisor is available 24/7 to scope your project, evaluate feasibility, and schedule your technical deep-dive.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch Instant Discovery with Mike</span>
+      </button>
+    </div>
   </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

@@ -2,27 +2,70 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>UI/UX design — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Product Design, UI/UX & Clickable Prototypes — Nexus</title>
+  <meta name="description" content="Award-winning UI/UX design, Figma design systems, interactive prototypes, and conversion-optimized user flows." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Design</p>
-    <h1>UI/UX design</h1>
-    <p class="lede">The consultant on this page starts from a design track — product design, a system, or a prototype you can test before engineering ramps.</p>
-  </section>
-  <section class="page-layout">
-    <div class="grid">
-      <div class="card"><strong>Stack we default to</strong><p>Figma for product design, systems, and prototype validation on mobile and web.</p></div>
-      <div class="card"><strong>Typical first release</strong><p>Activation, one core journey, and a system that engineering can take without a second redesign.</p></div>
-      <div class="card"><strong>How to start</strong><p>Open the advisor and say whether this is a new product, a redesign, or a prototype to test.</p></div>
+    <div class="badge-pill">
+      <span>🎨</span>
+      <span>Human-Centered Product Design</span>
     </div>
+    <h1>UI/UX Design &amp; Rapid Prototyping</h1>
+    <p class="lede">
+      We craft intuitive digital interfaces, scalable design systems, and clickable high-fidelity prototypes that allow founders and product managers to validate concepts with users before spending thousands on engineering.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Scope Design Sprint with Mike</span>
+      </button>
+      <a class="btn btn-ghost" href="/work.html">Explore Design Work</a>
+    </div>
+  </section>
+
+  <section class="page-layout">
+    <div class="grid" style="grid-template-columns: 1fr;">
+      <div class="card">
+        <div class="card-icon">📐</div>
+        <strong>Figma Design Systems &amp; Tokens</strong>
+        <p>Production-ready components with standardized typography, color palettes, auto-layout hierarchies, and direct export tokens for React and Tailwind CSS.</p>
+        <div class="card-tags">
+          <span>Figma</span>
+          <span>Design Tokens</span>
+          <span>Auto Layout</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <strong>Clickable Prototypes in 10 Days</strong>
+        <p>Interactive prototypes connected with real user flows that you can test with customers and pitch to investors to prove demand and usability.</p>
+        <div class="card-tags">
+          <span>Clickable Flows</span>
+          <span>User Testing</span>
+          <span>Pitch-Ready</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🎯</div>
+        <strong>Conversion &amp; Retention Focus</strong>
+        <p>Frictionless onboarding flows, activation milestones, and data visualizations that reduce churn and turn casual signups into sticky power users.</p>
+        <div class="card-tags">
+          <span>Onboarding UX</span>
+          <span>B2B Dashboards</span>
+          <span>Micro-interactions</span>
+        </div>
+      </div>
+    </div>
+
     <div class="dummy dummy-figma" aria-hidden="true">
       <div class="dummy-figma-bar"><span></span><span></span><span></span></div>
       <div class="dummy-figma-canvas">
@@ -30,7 +73,23 @@
       </div>
     </div>
   </section>
+
+  <!-- CTA Banner -->
+  <section class="section" style="margin-top: 10px;">
+    <div class="cta-banner">
+      <span class="kicker">Ready to Bring Your Vision to Life?</span>
+      <h2 class="cta-title">Scope Your Design Sprint in 3 Minutes</h2>
+      <p class="cta-lede">
+        Talk to Mike to define whether you need a ground-up MVP design, an onboarding overhaul, or an interactive prototype for testing.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch Instant Design Discovery</span>
+      </button>
+    </div>
+  </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

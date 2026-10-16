@@ -2,44 +2,74 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Process — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Engineering Process & Delivery Framework — Nexus</title>
+  <meta name="description" content="From instant AI scoping to weekly sprint velocity and production hardening. Learn how Nexus delivers custom software on time." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Delivery</p>
-    <h1>How an engagement starts</h1>
-    <p class="lede">We protect the budget by cutting phase-two scope, not by promising a date we cannot own. The advisor is the first pass; a strategist confirms the real number.</p>
+    <div class="badge-pill">
+      <span>⚙️</span>
+      <span>Predictable Software Delivery</span>
+    </div>
+    <h1>The Nexus Engineering Framework</h1>
+    <p class="lede">
+      We eliminate traditional agency bloat. Every project begins with rigorous scoping, an approved production tech stack, weekly live demonstrations, and dedicated delivery lead accountability.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Start Discovery with Mike</span>
+      </button>
+    </div>
   </section>
-  <section class="steps">
+
+  <section class="steps" style="margin-bottom: 48px;">
     <div class="step">
-      <p class="num">01 — Discover</p>
-      <strong>Shape the product, not the brochure</strong>
-      <p>Who is the first user, what must ship, and what can wait. Out-of-scope work is closed politely rather than estimated.</p>
+      <div class="step-num">PHASE 01</div>
+      <strong>Architecture &amp; Scoping</strong>
+      <p>Identify target users, primary workflows, and essential Day-1 integrations. We outline clear MVP boundaries and explicitly flag out-of-scope bloat to protect your timeline and budget.</p>
     </div>
     <div class="step">
-      <p class="num">02 — Cut an MVP</p>
-      <strong>One journey, an approved stack</strong>
-      <p>Mobile, web, AI, or design — we recommend from stacks we actually deliver, then drop features that belong in phase two.</p>
+      <div class="step-num">PHASE 02</div>
+      <strong>Interactive UI/UX &amp; Prototyping</strong>
+      <p>We craft high-fidelity Figma components, design systems, and clickable user flows so you and your executive stakeholders validate the experience before writing code.</p>
     </div>
     <div class="step">
-      <p class="num">03 — Indicative range</p>
-      <strong>A number you can take to stakeholders</strong>
-      <p>The advisor shares a low-side range based on what you have shared. It is dummy data for this demo, and never a formal quote.</p>
+      <div class="step-num">PHASE 03</div>
+      <strong>Weekly Sprint Cadence</strong>
+      <p>Continuous integration, automated end-to-end testing, and weekly Loom walkthroughs with live staging deployments so you witness real progress every Friday.</p>
     </div>
     <div class="step">
-      <p class="num">04 — Consultation</p>
-      <strong>Named lead, real commercials</strong>
-      <p>A Nexus strategist confirms scope, terms, and timeline. We do not guarantee a go-live date from the chat.</p>
+      <div class="step-num">PHASE 04</div>
+      <strong>Production Hardening &amp; Handoff</strong>
+      <p>Security penetration audits, SOC-2/HIPAA compliance validation, load testing, containerization, and full transfer of IP rights, repositories, and documentation.</p>
+    </div>
+  </section>
+
+  <!-- CTA Banner -->
+  <section class="section">
+    <div class="cta-banner">
+      <span class="kicker">Experience the Velocity</span>
+      <h2 class="cta-title">See Your Product Roadmap in Under 3 Minutes</h2>
+      <p class="cta-lede">
+        Talk to Mike to generate a customized architecture proposal and indicative sprint schedule right now.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch Instant Discovery</span>
+      </button>
     </div>
   </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

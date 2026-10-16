@@ -2,41 +2,105 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI development — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AI Product Development & Autonomous Agents — Nexus</title>
+  <meta name="description" content="Production-ready AI systems, custom RAG architectures, multi-agent workflows, and document intelligence grounded in your company data." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">AI solutions</p>
-    <h1>AI product development</h1>
-    <p class="lede">This page primes the consultant for AI discovery — what the assistant should do, what it can read, and an honest first-pass range.</p>
-  </section>
-  <section class="page-layout">
-    <div class="grid">
-      <div class="card"><strong>Grounding first</strong><p>We will ask what the assistant should do and which documents or systems it can read.</p></div>
-      <div class="card"><strong>Approved stacks</strong><p>Python + FastAPI, Next.js, and a vector store on PostgreSQL.</p></div>
-      <div class="card"><strong>How to start</strong><p>Open the advisor and describe the job the assistant should do for the user.</p></div>
+    <div class="badge-pill">
+      <span>🤖</span>
+      <span>Autonomous Systems &amp; Grounded AI</span>
     </div>
+    <h1>AI Product Engineering &amp; LLM Systems</h1>
+    <p class="lede">
+      We build enterprise-grade AI assistants, automated RAG retrieval engines, and domain-specialized agents with strict guardrails, zero hallucination tolerance, and sub-second response times.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Scope Your AI Project with Mike</span>
+      </button>
+      <a class="btn btn-ghost" href="/work.html">View AI Case Studies</a>
+    </div>
+  </section>
+
+  <section class="page-layout">
+    <div class="grid" style="grid-template-columns: 1fr;">
+      <div class="card">
+        <div class="card-icon">🧠</div>
+        <strong>Grounded RAG &amp; Vector Embeddings</strong>
+        <p>Hybrid semantic retrieval using dense embeddings (Google Gemini) and sparse keyword matching (BM25) with cross-encoder reranking over private enterprise knowledge stores.</p>
+        <div class="card-tags">
+          <span>pgvector</span>
+          <span>Pinecone</span>
+          <span>Hybrid RAG</span>
+          <span>Document OCR</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🛡️</div>
+        <strong>Deterministic Guardrails &amp; Compliance</strong>
+        <p>Hardened safety layers preventing prompt injection, PII leakage, and hallucinations. Strict out-of-scope steering and human-in-the-loop review paths.</p>
+        <div class="card-tags">
+          <span>Prompt Injection Defense</span>
+          <span>PII Masking</span>
+          <span>Audit Logging</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <strong>High-Velocity Production Stack</strong>
+        <p>Python 3.13, FastAPI async backends, Next.js 15 frontends, Redis semantic caching to slash token costs by up to 40%, and Server-Sent Events (SSE) streaming.</p>
+        <div class="card-tags">
+          <span>Python 3.13</span>
+          <span>FastAPI</span>
+          <span>Redis Cache</span>
+          <span>SSE Streaming</span>
+        </div>
+      </div>
+    </div>
+
     <div class="dummy dummy-ai" aria-hidden="true">
       <div class="dummy-ai-docs">
+        <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); margin-bottom: 6px;">KNOWLEDGE VECTORS</div>
         <div class="dummy-doc"></div>
         <div class="dummy-doc"></div>
         <div class="dummy-doc"></div>
+        <div class="dummy-doc" style="width: 50%;"></div>
       </div>
       <div class="dummy-ai-chat">
+        <div style="font-size: 11px; font-family: var(--font-mono); color: var(--text-dim); margin-bottom: 6px;">STREAMED COMPLETION</div>
         <div class="dummy-bubble"></div>
         <div class="dummy-bubble reply"></div>
         <div class="dummy-bubble"></div>
       </div>
     </div>
   </section>
+
+  <!-- CTA Section -->
+  <section class="section" style="margin-top: 10px;">
+    <div class="cta-banner">
+      <span class="kicker">Ready to Build?</span>
+      <h2 class="cta-title">Turn Your Data into an Autonomous Advantage</h2>
+      <p class="cta-lede">
+        Talk to Mike to define your assistant's core job, specify internal document sources, and generate a scoped architecture blueprint with indicative investment in under 3 minutes.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch AI Project Discovery</span>
+      </button>
+    </div>
+  </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

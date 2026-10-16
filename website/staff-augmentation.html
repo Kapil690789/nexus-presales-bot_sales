@@ -2,34 +2,93 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Staff augmentation — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Dedicated Engineering Squads & Staff Augmentation — Nexus</title>
+  <meta name="description" content="Embedded senior full-stack and AI engineers, solutions architects, and UX designers on flexible dedicated retainers. Zero overhead, matched to your stack." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Team</p>
-    <h1>Staff augmentation</h1>
-    <p class="lede">Embedded engineers and designers on a monthly retainer — matching the stack you already run, with a named lead on our side.</p>
-  </section>
-  <section class="page-layout">
-    <div class="grid">
-      <div class="card"><strong>How we embed</strong><p>Engineers and designers join your rituals. Stack matches yours rather than forcing an approved greenfield default.</p></div>
-      <div class="card"><strong>Typical first month</strong><p>One or two people, a scoped backlog, and a cadence you can extend or stop without a rewrite.</p></div>
-      <div class="card"><strong>How to start</strong><p>Open the advisor and say which roles you need and what stack they will join.</p></div>
+    <div class="badge-pill">
+      <span>👥</span>
+      <span>Embedded Senior Talent</span>
     </div>
+    <h1>Dedicated Squads &amp; Staff Augmentation</h1>
+    <p class="lede">
+      Scale your engineering bandwidth instantly. We embed senior full-stack engineers, AI researchers, and UX designers directly into your daily standups, Jira boards, and GitHub repositories — with zero recruiting friction.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Size Your Squad with Mike</span>
+      </button>
+      <a class="btn btn-ghost" href="/pricing.html">View Retainer Pricing</a>
+    </div>
+  </section>
+
+  <section class="page-layout">
+    <div class="grid" style="grid-template-columns: 1fr;">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <strong>Seamless Cultural &amp; Tech Fit</strong>
+        <p>Our engineers adapt to your tech stack, coding standards, and existing codebase rather than forcing greenfield rebuilds. We integrate with your daily standups and Slack channels.</p>
+        <div class="card-tags">
+          <span>Direct Slack / Teams</span>
+          <span>Timezone Aligned</span>
+          <span>Your CI/CD &amp; Git</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">🛡️</div>
+        <strong>Top 2% Senior Talent Only</strong>
+        <p>No junior handoffs or unvetted contractors. Every embedded engineer brings 6+ years of production experience in Python, TypeScript, React, Go, and distributed systems.</p>
+        <div class="card-tags">
+          <span>Senior Engineers</span>
+          <span>AI Architects</span>
+          <span>QA Automation</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">📈</div>
+        <strong>Flexible Monthly Retainers</strong>
+        <p>Start with 1 or 2 engineers or a dedicated full squad. Scale up or down with simple 30-day notice without costly headhunter placement fees or employment overhead.</p>
+        <div class="card-tags">
+          <span>Zero Headhunter Fees</span>
+          <span>30-Day Agility</span>
+          <span>Named Delivery Lead</span>
+        </div>
+      </div>
+    </div>
+
     <div class="dummy dummy-board" aria-hidden="true">
       <div class="dummy-person"><span class="dummy-avatar"></span><p><span></span><span></span></p></div>
       <div class="dummy-person"><span class="dummy-avatar"></span><p><span></span><span></span></p></div>
       <div class="dummy-person"><span class="dummy-avatar"></span><p><span></span><span></span></p></div>
     </div>
   </section>
+
+  <!-- CTA Banner -->
+  <section class="section" style="margin-top: 10px;">
+    <div class="cta-banner">
+      <span class="kicker">Ready to Accelerate Your Velocity?</span>
+      <h2 class="cta-title">Size Your Engineering Squad in 3 Minutes</h2>
+      <p class="cta-lede">
+        Talk to Mike to specify required skill sets, years of seniority, and start dates. Receive an instant monthly rate breakdown.
+      </p>
+      <button type="button" class="btn" style="padding: 15px 36px; font-size: 15px;" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Launch Squad Discovery</span>
+      </button>
+    </div>
+  </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>

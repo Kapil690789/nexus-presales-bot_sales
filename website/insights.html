@@ -2,39 +2,54 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Insights — Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Technical Insights & Architecture Notes — Nexus</title>
+  <meta name="description" content="Technical breakdowns, system architecture patterns, and practical guides on generative AI, enterprise RAG, and high-velocity MVP scoping." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <script src="/_nav.js"></script>
+
 <div class="wrap">
   <section class="page-hero">
-    <p class="kicker">Insights</p>
-    <h1>Notes from the desk</h1>
-    <p class="lede">Short dummy articles that match how the advisor talks about MVPs, ranges, and grounded AI.</p>
+    <div class="badge-pill">
+      <span>📚</span>
+      <span>Engineering Insights &amp; Architecture</span>
+    </div>
+    <h1>Field Notes from the Engineering Studio</h1>
+    <p class="lede">
+      Practical architecture blueprints, real-world case breakdowns, and field guides on building grounded AI assistants, high-velocity MVPs, and predictable software budgets.
+    </p>
+    <div class="hero-actions">
+      <button type="button" class="btn" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.open){window.NexusAdvisor.open(true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">
+        <span class="pulse-dot"></span>
+        <span>⚡ Ask Mike About Software Strategy</span>
+      </button>
+    </div>
   </section>
+
   <section class="list-stack">
     <a class="list-row" href="/insights/mvp-first.html">
-      <p class="kicker">Delivery</p>
-      <strong>Why we start with an MVP</strong>
-      <p>The first release is one user and one journey — not the platform you will need in year three.</p>
+      <p class="kicker">Delivery Velocity</p>
+      <strong>Why High-Growth Companies Start with a Focused MVP</strong>
+      <p>The first release should validate one high-value journey for one specific user persona — not the complex distributed monolith you will need in year three.</p>
     </a>
     <a class="list-row" href="/insights/indicative-ranges.html">
-      <p class="kicker">Commercials</p>
-      <strong>Indicative ranges vs quotes</strong>
-      <p>A number you can take to stakeholders is not a contract. Here is how we keep them distinct.</p>
+      <p class="kicker">Commercials &amp; Finance</p>
+      <strong>Indicative Estimation Ranges vs. Fixed-Price Quotes</strong>
+      <p>Why traditional opaque fixed quotes encourage adversarial scope disputes, and how transparent first-pass indicative sizing protects both velocity and quality.</p>
     </a>
     <a class="list-row" href="/insights/grounding-ai.html">
-      <p class="kicker">AI</p>
-      <strong>Grounding an AI product in your documents</strong>
-      <p>The assistant is only as useful as what it is allowed to read — and what it is forbidden to invent.</p>
+      <p class="kicker">AI Architecture</p>
+      <strong>Grounding Enterprise AI Products in Private Knowledge Stores</strong>
+      <p>An AI assistant is only as good as its retrieval pipeline. How hybrid vector search, cross-encoder reranking, and deterministic safety guardrails prevent hallucinations.</p>
     </a>
   </section>
 </div>
+
 <script src="/_footer.js"></script>
 <script src="/bot-config.js?v=2"></script>
 <script src="/embed.js?v=2" async></script>
