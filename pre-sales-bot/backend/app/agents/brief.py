@@ -81,6 +81,21 @@ class ProjectBrief(BaseModel):
             "sharpen_estimate",
         }:
             return
+        # Feature detail chip: "Standard functionality is fine" or "Skip detail & continue →"
+        if field == "feature_detail":
+            if value in ("not_specified", "not_sure", "skipped", "standard") or str(value).startswith("not_"):
+                self.feature_detail = "not_specified"
+            else:
+                self.feature_detail = str(value).strip() if value else "not_specified"
+            # Mark as fully attempted so needs_feature_detail() won't re-trigger
+            self.field_attempts["feature_detail"] = 99
+            return
+        # User flow chip: "Standard flow is fine" or "Skip for now"
+        if field == "user_flow":
+            self.user_flow = "not_specified"
+            self.field_attempts["user_flow"] = 99
+            return
+
         if field == "confirm_role":
             self.role_unconfirmed = False
             if value in ("study_or_practice", "intern_or_student"):
@@ -164,16 +179,24 @@ def named_features(brief: ProjectBrief) -> list[str]:
 
 def needs_feature_detail(brief: ProjectBrief) -> bool:
     """Short labels need one explanation. A sentence, or no features, does not.
-    ai_product features (AI chat, Document processing) are self-explanatory — skip detail."""
+    ai_product features (AI chat, Document processing) are self-explanatory — skip detail.
+    ui_ux deliverables are also self-explanatory — skip detail."""
     if not brief.features_confirmed or brief.feature_detail is not None:
         return False
     # AI product features are industry-standard terms; no detail question needed
     if brief.service == "ai_product":
         return False
+    # Skip for ui_ux — deliverables are self-explanatory
+    if brief.service == "ui_ux":
+        return False
     named = named_features(brief)
     if not named:
         return False
+    # If all feature names are longer than 3 words, they're already descriptive enough
+    if all(len(item.split()) > 3 for item in named):
+        return False
     return all(len(item.split()) < 8 for item in named)
+
 
 
 FAST_FLOW_FIELDS = (

@@ -15,8 +15,8 @@ in_scope:
     label: AI product
     summary: Assistants, RAG, document intelligence, and agent workflows
     platforms: [web, api, embedded]
-    stacks: [Python + FastAPI, Next.js]
-    backend_stacks: [OpenAI / Anthropic / Gemini, pgvector or dedicated vector store, PostgreSQL]
+    stacks: [Next.js, React]
+    backend_stacks: [Python FastAPI + PostgreSQL, Redis + pgvector / Pinecone]
   ui_ux:
     label: UI/UX design
     summary: Product design, design systems, and prototype validation

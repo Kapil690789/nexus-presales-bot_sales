@@ -333,6 +333,13 @@ def run_turn(
 
     if field in ("continue_discovery", "sharpen_estimate"):
         flow = _resolve_flow(config)
+        # Auto-skip optional fields that cause conversation loops when user clicks continue
+        if brief.feature_detail is None:
+            brief.feature_detail = "not_specified"
+            brief.field_attempts["feature_detail"] = 99
+        if brief.user_flow is None:
+            brief.user_flow = "not_specified"
+            brief.field_attempts["user_flow"] = 99
         if brief_ready(brief, flow=flow):
             s_field = next_sharpen_field(brief)
             if s_field:
@@ -348,6 +355,7 @@ def run_turn(
                     timings=timings,
                 )
         return _after_brief(session, config, brief, contact, summary, user_text=text, history=history, timings=timings)
+
 
     if field == "email_instead":
         contact["prefers_email"] = True
@@ -928,6 +936,15 @@ def run_turn(
                 brief.feature_detail = "not_specified"
             if brief.user_flow is None:
                 brief.user_flow = "not_specified"
+        # Auto-skip feature_detail and user_flow for ai_product service
+        # AI product features (AI chat, Document processing) are self-explanatory — no detail needed
+        if (field == "features_done" or (field == "features" and brief.features_confirmed)) and brief.service == "ai_product":
+            if brief.feature_detail is None:
+                brief.feature_detail = "not_specified"
+                brief.field_attempts["feature_detail"] = 99
+            if brief.user_flow is None:
+                brief.user_flow = "not_specified"
+                brief.field_attempts["user_flow"] = 99
         return _after_brief(
             session, config, brief, contact, summary,
             user_text=text, history=history, timings=timings,

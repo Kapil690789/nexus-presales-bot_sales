@@ -243,12 +243,12 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
     elif field == "feature_detail":
         chips = [
             {"label": "Standard functionality is fine", "field": "feature_detail", "value": "not_specified"},
-            {"label": "Skip detail & continue →", "field": "feature_detail", "value": "not_specified"},
+            {"label": "Skip & continue →", "field": "feature_detail", "value": "not_specified"},
         ]
     elif field == "user_flow":
         chips = [
             {"label": "Standard flow is fine", "field": "user_flow", "value": "not_specified"},
-            {"label": "Skip for now", "field": "user_flow", "value": "not_specified"},
+            {"label": "Skip for now →", "field": "user_flow", "value": "not_specified"},
         ]
     elif field == "users":
         chips = [

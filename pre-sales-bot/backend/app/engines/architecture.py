@@ -65,10 +65,21 @@ def recommend_architecture(brief: ProjectBrief, services: ServicesConfig) -> dic
             if arch_note not in notes:
                 notes.append(arch_note)
 
+    def _dedupe(items: list[str]) -> list[str]:
+        seen = set()
+        out = []
+        for item in items:
+            clean = str(item).strip()
+            if clean and clean.lower() not in seen:
+                seen.add(clean.lower())
+                out.append(clean)
+        return out
+
     return {
         "service": brief.service,
         "label": service.label,
-        "frontend": frontend,
-        "backend": backend,
+        "frontend": _dedupe(frontend),
+        "backend": _dedupe(backend),
         "notes": notes or [service.summary],
     }
+

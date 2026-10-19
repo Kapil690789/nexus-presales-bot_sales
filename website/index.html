@@ -34,7 +34,16 @@
         </button>
         <a class="btn btn-ghost" href="#capabilities">Explore Capabilities</a>
       </div>
+
+      <div class="hero-prompt-pills">
+        <span class="hero-prompt-label">⚡ Click to Scope Instantly:</span>
+        <button type="button" class="hero-prompt-pill" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.send){window.NexusAdvisor.send('I want to build an AI product with document intelligence', true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">🤖 Add AI to my product</button>
+        <button type="button" class="hero-prompt-pill" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.send){window.NexusAdvisor.send('I want to build a mobile app for iOS and Android', true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">📱 Mobile app (iOS &amp; Android)</button>
+        <button type="button" class="hero-prompt-pill" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.send){window.NexusAdvisor.send('We need a B2B SaaS web platform with dashboards and auth', true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">🌐 B2B SaaS Platform</button>
+        <button type="button" class="hero-prompt-pill" onclick="if(window.NexusAdvisor&&window.NexusAdvisor.send){window.NexusAdvisor.send('I want to design an MVP with Figma prototypes and user flows', true);}else{var l=document.querySelector('.ps-launcher');if(l)l.click();}">🎨 UI/UX Design</button>
+      </div>
     </div>
+
 
     <!-- Live Interactive Mockup Showcase -->
     <div class="hero-mockup-card">
