@@ -1512,15 +1512,45 @@ h2 {
   }
   .metrics-bar {
     grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px 0 32px;
   }
   .hero-actions {
     flex-direction: column;
     width: 100%;
+    gap: 10px;
   }
   .hero-actions .btn {
     width: 100%;
   }
   .btn {
     padding: 12px 20px;
+    font-size: 14px;
+  }
+  .hero-prompt-pills {
+    gap: 6px;
+  }
+  .hero-prompt-pill {
+    font-size: 12px;
+    padding: 8px 14px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .mockup-body {
+    padding: 14px;
+    gap: 10px;
+  }
+  .mockup-result {
+    padding: 12px;
+  }
+  .mockup-estimate {
+    font-size: 16px;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .card {
+    padding: 20px;
   }
 }

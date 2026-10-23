@@ -20,7 +20,7 @@
     widget_subtitle: "Online",
     placeholder: "Type your message...",
     position: "bottom-right",
-    teaser_delay_ms: 10000
+    teaser_delay_ms: 3500
   };
 
   var ICONS = {
@@ -1151,10 +1151,9 @@
   window.Advisor = advisorAPI;
 
   function initTeaserBubble() {
-    var delay = (brand.teaser_delay_ms != null) ? brand.teaser_delay_ms : 10000;
+    var delay = (brand.teaser_delay_ms != null) ? brand.teaser_delay_ms : 3500;
     if (delay <= 0) return;
     var isDesktop = window.innerWidth >= 768;
-    if (!isDesktop) return;
     try {
       if (sessionStorage.getItem("ps_teaser_dismissed")) return;
     } catch (e) {}
