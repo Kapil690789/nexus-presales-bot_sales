@@ -159,7 +159,12 @@ def prompt_for(brief: ProjectBrief | None, field: str | None, repeat: bool = Fal
     if field == "features" and brief and named_features(brief) and not brief.features_confirmed:
         return f"Added {_feature_names(brief)} — any other features for the launch, or ready to continue?"
     if field == "feature_detail":
-        return f"What should each of {_feature_names(brief)} do in the first version?"
+        names = named_features(brief) if brief else []
+        if len(names) == 1:
+            return f"What should {names[0]} include in the initial release?"
+        if len(names) >= 2:
+            return f"What should each of {_feature_names(brief)} do in the first version?"
+        return DISCOVERY_PROMPTS.get("feature_detail", "What should those initial capabilities accomplish in the initial release?")
     if repeat and field in REPHRASED_PROMPTS:
         return REPHRASED_PROMPTS[field]
     return DISCOVERY_PROMPTS.get(field or "", "What should we confirm next?")

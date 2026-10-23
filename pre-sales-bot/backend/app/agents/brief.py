@@ -274,7 +274,10 @@ def next_discovery_field(brief: ProjectBrief, flow: str = "classic") -> str | No
         and brief.service != "ai_product"
         and head not in {"service", "goal", "features"}
     ):
-        return "user_flow"
+        if brief.feature_detail == "not_specified" or (brief.feature_detail and "standard" in brief.feature_detail.lower()):
+            brief.user_flow = "not_specified"
+        else:
+            return "user_flow"
     if missing:
         # Never ask budget before goal and platforms
         if missing[0] == "budget_band" and (not brief.goal or (not brief.platforms and brief.service != "ui_ux")):

@@ -80,8 +80,10 @@ _EXTRACTOR_SYSTEM = (
     "5. If the requested work is specifically for homework, crypto, shopify, or web3, set service to 'out_of_scope'.\n"
     "6. If the user mentions AI, LLM, or chatbot capabilities alongside a mobile or web app, include them in ai_features and keep service as mobile_app or web_app.\n"
     "7. When a budget figure or range is given, set budget_text to visitor's exact words (e.g. '$40k to $80k', 'around 25 to 35k', 'under 15k'). Set budget_band to the band containing the range midpoint (under_15k for midpoint < 15k, 15_40k for 15k-40k, 40_80k for 40k-80k, 80k_plus for >= 80k).\n"
-    "8. In acknowledgement: provide a short, objective 1-sentence engineering acknowledgement. DO NOT repeat the visitor's budget or any currency figure. Never use flattering phrases ('Love it', 'Great idea', 'Smart approach', 'Awesome', 'v1').\n"
+    "8. In acknowledgement: provide a short, natural, professional 1-sentence consultative acknowledgement. Keep it human and concise without robotic consulting jargon, academic boilerplate, or repeating budget figures. Never use flattering phrases ('Love it', 'Great idea', 'Smart approach', 'Awesome', 'v1').\n"
     "9. When user says 3 months, 3 mahine, or up to 3 months, set timeline to '1_3_months'.\n"
+    "10. If the user message is a brief starter phrase (e.g. 'I have an app idea', 'app idea', 'just exploring costs'), do NOT extract goal or service. Leave goal and service as null so the assistant can ask what the idea actually is.\n"
+    "11. If the user message is answering a specific pending field (e.g. 'Consumers' for users, 'Founder' for role, 'ASAP' for timeline), ONLY extract that specific field and leave all other fields as null or empty.\n"
 )
 
 
@@ -320,6 +322,12 @@ def extract_slots(
                 for k, v in data.items():
                     if v not in (None, "", [], False):
                         merged[k] = v
+                # Starters must NEVER set goal or service
+                lowered_cleaned = cleaned.lower().strip()
+                if lowered_cleaned in _STARTER_PHRASES or not is_product_idea(cleaned):
+                    merged.pop("goal", None)
+                if lowered_cleaned in {"i have an app idea", "i have an idea", "app idea", "just exploring costs", "i'm just exploring costs", "im just exploring costs", "explore costs"}:
+                    merged.pop("service", None)
                 if "acknowledgement" in data and data["acknowledgement"]:
                     merged["acknowledgement"] = str(data["acknowledgement"]).strip()
                 if "budget_text" in data and data["budget_text"]:
@@ -355,7 +363,7 @@ def extract_slots(
     return heuristic
 
 
-def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pending_field: str | None = None) -> bool:
+def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pending_field: str | None = None, text: str = "") -> bool:
     if not extracted:
         return False
 
@@ -375,11 +383,30 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
     # 3. Platforms
     if extracted.get("platforms"):
         new_platforms = [p for p in extracted["platforms"] if isinstance(p, str)]
-        if not brief.platforms or getattr(brief, "service_source", "guess") == "guess" or set(brief.platforms) != set(new_platforms):
-            brief.platforms = new_platforms
-            applied_any = True
-        elif new_platforms:
-            applied_any = True
+        user_mentioned_platforms = (
+            any(
+                w in text.lower()
+                for w in (
+                    "ios", "android", "web", "mobile", "cross-platform", "cross platform",
+                    "browser", "desktop", "phone", "iphone", "ipad", "tablet", "api",
+                    "switch", "change", "instead", "rather", "only"
+                )
+            )
+            if text
+            else True
+        )
+        can_apply_platforms = (
+            not brief.platforms
+            or pending_field == "platforms"
+            or user_mentioned_platforms
+            or getattr(brief, "service_source", "guess") == "guess"
+        )
+        if can_apply_platforms:
+            if not brief.platforms or set(brief.platforms) != set(new_platforms):
+                brief.platforms = new_platforms
+                applied_any = True
+            elif new_platforms:
+                applied_any = True
         # QA-3 Item 5.e: 'web and mobile' sets platforms ['web','ios','android']; with no service set, set mobile_app
         has_both_web_mobile = (set(new_platforms) >= {"web", "ios", "android"}) or ({"web", "ios"} <= set(new_platforms)) or ({"web", "android"} <= set(new_platforms))
         if has_both_web_mobile and getattr(brief, "service_source", "guess") != "chip":
@@ -393,8 +420,18 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
 
     # 4. Goal
     if extracted.get("goal") and not brief.goal:
-        brief.goal = str(extracted["goal"]).strip()
-        applied_any = True
+        cand_goal = str(extracted["goal"]).strip()
+        cand_clean = cand_goal.lower().strip()
+        invalid_goals = {
+            "develop an app idea", "develop an app", "build an app", "i have an app idea",
+            "app idea", "an app idea", "have an app idea", "app", "an app", "idea",
+            "i have an idea", "have an idea", "develop an idea", "new app", "a new app",
+            "custom software", "software idea", "develop software", "build a platform",
+            "create an app", "i need an app", "need an app", "my app", "an idea",
+        }
+        if cand_clean not in invalid_goals and len(cand_clean.split()) >= 2:
+            brief.goal = cand_goal
+            applied_any = True
 
     # 5. Features
     if extracted.get("features"):

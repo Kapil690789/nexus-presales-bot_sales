@@ -872,7 +872,7 @@ def run_turn(
                     chips=_next_chips(brief, has_booking=bool(session.booking_json)),
                     timings=timings,
                 )
-            if extracted and apply_extracted_slots(brief, extracted, pending):
+            if extracted and apply_extracted_slots(brief, extracted, pending, text=text):
                 _note_flags(brief)
                 if not extracted.get("is_question") or brief_ready(brief):
                     filled = True
@@ -896,7 +896,7 @@ def run_turn(
                         timings=timings,
                     )
 
-            if not filled and (not field or field == "ask") and text:
+            if not filled and not brief.goal and (not field or field == "ask") and text:
                 t_clean = text.strip()
                 if re.match(r"^(i'?m\s+)?(just\s+)?explor(ing)?\s+costs?$", t_clean, re.IGNORECASE):
                     service_chips = [
@@ -928,6 +928,40 @@ def run_turn(
                         chips=service_chips,
                         timings=timings,
                     )
+                if re.match(r"^(i\s+want\s+to\s+add\s+ai\s+to\s+my\s+product|add\s+ai\s+to\s+my\s+product)$", t_clean, re.IGNORECASE):
+                    brief.service = "ai_product"
+                    brief.service_source = "explicit"
+                    ai_chips = [
+                        {"label": "AI chat / Assistant", "field": "features", "value": ["AI chat"]},
+                        {"label": "Document processing", "field": "features", "value": ["Document processing"]},
+                        {"label": "Workflow automation", "field": "features", "value": ["Workflow automation"]},
+                    ]
+                    return _finish(
+                        session, brief, contact, summary,
+                        message="Tell me a bit about your current product and what AI capability you want to add — e.g. customer support chat, document search, or workflow automation?",
+                        stage="discovery",
+                        route="discovery",
+                        chips=ai_chips,
+                        timings=timings,
+                    )
+                if re.match(r"^(i\s+need\s+a\s+web\s+platform|i\s+need\s+a\s+web\s+app)$", t_clean, re.IGNORECASE):
+                    brief.service = "web_app"
+                    brief.service_source = "explicit"
+                    web_chips = [
+                        {"label": "B2B SaaS portal", "field": "goal", "value": "B2B SaaS portal"},
+                        {"label": "Customer dashboard", "field": "goal", "value": "Customer dashboard"},
+                        {"label": "Online marketplace", "field": "goal", "value": "Online marketplace"},
+                    ]
+                    return _finish(
+                        session, brief, contact, summary,
+                        message="What will your web platform do — who is it for and what's the primary workflow users will complete?",
+                        stage="discovery",
+                        route="discovery",
+                        chips=web_chips,
+                        timings=timings,
+                    )
+
+
 
     if filled or (field and field not in ACTION and field != "ask"):
         changed_fields = [f for f in brief_track_fields if getattr(brief, f) != initial_brief_state[f] and getattr(brief, f)]
@@ -943,6 +977,11 @@ def run_turn(
                 brief.feature_detail = "not_specified"
                 brief.field_attempts["feature_detail"] = 99
             if brief.user_flow is None:
+                brief.user_flow = "not_specified"
+                brief.field_attempts["user_flow"] = 99
+        # Auto-skip user_flow when feature_detail is standard or skipped
+        if (field == "feature_detail" or getattr(brief, "feature_detail", None) == "not_specified") and getattr(brief, "user_flow", None) is None:
+            if brief.feature_detail == "not_specified" or "standard" in (brief.feature_detail or "").lower():
                 brief.user_flow = "not_specified"
                 brief.field_attempts["user_flow"] = 99
         return _after_brief(
@@ -1526,6 +1565,11 @@ def recap_line_from_brief(config: TenantConfig, brief: ProjectBrief) -> str:
         g = re.sub(r"\s+", " ", g).strip(" ,.-")
         if g and len(g) > 90:
             g = g[:90].rsplit(" ", 1)[0].strip()
+        if g.lower().strip() in {
+            "develop an app idea", "develop an app", "build an app", "app idea",
+            "software idea", "my app", "an idea", "custom software", "idea", "an app",
+        }:
+            g = ""
         g_phrase = g
 
     service_goal = f"{art} {s_clean.lower()}"
@@ -1632,7 +1676,7 @@ def _after_brief(
         )
 
     # Check consistency between service and platforms (Rule 4e / QA-3 Item 5.b)
-    if brief.service == "mobile_app" and brief.platforms and not any(p in ("ios", "android") for p in brief.platforms):
+    if brief.service == "mobile_app" and brief.platforms and ("web" in brief.platforms) and not any(p in ("ios", "android") for p in brief.platforms):
         if getattr(brief, "service_source", "guess") in ("chip", "explicit"):
             if not brief.platform_service_clarified:
                 brief.platform_service_clarified = True
@@ -1652,7 +1696,7 @@ def _after_brief(
         else:
             brief.service = "web_app"
             brief.service_source = "explicit"
-    elif brief.service == "web_app" and brief.platforms and not ("web" in [p.lower() for p in brief.platforms]):
+    elif brief.service == "web_app" and brief.platforms and any(p in ("ios", "android") for p in brief.platforms) and "web" not in [p.lower() for p in brief.platforms]:
         if getattr(brief, "service_source", "guess") in ("chip", "explicit"):
             if not brief.platform_service_clarified:
                 brief.platform_service_clarified = True
