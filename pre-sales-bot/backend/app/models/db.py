@@ -22,7 +22,7 @@ class Base(DeclarativeBase):
 
 def _engine_kwargs(url: str) -> dict:
     if url.startswith("sqlite"):
-        return {"connect_args": {"check_same_thread": False}}
+        return {"connect_args": {"check_same_thread": False, "timeout": 30.0}}
     kwargs: dict = {"pool_pre_ping": True}
     if os.environ.get("VERCEL"):
         kwargs["poolclass"] = NullPool
@@ -185,4 +185,12 @@ def init_db() -> None:
         },
     )
     _ensure_columns("token_usage", {"estimated": "BOOLEAN DEFAULT FALSE"})
+    bind = get_engine()
+    if bind.dialect.name == "sqlite":
+        try:
+            with bind.begin() as conn:
+                conn.execute(text("PRAGMA journal_mode=WAL;"))
+                conn.execute(text("PRAGMA busy_timeout=30000;"))
+        except Exception:
+            pass
     _pgvector_setup()

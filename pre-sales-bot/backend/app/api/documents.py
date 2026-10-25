@@ -99,6 +99,23 @@ async def upload_document(
         user_msg_text += f"\n\n{clean_notes}"
     _add(db, session.id, "user", user_msg_text, {"filename": filename, "kind": "upload", "notes": clean_notes})
 
+    # Auto-extract requirements, platforms, and features from document into brief
+    try:
+        from backend.app.agents.brief import ProjectBrief
+        from backend.app.agents.extractor import apply_extracted_slots, extract_slots
+
+        brief = ProjectBrief.model_validate_json(session.brief_json or "{}")
+        extracted_text_content = f"{clean_notes}\n{excerpt[:4000]}" if clean_notes else excerpt[:4000]
+        extracted = extract_slots(extracted_text_content, brief)
+        if extracted:
+            apply_extracted_slots(brief, extracted)
+            if not brief.goal and clean_notes:
+                brief.goal = clean_notes[:100]
+            session.brief_json = brief.model_dump_json()
+            db.add(session)
+    except Exception:
+        pass
+
     message = ""
     from backend.app.core.guard import UNTRUSTED_RULE, wrap_visitor
     from backend.app.core.llm import LLMError, complete_json, llm_available

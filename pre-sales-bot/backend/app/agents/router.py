@@ -1797,7 +1797,7 @@ def _after_brief(
         if not field:
             break
         attempts = brief.field_attempts.get(field, 0)
-        max_att = 3 if (field == "features" and brief and brief.features) else 2
+        max_att = 1 if field in ("feature_detail", "user_flow") else (3 if (field == "features" and brief and brief.features) else 2)
         if attempts >= max_att:
             # The same field is asked at most twice (Rule 4d).
             # On third time, leave slot unknown and move on.

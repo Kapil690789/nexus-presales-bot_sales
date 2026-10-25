@@ -134,6 +134,15 @@ class ProjectBrief(BaseModel):
                 if text and text not in current and not is_features_skip(text):
                     current.append(text)
             self.features = current
+            features_text = " ".join(current).lower()
+            if self.auth is None and any(w in features_text for w in ("auth", "login", "user account", "sign in", "signup", "sso")):
+                self.auth = True
+            if self.admin is None and any(w in features_text for w in ("admin", "dashboard", "backoffice", "analytics portal")):
+                self.admin = True
+            if self.realtime is None and any(w in features_text for w in ("realtime", "real-time", "live tracking", "websockets")):
+                self.realtime = True
+            if self.marketplace is None and any(w in features_text for w in ("marketplace", "multi-vendor", "vendor portal")):
+                self.marketplace = True
             return
         if field in {"platforms", "integrations", "ai_features", "constraints"}:
             items = value if isinstance(value, list) else [value]

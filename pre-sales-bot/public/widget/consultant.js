@@ -897,13 +897,56 @@
         brand = Object.assign(brand, data.brand || {});
         ndaVersion = (data.nda && data.nda.version) || "";
         applyBrand();
+        var saved = null;
+        try { saved = localStorage.getItem("ps_sess_" + tenant); } catch (e) {}
+        if (saved) {
+          return fetch(api + "/api/v1/sessions/" + encodeURIComponent(saved))
+            .then(function (sRes) {
+              if (sRes.ok) return sRes.json();
+              try { localStorage.removeItem("ps_sess_" + tenant); } catch (e) {}
+              return null;
+            })
+            .catch(function () { return null; })
+            .then(function (hydrated) {
+              if (hydrated && hydrated.session_id) {
+                return { _hydrated: true, data: hydrated };
+              }
+              return post("/api/v1/sessions", { tenant: tenant, path: window.location.pathname, page_url: window.location.href });
+            });
+        }
         return post("/api/v1/sessions", { tenant: tenant, path: window.location.pathname, page_url: window.location.href });
       })
-      .then(function (data) {
-        if (!data) return;
-        sessionId = data.session_id;
+      .then(function (resData) {
+        if (!resData) return;
+        if (resData._hydrated) {
+          var h = resData.data;
+          sessionId = h.session_id;
+          endWait();
+          thread.innerHTML = "";
+          (h.messages || []).forEach(function (m) {
+            say(m.role, m.content);
+          });
+          if (h.cards) {
+            h.cards.forEach(function (card) {
+              thread.appendChild(renderCard(card));
+            });
+          }
+          if (h.brief && Object.keys(h.brief).length > 0) {
+            currentBrief = Object.assign(currentBrief, h.brief);
+            thread.appendChild(renderBriefCard(currentBrief, "Your brief"));
+          }
+          setChips(h.chips || []);
+          if (h.progress) {
+            progressEl.textContent = " • Step " + h.progress;
+            progressEl.style.display = "inline";
+          } else {
+            progressEl.style.display = "none";
+          }
+          return;
+        }
+        sessionId = resData.session_id;
         try { localStorage.setItem("ps_sess_" + tenant, sessionId); } catch (e) {}
-        deliverReply(data);
+        deliverReply(resData);
       })
       .catch(function () {
         endWait();

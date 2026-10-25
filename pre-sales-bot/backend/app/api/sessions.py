@@ -208,6 +208,78 @@ def _is_expired(expires_at: datetime | None) -> bool:
     return expires_at < datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+@router.get("/api/v1/sessions/{session_id}")
+def get_session_state(session_id: str, db: Session = Depends(get_db)) -> dict:
+    session = _session(db, session_id)
+    if _is_expired(session.expires_at):
+        raise HTTPException(status_code=410, detail="Session has expired. Please refresh to start a new chat.")
+    tenant_row = db.get(TenantRow, session.tenant_id)
+    if tenant_row is None:
+        raise HTTPException(status_code=404, detail="Unknown client")
+    try:
+        config = load_tenant(tenant_row.slug)
+    except TenantNotFound:
+        raise HTTPException(status_code=404, detail="Unknown client")
+
+    rows = db.scalars(
+        select(MessageRow).where(MessageRow.session_id == session.id).order_by(MessageRow.created_at.asc())
+    ).all()
+
+    messages = [{"id": r.id, "role": r.role, "content": r.content, "created_at": r.created_at.isoformat()} for r in rows]
+
+    latest_chips = []
+    latest_cards = []
+    latest_route = "discovery"
+    latest_progress = None
+    for r in reversed(rows):
+        if r.role == "assistant" and r.payload_json:
+            try:
+                meta = json.loads(r.payload_json)
+                latest_chips = meta.get("chips") or []
+                latest_cards = meta.get("cards") or []
+                latest_route = meta.get("route") or "discovery"
+                latest_progress = meta.get("progress")
+                break
+            except Exception:
+                pass
+
+    try:
+        from backend.app.agents.brief import ProjectBrief
+
+        brief = ProjectBrief.model_validate_json(session.brief_json or "{}")
+        brief_dict = brief.model_dump()
+    except Exception:
+        from backend.app.agents.brief import ProjectBrief
+
+        brief = ProjectBrief()
+        brief_dict = {}
+
+    from backend.app.agents.router import compute_discovery_progress
+
+    if latest_progress is None:
+        latest_progress = compute_discovery_progress(brief, session.stage, latest_route)
+
+    qual = {}
+    if session.qualification_json:
+        try:
+            qual = json.loads(session.qualification_json)
+        except Exception:
+            pass
+
+    return {
+        "session_id": session.id,
+        "stage": session.stage,
+        "brief": brief_dict,
+        "messages": messages,
+        "chips": latest_chips,
+        "cards": latest_cards,
+        "score": qual.get("score"),
+        "band": qual.get("band"),
+        "progress": latest_progress,
+        "nda_accepted": session.nda_accepted,
+    }
+
+
 @router.post("/api/v1/sessions/{session_id}/messages")
 def post_message(
     session_id: str,

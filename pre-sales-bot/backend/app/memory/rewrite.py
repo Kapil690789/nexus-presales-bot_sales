@@ -59,14 +59,19 @@ def lookup_queries(text: str, summary: str, previous_user_texts: list[str]) -> l
 def rolling_summary(previous: str, user_texts: list[str], every: int) -> str:
     if not user_texts or every <= 0 or len(user_texts) % every != 0:
         return previous or ""
-    joined = "\n".join(user_texts[-8:])
+    recent = [u.strip() for u in user_texts[-8:] if u.strip()]
+    joined = "\n".join(f"- {u}" for u in recent)
     if llm_available():
         try:
             is_mocked = (
                 getattr(complete_json, "__module__", "") != "backend.app.core.llm"
                 or getattr(complete_json, "__name__", "") != "complete_json"
             )
-            prompt_sys = f"Summarize the visitor's project in under 80 words. {UNTRUSTED_RULE} Return JSON {{\"summary\": \"...\"}}. Omit emails and phone numbers."
+            prompt_sys = (
+                f"You are a technical project lead. Summarize the visitor's software project requirements, "
+                f"core modules, and constraints in under 80 words based on their statements. {UNTRUSTED_RULE} "
+                f'Return JSON {{"summary": "..."}}. Omit emails, phone numbers, and conversational greetings.'
+            )
             prompt_usr = wrap_visitor(joined)
             if not is_mocked:
                 data = complete_json(prompt_sys, prompt_usr, purpose="summary")

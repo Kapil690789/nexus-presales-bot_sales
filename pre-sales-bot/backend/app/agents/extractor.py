@@ -449,6 +449,15 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
             brief.features = current
             brief.features_confirmed = True
             applied_any = True
+            features_text = " ".join(current).lower()
+            if brief.auth is None and any(w in features_text for w in ("auth", "login", "user account", "sign in", "signup", "sso")):
+                brief.auth = True
+            if brief.admin is None and any(w in features_text for w in ("admin", "dashboard", "backoffice", "analytics portal")):
+                brief.admin = True
+            if brief.realtime is None and any(w in features_text for w in ("realtime", "real-time", "live tracking", "websockets")):
+                brief.realtime = True
+            if brief.marketplace is None and any(w in features_text for w in ("marketplace", "multi-vendor", "vendor portal")):
+                brief.marketplace = True
 
     # 5b. AI features
     if extracted.get("ai_features"):

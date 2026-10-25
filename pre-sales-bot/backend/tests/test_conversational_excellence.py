@@ -199,3 +199,46 @@ def test_nemo_guardrails_3_tier():
     assert "$4,200" not in sanitized
 
 
+def test_session_hydration_get_endpoint(client):
+    """Verify GET /api/v1/sessions/{id} returns full state, messages, and brief for page refresh hydration."""
+    res_post = client.post("/api/v1/sessions", json={"tenant": "demo"})
+    assert res_post.status_code == 200
+    sid = res_post.json()["session_id"]
+
+    # Send a message
+    client.post(
+        f"/api/v1/sessions/{sid}/messages",
+        json={"content": "I want to build a fitness tracking mobile app with login"},
+    )
+
+    # Hydrate via GET
+    res_get = client.get(f"/api/v1/sessions/{sid}")
+    assert res_get.status_code == 200
+    data = res_get.json()
+    assert data["session_id"] == sid
+    assert len(data["messages"]) >= 2
+    assert "brief" in data
+    assert "fitness" in str(data["brief"].get("goal", "")).lower() or data["brief"].get("service") == "mobile_app"
+
+
+def test_document_upload_extracts_slots_into_brief(client):
+    """Verify document upload populates requirements into brief_json rather than discarding them."""
+    res_post = client.post("/api/v1/sessions", json={"tenant": "demo"})
+    sid = res_post.json()["session_id"]
+
+    prd_text = b"Product Specification: Telehealth iOS and Android application with appointment booking and EHR integration."
+    res_doc = client.post(
+        f"/api/v1/sessions/{sid}/documents",
+        files={"file": ("prd.txt", prd_text, "text/plain")},
+        data={"notes": "Please review MVP for doctors"},
+    )
+    assert res_doc.status_code == 200
+
+    # Verify session brief in DB has extracted platforms/service
+    res_get = client.get(f"/api/v1/sessions/{sid}")
+    assert res_get.status_code == 200
+    brief = res_get.json()["brief"]
+    assert brief.get("service") in ("mobile_app", "web_app") or brief.get("platforms")
+
+
+
