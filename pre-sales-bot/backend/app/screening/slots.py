@@ -256,11 +256,44 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
             {"label": "Skip for now →", "field": "user_flow", "value": "not_specified"},
         ]
     elif field == "users":
-        chips = [
-            {"label": "Consumers", "field": "users", "value": "consumers"},
-            {"label": "Business users", "field": "users", "value": "business"},
-            {"label": "Internal team", "field": "users", "value": "internal"},
-        ]
+        from backend.app.engines.domains import detect_domain
+        dom = detect_domain(brief=brief) if brief else None
+        if dom == "health":
+            chips = [
+                {"label": "🩺 Patients (B2C)", "field": "users", "value": "consumers"},
+                {"label": "👨‍⚕️ Doctors & Clinicians (B2B)", "field": "users", "value": "business"},
+                {"label": "🏥 Clinic Admin Staff", "field": "users", "value": "internal"},
+            ]
+        elif dom == "logistics":
+            chips = [
+                {"label": "📱 End Customers (B2C)", "field": "users", "value": "consumers"},
+                {"label": "🚚 Drivers & Couriers (B2B)", "field": "users", "value": "business"},
+                {"label": "📦 Dispatch & Ops Team", "field": "users", "value": "internal"},
+            ]
+        elif dom == "fintech":
+            chips = [
+                {"label": "💳 Retail Consumers (B2C)", "field": "users", "value": "consumers"},
+                {"label": "🏢 Corporate Merchants (B2B)", "field": "users", "value": "business"},
+                {"label": "🛡️ Compliance & Risk Ops", "field": "users", "value": "internal"},
+            ]
+        elif dom in ("ecommerce", "marketplace"):
+            chips = [
+                {"label": "🛍️ Shoppers / Buyers (B2C)", "field": "users", "value": "consumers"},
+                {"label": "🏪 Vendors / Sellers (B2B)", "field": "users", "value": "business"},
+                {"label": "👥 Marketplace Ops", "field": "users", "value": "internal"},
+            ]
+        elif dom == "saas":
+            chips = [
+                {"label": "👤 Individual End-users", "field": "users", "value": "consumers"},
+                {"label": "🏢 Business Accounts (B2B)", "field": "users", "value": "business"},
+                {"label": "👥 Internal Operations Team", "field": "users", "value": "internal"},
+            ]
+        else:
+            chips = [
+                {"label": "👤 Everyday Consumers (B2C)", "field": "users", "value": "consumers"},
+                {"label": "🏢 Business Clients (B2B)", "field": "users", "value": "business"},
+                {"label": "👥 Internal Operations Team", "field": "users", "value": "internal"},
+            ]
     elif field == "platforms":
         if brief and brief.service in ("web_app", "ai_product"):
             chips = [
@@ -281,17 +314,44 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
                 {"label": "Web", "field": "platforms", "value": ["web"]},
             ]
     elif field == "integrations":
-        chips = [
-            {"label": "None on day one", "field": "integrations", "value": ["none"]},
-            {"label": "Payments", "field": "integrations", "value": ["payments"]},
-            {"label": "CRM", "field": "integrations", "value": ["crm"]},
-        ]
+        from backend.app.engines.domains import detect_domain
+        dom = detect_domain(brief=brief) if brief else None
+        if dom == "health":
+            chips = [
+                {"label": "🚀 None on day one", "field": "integrations", "value": ["none"]},
+                {"label": "🏥 EHR / FHIR (Epic/Cerner)", "field": "integrations", "value": ["crm"]},
+                {"label": "💳 Stripe / Insurance Billing", "field": "integrations", "value": ["payments"]},
+            ]
+        elif dom == "fintech":
+            chips = [
+                {"label": "🚀 None on day one", "field": "integrations", "value": ["none"]},
+                {"label": "💳 Stripe / Plaid Banking", "field": "integrations", "value": ["payments"]},
+                {"label": "🔗 Custom Financial API", "field": "integrations", "value": ["crm"]},
+            ]
+        elif dom in ("ecommerce", "logistics"):
+            chips = [
+                {"label": "🚀 None on day one", "field": "integrations", "value": ["none"]},
+                {"label": "💳 Stripe Connect / Payouts", "field": "integrations", "value": ["payments"]},
+                {"label": "📦 Shipping & Tracking API", "field": "integrations", "value": ["crm"]},
+            ]
+        elif brief and brief.service == "ai_product":
+            chips = [
+                {"label": "🚀 Standalone MVP", "field": "integrations", "value": ["none"]},
+                {"label": "🔗 Custom REST / Webhooks", "field": "integrations", "value": ["crm"]},
+                {"label": "📂 Cloud DB / Vector Store", "field": "integrations", "value": ["payments"]},
+            ]
+        else:
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "💳 Payments (Stripe/Checkout)", "field": "integrations", "value": ["payments"]},
+                {"label": "📊 CRM / External APIs", "field": "integrations", "value": ["crm"]},
+            ]
     elif field == "timeline":
         chips = [
-            {"label": "ASAP", "field": "timeline", "value": "asap"},
-            {"label": "1–3 months", "field": "timeline", "value": "1_3_months"},
-            {"label": "3–6 months", "field": "timeline", "value": "3_6_months"},
-            {"label": "Flexible", "field": "timeline", "value": "flexible"},
+            {"label": "⚡ ASAP (Sprint 1 in 4–6 wks)", "field": "timeline", "value": "asap"},
+            {"label": "📅 1–3 months (Standard MVP)", "field": "timeline", "value": "1_3_months"},
+            {"label": "🗓️ 3–6 months (Scale Build)", "field": "timeline", "value": "3_6_months"},
+            {"label": "🤝 Flexible Horizon", "field": "timeline", "value": "flexible"},
         ]
     elif field == "budget_band":
         chips = [
@@ -303,17 +363,17 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
         ]
     elif field == "decision_role":
         chips = [
-            {"label": "Founder / exec", "field": "decision_role", "value": "founder_or_exec"},
-            {"label": "Product or ops", "field": "decision_role", "value": "product_or_ops_lead"},
-            {"label": "Manager", "field": "decision_role", "value": "manager"},
-            {"label": "Student / intern", "field": "decision_role", "value": "intern_or_student"},
+            {"label": "🚀 Founder / Executive", "field": "decision_role", "value": "founder_or_exec"},
+            {"label": "📊 Product / Engineering Lead", "field": "decision_role", "value": "product_or_ops_lead"},
+            {"label": "💼 Business Operations Lead", "field": "decision_role", "value": "manager"},
+            {"label": "🎓 Student / Academic Project", "field": "decision_role", "value": "intern_or_student"},
         ]
     elif field == "company_size":
         chips = [
-            {"label": "Startup", "field": "company_size", "value": "startup"},
-            {"label": "SMB", "field": "company_size", "value": "smb"},
-            {"label": "Mid-market", "field": "company_size", "value": "mid_market"},
-            {"label": "Enterprise", "field": "company_size", "value": "enterprise"},
+            {"label": "🌱 Early-stage Startup", "field": "company_size", "value": "startup"},
+            {"label": "🏢 Small / Medium Business", "field": "company_size", "value": "smb"},
+            {"label": "📈 Mid-Market Growing Team", "field": "company_size", "value": "mid_market"},
+            {"label": "🏛️ Enterprise Organization", "field": "company_size", "value": "enterprise"},
         ]
 
     if repeat and chips:

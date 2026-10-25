@@ -726,12 +726,22 @@ def run_turn(
 
     direct_objection = match_objection(text, config.objections) if (text and not field and _is_objection_eligible(text)) else None
     if direct_objection:
+        objection_topic = direct_objection.get("topic") or ""
+        if (brief_ready(brief) or session.estimate_json) and objection_topic == "pricing":
+            objection_chips = [
+                {"label": "💡 Show a leaner cut", "field": "view_mvp", "value": "leaner_cut"},
+                {"label": "🗓️ Split into 2 phases", "field": "view_mvp", "value": "core_cut"},
+                BOOK_CHIP,
+                PORTFOLIO_CHIP,
+            ]
+        else:
+            objection_chips = _next_chips(brief, has_booking=bool(session.booking_json))
         return _finish(
             session, brief, contact, summary,
             message=direct_objection["reply"],
             stage=session.stage or "discovery",
             route="objection",
-            chips=_next_chips(brief, has_booking=bool(session.booking_json)),
+            chips=objection_chips,
             timings=timings,
         )
 

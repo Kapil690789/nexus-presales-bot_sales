@@ -50,3 +50,38 @@ def test_security_faq_domain_enrichment():
     bp_health = get_domain_blueprint("health")
     assert bp_health is not None
     assert "HIPAA" in bp_health.compliance
+
+
+def test_domain_adaptive_user_and_integration_chips():
+    """Chips for users and integrations must adapt to the project domain context."""
+    brief_health = ProjectBrief(service="mobile_app", goal="Doctor appointment and telehealth video", industry="health")
+    user_chips_health = chips_for_field("users", brief_health)
+    labels = [c["label"] for c in user_chips_health]
+    assert any("Patient" in lbl for lbl in labels), f"Expected Patient in health user chips, got {labels}"
+    assert any("Doctor" in lbl for lbl in labels), f"Expected Doctor in health user chips, got {labels}"
+    
+    integ_chips_health = chips_for_field("integrations", brief_health)
+    integ_labels = [c["label"] for c in integ_chips_health]
+    assert any("EHR" in lbl or "FHIR" in lbl for lbl in integ_labels), f"Expected EHR/FHIR in health integrations, got {integ_labels}"
+
+
+def test_explainable_bant_qualification():
+    """Qualify must produce a structured BANT breakdown for sales handoff."""
+    from backend.app.engines.qualification import qualify
+    config = load_tenant("demo")
+    brief = ProjectBrief(
+        service="mobile_app",
+        goal="Doctor video app",
+        budget_band="40_80k",
+        decision_role="founder_or_exec",
+        timeline="asap",
+        features=["User authentication"],
+        features_confirmed=True,
+    )
+    qual = qualify(brief, config.qualification, config.services)
+    assert "bant" in qual
+    assert qual["bant"]["budget"]["fit"] == "high"
+    assert qual["bant"]["authority"]["fit"] == "direct"
+    assert qual["bant"]["timing"]["urgency"] == "urgent"
+    assert any("BANT Breakdown" in r for r in qual["reasons"])
+
