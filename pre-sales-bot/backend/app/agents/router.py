@@ -26,7 +26,7 @@ from backend.app.agents.extractor import apply_extracted_slots, extract_slots, i
 from backend.app.agents.fallback import fallback_message
 from backend.app.agents.suggestions import ensure_chips
 from backend.app.core.llm import LLMError, complete_json, llm_available
-from backend.app.core.guard import sanitize_duration_leaks, sanitize_price_leaks
+from backend.app.core.guard import OutputRails, sanitize_duration_leaks, sanitize_price_leaks
 from backend.app.core.platform import get_platform
 from backend.app.engines.architecture import recommend_architecture
 from backend.app.engines.calendar import confirm_slot, list_slots
@@ -35,7 +35,7 @@ from backend.app.engines.objections import match_objection
 from backend.app.engines.portfolio import match_portfolio
 from backend.app.engines.pricing import estimate_project
 from backend.app.engines.qualification import qualify
-from backend.app.engines.notify import company_from_email, notify_slack
+from backend.app.engines.notify import company_from_email, format_bant_handoff_message, notify_slack
 from backend.app.learning.pairs import save_booking_pairs
 from backend.app.memory.rewrite import lookup_queries, rolling_summary
 from backend.app.core.security import (
@@ -439,7 +439,16 @@ def run_turn(
                 db,
                 session.id,
                 tenant,
-                f"Lead email captured (prefers email) for {config.brand.name}: {email} (Session: {session.id})",
+                format_bant_handoff_message(
+                    brand_name=config.brand.name,
+                    brief=brief,
+                    qual=qual,
+                    contact=contact,
+                    estimate=estimate,
+                    booked=None,
+                    session_id=session.id,
+                    action_type="Lead email captured (prefers email)",
+                ),
             )
             return _finish(
                 session, brief, contact, summary,
@@ -516,7 +525,16 @@ def run_turn(
                 db,
                 session.id,
                 tenant,
-                f"Booking invitation dispatched for {config.brand.name}: {booked.get('label') or slot_iso} -> {email} (Session: {session.id})",
+                format_bant_handoff_message(
+                    brand_name=config.brand.name,
+                    brief=brief,
+                    qual=qual,
+                    contact=contact,
+                    estimate=estimate,
+                    booked=booked,
+                    session_id=session.id,
+                    action_type="Booking invitation dispatched",
+                ),
             )
             slot_label = booked.get("label") or slot_iso or "your scheduled discovery session"
             reply = f"Thank you! Your calendar invitation for **{slot_label}** has been dispatched to **{email}**."
@@ -558,7 +576,16 @@ def run_turn(
                 db,
                 session.id,
                 tenant,
-                f"Lead email captured for {config.brand.name}: {email}",
+                format_bant_handoff_message(
+                    brand_name=config.brand.name,
+                    brief=brief,
+                    qual=qual,
+                    contact=contact,
+                    estimate=estimate,
+                    booked=None,
+                    session_id=session.id,
+                    action_type="Lead email captured",
+                ),
             )
             tz_name = getattr(config.brand, "timezone", "") or "Asia/Kolkata"
             slots, live = list_slots(tenant, tz_name=tz_name)
@@ -1332,7 +1359,16 @@ def _book(db, tenant, config, session, brief, contact, summary, slot_iso: str) -
         db,
         session.id,
         tenant,
-        f"Booking for {config.brand.name}: {booked.get('label') or slot_iso} ({email or 'no email yet'})",
+        format_bant_handoff_message(
+            brand_name=config.brand.name,
+            brief=brief,
+            qual=qual,
+            contact=contact,
+            estimate=estimate,
+            booked=booked,
+            session_id=session.id,
+            action_type=f"Booking for {config.brand.name}: {booked.get('label') or slot_iso} ({email or 'no email yet'})",
+        ),
     )
     if email:
         _lead(db, tenant, session, email, qual, estimate, handoff)
@@ -2314,6 +2350,27 @@ def rewrite_query_with_brief(query: str, brief: ProjectBrief | None) -> str:
     return cleaned
 
 
+def compute_discovery_progress(brief: Any, stage: str, route: str) -> str | None:
+    """Compute the 4-step consultative progress indicator for the chat widget."""
+    if stage in ("booking", "handoff", "contact") or route in ("booking", "contact", "email_capture"):
+        return None
+    if stage in ("pricing", "estimate", "scoping") or route in ("estimate", "scoping"):
+        return "4 of 4"
+    has_scope = bool(getattr(brief, "service", None) or getattr(brief, "goal", None))
+    has_features = bool(getattr(brief, "features", None) or getattr(brief, "platforms", None))
+    has_commercials = bool(getattr(brief, "budget_band", None) or getattr(brief, "timeline", None))
+
+    if not has_scope:
+        step = 1
+    elif not has_features:
+        step = 2
+    elif not has_commercials:
+        step = 3
+    else:
+        step = 4
+    return f"{step} of 4"
+
+
 def _handoff(config, brief, contact, qual, estimate, booked) -> str:
     lines = [
         f"# Discovery summary — {config.brand.name}",
@@ -2322,6 +2379,12 @@ def _handoff(config, brief, contact, qual, estimate, booked) -> str:
         f"Goal: {brief.goal or '—'}",
         f"Score: {qual.get('score')} ({qual.get('band')})",
     ]
+    bant = qual.get("bant")
+    if bant and isinstance(bant, dict):
+        b = bant.get("budget", {}).get("value") or getattr(brief, "budget_band", None) or "exploring"
+        a = bant.get("authority", {}).get("value") or getattr(brief, "decision_role", None) or "unknown"
+        t = bant.get("timing", {}).get("value") or getattr(brief, "timeline", None) or "flexible"
+        lines.append(f"BANT: Budget={b} | Authority={a} | Timing={t}")
     from backend.app.engines.domains import detect_domain, get_domain_blueprint
     dom = detect_domain(brief=brief)
     if dom:
@@ -2415,6 +2478,14 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
             )
         except Exception:
             pass
+    sanitized_message = OutputRails.scrub_tokens(sanitized_message)
+    progress_val = payload.get("progress")
+    if progress_val is None:
+        progress_val = compute_discovery_progress(
+            brief,
+            payload.get("stage") or session.stage,
+            payload.get("route") or "discovery",
+        )
     result = {
         "message": sanitized_message,
         "stage": payload.get("stage") or "discovery",
@@ -2427,7 +2498,7 @@ def _finish(session, brief, contact, summary, **payload) -> dict:
         "qualification": payload.get("qualification"),
         "estimate": payload.get("estimate"),
         "booking": payload.get("booking"),
-        "progress": payload.get("progress"),
+        "progress": progress_val,
         "summary": summary,
         "contact": contact,
         "handoff_summary": payload.get("handoff_summary") or session.handoff_summary or "",

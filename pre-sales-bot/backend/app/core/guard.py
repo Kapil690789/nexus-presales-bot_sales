@@ -358,3 +358,150 @@ def sanitize_duration_leaks(
 
     return "".join(out_parts).strip()
 
+
+_INTERNAL_TOKENS_RE = re.compile(
+    r"<\s*/?\s*visitor\s*>|<\|im_start\|>|<\|im_end\|>|<\|system\|>|\[/?INST\]|<<?/?SYS>>?|\[/?SYSTEM_INSTRUCTION\]",
+    re.IGNORECASE,
+)
+
+
+def scrub_internal_tokens(text: str) -> str:
+    """Scrub prompt leakage, internal delimiters, and raw template headers from responses."""
+    if not text:
+        return ""
+    cleaned = _INTERNAL_TOKENS_RE.sub("", text)
+    return re.sub(r"[ \t]+", " ", cleaned).strip()
+
+
+class InputRails:
+    """Tier 1: Input Rails — Sanitization, prompt injection detection, and visitor payload encapsulation."""
+
+    @staticmethod
+    def normalize(text: str) -> str:
+        return normalize_text(text)
+
+    @staticmethod
+    def check_jailbreak(text: str) -> bool:
+        return looks_like_jailbreak(text)
+
+    @staticmethod
+    def wrap(text: str) -> str:
+        return wrap_visitor(text)
+
+    @classmethod
+    def validate(cls, text: str, brand_name: str = "Nexus") -> tuple[bool, str | None]:
+        """Validate visitor input. Returns (is_safe, refusal_message_or_none)."""
+        if cls.check_jailbreak(text):
+            return False, refusal_message(brand_name)
+        return True, None
+
+
+class DialogueRails:
+    """Tier 2: Dialogue Rails — Conversation loop detection and state transition validation."""
+
+    VALID_TRANSITIONS: dict[str, set[str]] = {
+        "discovery": {"discovery", "scoping", "pricing", "estimate", "booking", "handoff", "faq"},
+        "scoping": {"scoping", "pricing", "estimate", "discovery", "booking", "handoff", "faq"},
+        "pricing": {"pricing", "scoping", "booking", "handoff", "discovery", "faq"},
+        "estimate": {"estimate", "pricing", "booking", "handoff", "discovery", "faq"},
+        "booking": {"booking", "handoff", "discovery", "faq"},
+        "handoff": {"handoff", "booking", "discovery", "faq"},
+    }
+
+    @staticmethod
+    def check_repetition(recent_messages: list[str], candidate: str, threshold: float = 0.85) -> bool:
+        """Detect if candidate response loops or repeats recent assistant utterances (Jaccard similarity)."""
+        if not candidate or not recent_messages:
+            return False
+        cand_words = set(re.findall(r"\w+", candidate.lower()))
+        if len(cand_words) < 5:
+            return False
+        for prev in recent_messages[-3:]:
+            prev_words = set(re.findall(r"\w+", prev.lower()))
+            if not prev_words:
+                continue
+            intersection = cand_words.intersection(prev_words)
+            union = cand_words.union(prev_words)
+            jaccard = len(intersection) / len(union) if union else 0.0
+            if jaccard >= threshold:
+                return True
+        return False
+
+    @classmethod
+    def validate_transition(cls, from_stage: str, to_stage: str) -> bool:
+        allowed = cls.VALID_TRANSITIONS.get(from_stage)
+        if allowed is None:
+            return True
+        return to_stage in allowed
+
+
+class OutputRails:
+    """Tier 3: Output Rails — Deterministic price locking, duration protection, and prompt token scrubbing."""
+
+    @staticmethod
+    def scrub_tokens(text: str) -> str:
+        return scrub_internal_tokens(text)
+
+    @staticmethod
+    def sanitize_prices(
+        message: str,
+        allowed_estimate: dict | None = None,
+        visitor_budget: str | None = None,
+        estimate: dict | None = None,
+        session_has_estimate: bool | None = None,
+    ) -> str:
+        return sanitize_price_leaks(
+            message,
+            allowed_estimate=allowed_estimate,
+            visitor_budget=visitor_budget,
+            estimate=estimate,
+            session_has_estimate=session_has_estimate,
+        )
+
+    @staticmethod
+    def sanitize_durations(
+        message: str,
+        engine_weeks: int | None = None,
+        visitor_message: str | None = None,
+    ) -> str:
+        return sanitize_duration_leaks(
+            message,
+            engine_weeks=engine_weeks,
+            visitor_message=visitor_message,
+        )
+
+    @classmethod
+    def apply_all(
+        cls,
+        message: str,
+        allowed_estimate: dict | None = None,
+        visitor_budget: str | None = None,
+        engine_weeks: int | None = None,
+        visitor_message: str | None = None,
+        session_has_estimate: bool | None = None,
+    ) -> str:
+        """Run the full output rail pipeline: scrub internal tokens -> price lock -> duration guard."""
+        if not message:
+            return ""
+        cleaned = cls.scrub_tokens(message)
+        priced = cls.sanitize_prices(
+            cleaned,
+            allowed_estimate=allowed_estimate,
+            visitor_budget=visitor_budget,
+            session_has_estimate=session_has_estimate,
+        )
+        return cls.sanitize_durations(
+            priced,
+            engine_weeks=engine_weeks,
+            visitor_message=visitor_message,
+        )
+
+
+class GuardRails:
+    """Unified NeMo-style GuardRails pipeline facade."""
+
+    input = InputRails
+    dialogue = DialogueRails
+    output = OutputRails
+
+
