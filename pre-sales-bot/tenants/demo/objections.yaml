@@ -5,19 +5,20 @@ items:
     reply: >
       The number I shared is a low-side indicative range for the MVP we outlined,
       not a take-it-or-leave-it quote. We can usually protect the budget by cutting
-      phase-two features rather than discounting the same scope.
+      phase-two features or scoping a Lean Core MVP version focused on day-one value.
   too_slow:
     topic: delivery
     triggers: [too long, faster, need it next month, timeline is too slow]
     reply: >
-      The timeline assumes a small senior team. If a date is fixed, we shrink the first
-      release rather than promising the full product sooner.
+      The timeline assumes a dedicated senior team and thorough QA. If your launch date is fixed,
+      we can fast-track delivery by scoping a rapid Sprint 1 MVP with battle-tested components
+      rather than promising an untested full release.
   need_fixed_price:
     topic: pricing
     triggers: [fixed price, fixed bid, lump sum, not time and materials]
     reply: >
       We can work toward a fixed commercial once discovery is locked. Until then an indicative
-      range keeps both sides honest about uncertainty.
+      range keeps both sides honest about technical uncertainty.
   offshore_quality:
     topic: team
     triggers: [offshore, cheap developers, outsourced]

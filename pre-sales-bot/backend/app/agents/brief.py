@@ -192,6 +192,11 @@ def needs_feature_detail(brief: ProjectBrief) -> bool:
     named = named_features(brief)
     if not named:
         return False
+    # Commodity single-features like login / accounts are self-explanatory — skip detail
+    if len(named) == 1 and named[0].lower().strip() in {
+        "user authentication", "user accounts", "user login & profiles", "login & accounts",
+    }:
+        return False
     # If all feature names are longer than 3 words, they're already descriptive enough
     if all(len(item.split()) > 3 for item in named):
         return False
@@ -274,8 +279,20 @@ def next_discovery_field(brief: ProjectBrief, flow: str = "classic") -> str | No
         and brief.service != "ai_product"
         and head not in {"service", "goal", "features"}
     ):
-        if brief.feature_detail == "not_specified" or (brief.feature_detail and "standard" in brief.feature_detail.lower()):
+        named = named_features(brief)
+        is_commodity_single = bool(
+            len(named) == 1 and named[0].lower().strip() in {
+                "user authentication", "user accounts", "user login & profiles", "login & accounts",
+            }
+        )
+        if (
+            brief.feature_detail == "not_specified"
+            or (brief.feature_detail and "standard" in brief.feature_detail.lower())
+            or is_commodity_single
+        ):
             brief.user_flow = "not_specified"
+            if is_commodity_single and brief.feature_detail is None:
+                brief.feature_detail = "not_specified"
         else:
             return "user_flow"
     if missing:

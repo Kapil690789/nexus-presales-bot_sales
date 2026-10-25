@@ -1143,6 +1143,13 @@ def run_turn(
                 )
 
             message = hit.content
+            # Enrich security FAQ with domain compliance context when active
+            if getattr(hit, "id", "") == "security" or getattr(hit, "topic", "") == "security":
+                from backend.app.engines.domains import detect_domain, get_domain_blueprint
+                dom_id = detect_domain(brief=brief)
+                bp_dom = get_domain_blueprint(dom_id) if dom_id else None
+                if bp_dom and bp_dom.compliance:
+                    message = f"{message} For {bp_dom.label}, we enforce {bp_dom.compliance}."
             extra = _continuation(brief, history)
             if extra:
                 message = f"{message}\n\n{extra[0]}"
@@ -1568,6 +1575,9 @@ def recap_line_from_brief(config: TenantConfig, brief: ProjectBrief) -> str:
         if g.lower().strip() in {
             "develop an app idea", "develop an app", "build an app", "app idea",
             "software idea", "my app", "an idea", "custom software", "idea", "an app",
+            "develop app idea", "build app", "create an app", "create an app idea",
+            "new app", "mobile app", "web app", "new project", "an application",
+            "an app project", "software project",
         }:
             g = ""
         g_phrase = g

@@ -163,7 +163,7 @@ def prompt_for(brief: ProjectBrief | None, field: str | None, repeat: bool = Fal
         if len(names) == 1:
             return f"What should {names[0]} include in the initial release?"
         if len(names) >= 2:
-            return f"What should each of {_feature_names(brief)} do in the first version?"
+            return f"What should each of {_feature_names(brief)} include in the initial release?"
         return DISCOVERY_PROMPTS.get("feature_detail", "What should those initial capabilities accomplish in the initial release?")
     if repeat and field in REPHRASED_PROMPTS:
         return REPHRASED_PROMPTS[field]

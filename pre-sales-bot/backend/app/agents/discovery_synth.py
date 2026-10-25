@@ -279,6 +279,8 @@ def synthesize_discovery_prompt(
         f"Standard consultative question: '{question}'. "
         f"Advisory instructions:\n"
         f"- Provide a crisp, highly specific acknowledgement validating what changed from an engineering/product perspective, followed immediately by the question.\n"
+        f"- Never output internal tokens or debugging strings (e.g., 'Channels and UX:', 'Backend and APIs:', or slot keys).\n"
+        f"- Speak naturally and consultatively as an elite solutions architect advising a founder or executive.\n"
         f"- Voice rules:\n"
         f"  * At most 2 sentences total.\n"
         f"  * Maximum length: {voice.max_chars} characters.\n"

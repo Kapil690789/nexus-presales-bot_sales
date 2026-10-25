@@ -10,7 +10,7 @@ questions:
     - "Where will your target users primarily access this application — in a browser or on mobile devices?"
   features:
     - "Which core capabilities or features are essential for the launch?"
-    - "What essential building blocks must be ready on day one for users?"
+    - "What core capabilities or workflows must be ready on day one for users?"
   feature_detail:
     - "Could you describe in a sentence what users will do within those initial capabilities?"
     - "What specific actions or workflows should those initial features enable?"
@@ -27,7 +27,7 @@ questions:
     - "What is your target launch horizon for getting this first release live?"
     - "What timeframe are you aiming for to get this initial software product into users' hands?"
   budget_band:
-    - "Which investment range should I size this initial build against for squad composition and architecture?"
+    - "What investment range should we size this initial build against for team composition and architecture?"
     - "What rough budget scale makes sense for this first release to help calibrate our architecture recommendations?"
   decision_role:
     - "What is your role on the project when architecture and delivery decisions are made?"
