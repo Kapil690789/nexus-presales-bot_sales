@@ -295,6 +295,11 @@ def _lexical_score(query: str, title: str, content: str) -> float:
             matched_terms += 1
     coverage = matched_terms / len(terms)
     score *= (0.5 + 0.5 * coverage)
+    # BM25-style document length penalty (avoids bloated document chunks dominating short precise answers)
+    doc_len = len(content_lower)
+    if doc_len > 1200:
+        len_penalty = 1200.0 / doc_len
+        score *= (0.85 + 0.15 * len_penalty)
     return min(1.0, score)
 
 

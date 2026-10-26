@@ -29,13 +29,24 @@ def notify_slack(db: Session, session_id: str, tenant: TenantRow, text: str) -> 
     if not webhook:
         record_event(db, session_id, tenant.id, "slack", {"status": "stub", **payload})
         return
-    try:
-        import httpx
+    import time
+    import httpx
 
-        response = httpx.post(webhook, json=payload, timeout=5)
-        record_event(db, session_id, tenant.id, "slack", {"status": response.status_code, **payload})
-    except Exception as exc:
-        record_event(db, session_id, tenant.id, "slack", {"status": "error", "error": str(exc), **payload})
+    last_error = ""
+    # Retry with backoff: immediate, 0.5s, 1.5s
+    for wait_s in (0.0, 0.5, 1.5):
+        if wait_s > 0:
+            time.sleep(wait_s)
+        try:
+            response = httpx.post(webhook, json=payload, timeout=5)
+            if response.status_code in (200, 201, 204):
+                record_event(db, session_id, tenant.id, "slack", {"status": response.status_code, **payload})
+                return
+            last_error = f"HTTP {response.status_code}"
+        except Exception as exc:
+            last_error = str(exc)
+
+    record_event(db, session_id, tenant.id, "slack", {"status": "error", "error": last_error, **payload})
 
 
 def company_from_email(email: str) -> str:

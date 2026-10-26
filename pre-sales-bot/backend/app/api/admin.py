@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from backend.app.core.security import require_admin
 from backend.app.core.settings import ROOT, get_settings
 from backend.app.models.db import get_db
-from backend.app.models.entities import ChunkRow, EventRow, FeedbackPairRow, MessageRow, SessionRow, TenantRow
+from backend.app.models.entities import ChunkRow, EventRow, FeedbackPairRow, LeadRow, MessageRow, SessionRow, TenantRow
 from backend.app.rag.ingest import ingest_tenant
 from backend.app.tenants.loader import (
     TenantNotFound,
@@ -104,6 +104,43 @@ def admin_health_api(db: Session = Depends(get_db), _: str = Depends(require_adm
         "last_used_model": llm_health.get("last_used_model", settings.llm_model),
         "stale_chunks": stale_count,
     }
+
+
+@router.get("/admin/api/leads")
+def admin_leads_api(
+    min_score: int | None = None,
+    search: str | None = None,
+    db: Session = Depends(get_db),
+    _: str = Depends(require_admin),
+) -> list[dict]:
+    import json
+    query = select(LeadRow).order_by(LeadRow.created_at.desc())
+    if min_score is not None:
+        query = query.where(LeadRow.score >= min_score)
+    leads = db.scalars(query.limit(100)).all()
+    results = []
+    search_lower = (search or "").strip().lower()
+    for l in leads:
+        if search_lower and search_lower not in (l.email or "").lower() and search_lower not in (l.company or "").lower():
+            continue
+        est = {}
+        if l.estimate_snapshot:
+            try:
+                est = json.loads(l.estimate_snapshot)
+            except Exception:
+                pass
+        results.append({
+            "id": l.id,
+            "session_id": l.session_id,
+            "email": l.email,
+            "company": l.company,
+            "score": l.score,
+            "band": l.band,
+            "range": est.get("range_label", ""),
+            "handoff_summary": l.handoff_summary,
+            "created_at": l.created_at.isoformat() if l.created_at else "",
+        })
+    return results
 
 
 @router.post("/admin/reindex")

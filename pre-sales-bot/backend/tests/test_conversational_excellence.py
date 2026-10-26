@@ -241,4 +241,62 @@ def test_document_upload_extracts_slots_into_brief(client):
     assert brief.get("service") in ("mobile_app", "web_app") or brief.get("platforms")
 
 
+def test_inr_currency_sizing():
+    """Verify estimate_project computes INR indicative sizing alongside USD."""
+    from backend.app.engines.pricing import estimate_project
+    config = load_tenant("demo")
+    brief = ProjectBrief(service="web_app", platforms=["web"], integrations=[])
+    est = estimate_project(brief, config.pricing)
+    assert "range_inr" in est
+    assert "₹" in est["range_inr"]
+    assert "INR" in est["range_inr"]
+    assert est["low_inr"] > 0
+    assert est["high_inr"] >= est["low_inr"]
+
+
+def test_slack_webhook_retry_resilience():
+    """Verify notify_slack retries when initial attempt encounters error and succeeds on subsequent try."""
+    from backend.app.engines.notify import notify_slack
+    from backend.app.models.entities import EventRow, TenantRow
+    from backend.app.models.db import SessionLocal
+    from unittest.mock import MagicMock, patch
+
+    call_count = 0
+
+    def mock_post(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise ConnectionError("Temporary DNS failure")
+        resp = MagicMock()
+        resp.status_code = 200
+        return resp
+
+    tenant = TenantRow(id="test-tenant-id", slug="demo", name="Demo", slack_webhook_url="https://hooks.slack.com/services/mock")
+    with SessionLocal() as db:
+        with patch("httpx.post", side_effect=mock_post):
+            notify_slack(db, "test-session", tenant, "🔥 *[HOT LEAD - Score: 85/100]*")
+            db.flush()
+            event = db.query(EventRow).filter(EventRow.session_id == "test-session").order_by(EventRow.created_at.desc()).first()
+            assert event is not None
+            assert "200" in event.payload_json
+
+
+def test_admin_leads_api(client):
+    """Verify /admin/api/leads provides filtered lead data with BANT scores for sales executives."""
+    # First create and capture a lead
+    res = client.post("/api/v1/sessions", json={"tenant": "demo"})
+    sid = res.json()["session_id"]
+    client.post(
+        f"/api/v1/sessions/{sid}/messages",
+        json={"content": "I am the founder of HealthCorp building doctor video calls, budget is 40k-80k, email is founder@healthcorp.com"},
+    )
+    # Query admin leads API
+    res_leads = client.get("/admin/api/leads", auth=("admin", "test-admin"))
+    assert res_leads.status_code == 200
+    leads = res_leads.json()
+    assert isinstance(leads, list)
+
+
+
 

@@ -64,12 +64,20 @@ def estimate_project(brief: ProjectBrief, pricing: PricingConfig) -> dict:
         weeks = max(6, ceil(weeks * 0.85))
     elif brief.timeline == "flexible":
         weeks = ceil(weeks * 1.1)
+    from backend.app.core.settings import get_settings
+
+    usd_rate = getattr(get_settings(), "usd_to_inr", 95.0) or 95.0
+    low_inr = int(round(low * usd_rate / 50000.0) * 50000)
+    high_inr = int(round(high * usd_rate / 50000.0) * 50000)
     return {
         "currency": pricing.currency,
         "service": service,
         "low": low,
         "high": high,
         "range_label": f"${low:,}–${high:,} {pricing.currency}",
+        "low_inr": low_inr,
+        "high_inr": high_inr,
+        "range_inr": f"₹{low_inr:,}–₹{high_inr:,} INR",
         "complexity_band": size,
         "timeline_weeks": weeks,
         "team": list(pricing.team_mix.get(service, pricing.team_mix.get("unknown", []))),

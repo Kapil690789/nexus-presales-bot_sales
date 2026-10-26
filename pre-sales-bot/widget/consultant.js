@@ -364,6 +364,7 @@
   var sessionId = "";
   var ndaVersion = "";
   var busy = false;
+  var lastFailedPayload = null;
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -707,11 +708,21 @@
       button.onclick = function () {
         if (!sessionId || busy) return;
         setChips([]);
+        if (chip.field === "__retry__" && lastFailedPayload) {
+          if (!beginWait()) return;
+          post("/api/v1/sessions/" + sessionId + "/messages", lastFailedPayload)
+            .then(function (res) { lastFailedPayload = null; deliverReply(res); })
+            .catch(deliverFail);
+          return;
+        }
         var rawText = (chip.field === "ask" && typeof chip.value === "string" && chip.value) ? chip.value : (chip.label || "");
         var cleanText = rawText.replace(/^\+\s*/, "");
         say("user", cleanText);
         if (!beginWait()) return;
-        post("/api/v1/sessions/" + sessionId + "/messages", { content: cleanText, chip: chip }).then(deliverReply).catch(deliverFail);
+        lastFailedPayload = { content: cleanText, chip: chip };
+        post("/api/v1/sessions/" + sessionId + "/messages", { content: cleanText, chip: chip })
+          .then(function (res) { lastFailedPayload = null; deliverReply(res); })
+          .catch(deliverFail);
       };
       chipsBox.appendChild(button);
     });
@@ -798,6 +809,7 @@
 
   function renderReply(payload) {
     endWait();
+    lastFailedPayload = null;
     if (!payload || payload.detail) {
       say("assistant", (payload && typeof payload.detail === "string" && payload.detail) || "Something went wrong. Please try again.");
       return;
@@ -860,7 +872,10 @@
     var detail = "";
     if (typeof error === "string") detail = error;
     else if (error && typeof error.detail === "string") detail = error.detail;
-    say("assistant", detail || "Something went wrong. Please try again.");
+    say("assistant", detail || "Network error. Please try again.");
+    if (lastFailedPayload) {
+      setChips([{ label: "↻ Tap to retry", field: "__retry__", value: "__retry__" }]);
+    }
   }
 
   function closePanel() {
@@ -1035,7 +1050,10 @@
     setChips([]);
     say("user", value);
     if (!beginWait()) return;
-    post("/api/v1/sessions/" + sessionId + "/messages", { content: value }).then(deliverReply).catch(deliverFail);
+    lastFailedPayload = { content: value };
+    post("/api/v1/sessions/" + sessionId + "/messages", { content: value })
+      .then(function (res) { lastFailedPayload = null; deliverReply(res); })
+      .catch(deliverFail);
   };
 
   function buildTranscriptText() {
