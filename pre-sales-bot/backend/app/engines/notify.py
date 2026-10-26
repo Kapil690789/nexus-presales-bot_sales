@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -47,6 +48,64 @@ def notify_slack(db: Session, session_id: str, tenant: TenantRow, text: str) -> 
             last_error = str(exc)
 
     record_event(db, session_id, tenant.id, "slack", {"status": "error", "error": last_error, **payload})
+
+
+def crm_webhook(tenant: TenantRow) -> str:
+    return getattr(get_settings(), "crm_webhook_url", "").strip()
+
+
+def dispatch_crm_webhook(db: Session, session_id: str, tenant_id: str, lead_data: dict) -> None:
+    settings = get_settings()
+    webhook = getattr(settings, "crm_webhook_url", "").strip()
+    if not webhook:
+        record_event(db, session_id, tenant_id, "crm", {"status": "stub", **lead_data})
+        return
+    import time
+    import httpx
+
+    last_error = ""
+    for wait_s in (0.0, 0.5, 1.5):
+        if wait_s > 0:
+            time.sleep(wait_s)
+        try:
+            response = httpx.post(webhook, json=lead_data, timeout=5)
+            if response.status_code in (200, 201, 204):
+                record_event(db, session_id, tenant_id, "crm", {"status": response.status_code, **lead_data})
+                return
+            last_error = f"HTTP {response.status_code}"
+        except Exception as exc:
+            last_error = str(exc)
+
+    record_event(db, session_id, tenant_id, "crm", {"status": "error", "error": last_error, **lead_data})
+
+
+def sync_crm_lead(
+    db: Session,
+    session_id: str,
+    tenant: TenantRow,
+    email: str,
+    qual: dict,
+    brief: Any,
+    estimate: dict | None = None,
+    handoff: str = "",
+) -> None:
+    company = company_from_email(email)
+    lead_data = {
+        "session_id": session_id,
+        "email": email,
+        "company": company,
+        "score": int(qual.get("score") or 0),
+        "band": qual.get("band") or "exploring",
+        "service": getattr(brief, "service", None) or "",
+        "budget": getattr(brief, "budget_band", None) or "",
+        "timeline": getattr(brief, "timeline", None) or "",
+        "platforms": getattr(brief, "platforms", None) or [],
+        "features": getattr(brief, "features", None) or [],
+        "estimate": estimate.get("range_label") if estimate else None,
+        "handoff_summary": handoff,
+        "source": "nexus_presales_bot",
+    }
+    dispatch_crm_webhook(db, session_id, tenant.id, lead_data)
 
 
 def company_from_email(email: str) -> str:

@@ -56,11 +56,24 @@ def lookup_queries(text: str, summary: str, previous_user_texts: list[str]) -> l
     return [item for item in queries if item.strip()]
 
 
-def rolling_summary(previous: str, user_texts: list[str], every: int) -> str:
+def rolling_summary(
+    previous: str,
+    user_texts: list[str],
+    every: int,
+    history: list[dict] | None = None,
+) -> str:
     if not user_texts or every <= 0 or len(user_texts) % every != 0:
         return previous or ""
-    recent = [u.strip() for u in user_texts[-8:] if u.strip()]
-    joined = "\n".join(f"- {u}" for u in recent)
+    if history:
+        recent_turns = [item for item in history[-10:] if item.get("content")]
+        formatted = []
+        for t in recent_turns:
+            role_label = "Visitor" if t.get("role") == "user" else "Consultant"
+            formatted.append(f"{role_label}: {t['content'].strip()}")
+        joined = "\n".join(formatted)
+    else:
+        recent = [u.strip() for u in user_texts[-8:] if u.strip()]
+        joined = "\n".join(f"- {u}" for u in recent)
     if llm_available():
         try:
             is_mocked = (
@@ -69,7 +82,7 @@ def rolling_summary(previous: str, user_texts: list[str], every: int) -> str:
             )
             prompt_sys = (
                 f"You are a technical project lead. Summarize the visitor's software project requirements, "
-                f"core modules, and constraints in under 80 words based on their statements. {UNTRUSTED_RULE} "
+                f"core modules, and constraints in under 80 words based on their consultation dialogue. {UNTRUSTED_RULE} "
                 f'Return JSON {{"summary": "..."}}. Omit emails, phone numbers, and conversational greetings.'
             )
             prompt_usr = wrap_visitor(joined)

@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     google_redirect_uri: str = "http://localhost:8010/admin/google/callback"
     google_refresh_token: str = ""
     slack_webhook_url: str = ""
+    crm_webhook_url: str = ""
     public_base_url: str = ""
     allow_ephemeral_db: bool = False
     usd_to_inr: float = 95.0

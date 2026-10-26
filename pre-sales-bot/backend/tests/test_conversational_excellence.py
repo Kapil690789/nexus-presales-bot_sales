@@ -298,5 +298,92 @@ def test_admin_leads_api(client):
     assert isinstance(leads, list)
 
 
+def test_bidirectional_rolling_summary():
+    """Verify rolling_summary uses bidirectional dialogue history when available."""
+    from backend.app.memory.rewrite import rolling_summary
+
+    history = [
+        {"role": "user", "content": "We need an AI telemedicine platform for clinics."},
+        {"role": "assistant", "content": "What platforms are required (iOS, Android, Web)?"},
+        {"role": "user", "content": "Both web and mobile."},
+    ]
+    summary = rolling_summary("", ["We need an AI telemedicine platform for clinics.", "Both web and mobile."], 2, history)
+    assert summary is not None
+    assert len(summary) > 0
+
+
+def test_crm_webhook_sync():
+    """Verify CRM webhook sync triggers on lead capture and records event."""
+    from backend.app.engines.notify import dispatch_crm_webhook
+    from backend.app.models.db import SessionLocal
+    from backend.app.models.entities import EventRow
+
+    with SessionLocal() as db:
+        lead_data = {
+            "email": "ceo@biotech.io",
+            "company": "Biotech",
+            "score": 85,
+            "band": "hot",
+        }
+        dispatch_crm_webhook(db, "test-crm-sess", "demo", lead_data)
+        db.flush()
+        event = db.query(EventRow).filter(EventRow.session_id == "test-crm-sess", EventRow.kind == "crm").first()
+        assert event is not None
+        assert "ceo@biotech.io" in event.payload_json
+
+
+def test_human_takeover_admin_and_chat_flow(client):
+    """Verify admin human takeover pauses bot LLM replies and supports direct human replies."""
+    res = client.post("/api/v1/sessions", json={"tenant": "demo"})
+    sid = res.json()["session_id"]
+
+    takeover_res = client.post(
+        f"/admin/api/sessions/{sid}/takeover",
+        json={"takeover": True},
+        auth=("admin", "test-admin"),
+    )
+    assert takeover_res.status_code == 200
+    assert takeover_res.json()["human_takeover"] is True
+
+    user_res = client.post(
+        f"/api/v1/sessions/{sid}/messages",
+        json={"content": "Can you do custom pricing for 500 hospital beds?"},
+    )
+    assert user_res.status_code == 200
+    assert "human consultant" in user_res.json()["message"].lower()
+
+    reply_res = client.post(
+        f"/admin/api/sessions/{sid}/reply",
+        json={"content": "Hi there! I am Alex, VP of Engineering. Yes, we support custom enterprise bed pricing.", "author": "Alex (VP)"},
+        auth=("admin", "test-admin"),
+    )
+    assert reply_res.status_code == 200
+    assert reply_res.json()["session_id"] == sid
+
+    poll_res = client.get(f"/api/v1/sessions/{sid}/poll")
+    assert poll_res.status_code == 200
+    data = poll_res.json()
+    assert data["human_takeover"] is True
+    msgs = [m["content"] for m in data["messages"]]
+    assert any("VP of Engineering" in m for m in msgs)
+
+
+def test_sse_streaming_endpoint(client):
+    """Verify POST /api/v1/sessions/{id}/stream delivers Server-Sent Events."""
+    res = client.post("/api/v1/sessions", json={"tenant": "demo"})
+    sid = res.json()["session_id"]
+
+    stream_res = client.post(
+        f"/api/v1/sessions/{sid}/stream",
+        json={"content": "We need a mobile app for booking yoga classes"},
+    )
+    assert stream_res.status_code == 200
+    assert "text/event-stream" in stream_res.headers.get("content-type", "")
+    body = stream_res.text
+    assert "event: token" in body
+    assert "event: done" in body
+
+
+
 
 

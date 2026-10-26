@@ -290,7 +290,7 @@ def run_turn(
     if has_pending_discovery_init:
         summary = " | ".join(user_texts[-6:])[:800]
     else:
-        summary = rolling_summary(session.summary or "", user_texts, get_platform().summary_every)
+        summary = rolling_summary(session.summary or "", user_texts, get_platform().summary_every, history)
     previous = [item["content"] for item in history if item.get("role") == "user" and item.get("content")]
 
     if field == "nda":
@@ -2409,6 +2409,16 @@ def _lead(db, tenant, session, email, qual, estimate, handoff) -> None:
     row.band = qual.get("band") or ""
     row.estimate_snapshot = json.dumps(estimate or {})
     row.handoff_summary = handoff
+    try:
+        from backend.app.agents.brief import ProjectBrief
+        brief_obj = ProjectBrief.model_validate_json(session.brief_json or "{}")
+    except Exception:
+        brief_obj = None
+    try:
+        from backend.app.engines.notify import sync_crm_lead
+        sync_crm_lead(db, session.id, tenant, email, qual, brief_obj, estimate, handoff)
+    except Exception:
+        pass
 
 
 def _finish(session, brief, contact, summary, **payload) -> dict:

@@ -172,6 +172,7 @@ def init_db() -> None:
             "llm_calls_used": "INTEGER DEFAULT 0",
             "expires_at": "TIMESTAMP NULL",
             "handoff_summary": "TEXT DEFAULT ''",
+            "human_takeover": "BOOLEAN DEFAULT FALSE",
         },
     )
     _ensure_columns("leads", {"handoff_summary": "TEXT DEFAULT ''"})

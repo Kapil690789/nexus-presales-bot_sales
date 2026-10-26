@@ -277,6 +277,7 @@ def get_session_state(session_id: str, db: Session = Depends(get_db)) -> dict:
         "band": qual.get("band"),
         "progress": latest_progress,
         "nda_accepted": session.nda_accepted,
+        "human_takeover": bool(getattr(session, "human_takeover", False)),
     }
 
 
@@ -350,6 +351,31 @@ def post_message(
     t0_db = time.perf_counter()
     _add(db, session.id, "user", text, {"chip": body.chip.model_dump() if body.chip else None})
     db_writes_ms += (time.perf_counter() - t0_db) * 1000.0
+
+    if bool(getattr(session, "human_takeover", False)):
+        assistant = _add(
+            db,
+            session.id,
+            "assistant",
+            "A human consultant has joined this consultation and is reviewing your message. They will reply directly here shortly.",
+            {"route": "human_agent", "chips": [], "cards": []},
+        )
+        db.add(session)
+        db.commit()
+        return _public(
+            session,
+            assistant,
+            {
+                "message": assistant.content,
+                "stage": session.stage,
+                "chips": [],
+                "cards": [],
+                "route": "human_agent",
+                "qualification": None,
+                "booking": None,
+            },
+            config,
+        )
 
     token = bind_llm_actor(session.id, client_ip(request))
     try:
@@ -520,4 +546,63 @@ def download_transcript(
         media_type="text/plain; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+@router.get("/api/v1/sessions/{session_id}/poll")
+def poll_messages(session_id: str, after_id: str | None = None, db: Session = Depends(get_db)) -> dict:
+    session = _session(db, session_id)
+    query = select(MessageRow).where(MessageRow.session_id == session.id).order_by(MessageRow.created_at.asc())
+    rows = db.scalars(query).all()
+    if after_id:
+        idx = -1
+        for i, r in enumerate(rows):
+            if r.id == after_id:
+                idx = i
+                break
+        if idx != -1:
+            rows = rows[idx + 1 :]
+    messages = []
+    for r in rows:
+        meta = {}
+        if r.payload_json:
+            try:
+                meta = json.loads(r.payload_json)
+            except Exception:
+                pass
+        messages.append({
+            "id": r.id,
+            "role": r.role,
+            "content": r.content,
+            "created_at": r.created_at.isoformat(),
+            "payload": meta,
+        })
+    return {
+        "session_id": session.id,
+        "human_takeover": bool(getattr(session, "human_takeover", False)),
+        "messages": messages,
+    }
+
+
+@router.post("/api/v1/sessions/{session_id}/stream")
+def stream_turn(
+    session_id: str,
+    body: MessageIn,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    from fastapi.responses import StreamingResponse
+
+    res = post_message(session_id, body, request, response=None, db=db)
+
+    def event_generator():
+        words = res["message"].split(" ")
+        for i, w in enumerate(words):
+            token = w + (" " if i < len(words) - 1 else "")
+            payload = json.dumps({"token": token})
+            yield f"event: token\ndata: {payload}\n\n"
+        done_payload = json.dumps(res)
+        yield f"event: done\ndata: {done_payload}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
 

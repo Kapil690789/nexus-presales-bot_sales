@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -141,6 +142,55 @@ def admin_leads_api(
             "created_at": l.created_at.isoformat() if l.created_at else "",
         })
     return results
+
+
+class AdminTakeoverIn(BaseModel):
+    takeover: bool = True
+
+
+class AdminReplyIn(BaseModel):
+    content: str
+    author: str = "Human Specialist"
+
+
+@router.post("/admin/api/sessions/{session_id}/takeover")
+def admin_takeover_session(
+    session_id: str,
+    body: AdminTakeoverIn | None = None,
+    db: Session = Depends(get_db),
+    _: str = Depends(require_admin),
+):
+    session = db.get(SessionRow, session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    takeover_val = body.takeover if body else True
+    session.human_takeover = takeover_val
+    db.commit()
+    return {"session_id": session_id, "human_takeover": session.human_takeover}
+
+
+@router.post("/admin/api/sessions/{session_id}/reply")
+def admin_reply_session(
+    session_id: str,
+    body: AdminReplyIn,
+    db: Session = Depends(get_db),
+    _: str = Depends(require_admin),
+):
+    import json
+    session = db.get(SessionRow, session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session.human_takeover = True
+    msg = MessageRow(
+        session_id=session.id,
+        role="assistant",
+        content=body.content.strip(),
+        payload_json=json.dumps({"route": "human_agent", "author": body.author, "chips": [], "cards": []}),
+    )
+    db.add(msg)
+    db.add(session)
+    db.commit()
+    return {"session_id": session_id, "message_id": msg.id, "content": msg.content}
 
 
 @router.post("/admin/reindex")
