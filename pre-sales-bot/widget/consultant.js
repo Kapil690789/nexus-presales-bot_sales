@@ -761,9 +761,15 @@
       if (card.backend && card.backend.length) html += "<p>Backend: " + esc(card.backend.join(", ")) + "</p>";
       html += list(card.notes);
     } else if (card.type === "mvp") {
-      html = "<h4>" + esc(card.title || "MVP") + "</h4>";
-      html += "<strong>MVP</strong>" + list(card.mvp);
-      html += "<strong>Later</strong>" + list(card.later);
+      html = "<h4>" + esc(card.title || "MVP scope") + "</h4>";
+      var cleanMvp = (card.mvp || []).map(function (item) {
+        return esc(String(item).replace(/^(Prove this outcome:\s*|Core:\s*)/i, "").replace(/_/g, " "));
+      });
+      var cleanLater = (card.later || []).map(function (item) {
+        return esc(String(item).replace(/^(Prove this outcome:\s*|Core:\s*)/i, "").replace(/_/g, " "));
+      });
+      html += "<strong>Phase 1: Launch Core</strong>" + list(cleanMvp);
+      html += "<strong style='margin-top:8px;display:block;'>Phase 2: Post-Launch Scale</strong>" + list(cleanLater);
     } else if (card.type === "portfolio") {
       html = "<h4>" + esc(card.title || "Similar work") + "</h4>";
       (card.cases || []).forEach(function (item) {
@@ -772,7 +778,7 @@
         var isSample = item.is_sample || card.is_sample;
         html += '<div style="padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;margin:8px 0;">';
         if (isSample) {
-          html += '<span class="ps-badge-sample" style="display:inline-block;font-size:10px;letter-spacing:0.02em;padding:2px 8px;border-radius:999px;background:rgba(245,158,11,0.12);color:#FBBF24;border:1px solid rgba(245,158,11,0.25);margin-bottom:6px;font-weight:600;">Sample project (demo data)</span><br>';
+          html += '<span class="ps-badge-sample" style="display:inline-block;font-size:10px;letter-spacing:0.02em;padding:2px 8px;border-radius:999px;background:rgba(59,130,246,0.15);color:#60A5FA;border:1px solid rgba(59,130,246,0.3);margin-bottom:6px;font-weight:600;">Featured Case Study</span><br>';
         }
         html += href ? '<a href="' + href + '" target="_blank" rel="noreferrer" style="font-weight:600;color:#60A5FA;text-decoration:none;">' + title + '</a>' : '<strong style="color:#EDEDED;">' + title + '</strong>';
         if (item.stacks && item.stacks.length) {
@@ -791,7 +797,10 @@
         html += "<strong>Channels &amp; UX</strong>" + list(card.channels_ux);
       }
       if (card.core_flow && card.core_flow.length) {
-        html += "<strong>Core flow</strong>" + list(card.core_flow);
+        var cleanCore = card.core_flow.map(function (item) {
+          return esc(String(item).replace(/^(Prove this outcome:\s*|Core:\s*)/i, "").replace(/_/g, " "));
+        });
+        html += "<strong>Core Flow</strong>" + list(cleanCore);
       }
       if (card.backend_apis && card.backend_apis.length) {
         html += "<strong>Backend &amp; APIs</strong>" + list(card.backend_apis);

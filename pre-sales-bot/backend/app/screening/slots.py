@@ -240,7 +240,6 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
             chips.append({"label": "Continue to next step →", "field": "features_done", "value": "yes"})
             for item in available[:3]:
                 chips.append({"label": f"+ {item['label']}", "field": "features", "value": [item["value"]]})
-            chips.append({"label": "Ready with this list", "field": "features_done", "value": "yes"})
         else:
             for item in available[:4]:
                 chips.append({"label": item["label"], "field": "features", "value": [item["value"]]})
@@ -380,8 +379,6 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
         skip_val = [] if field in ("platforms", "features", "integrations") else "not_sure"
         if not any(c.get("label") == "Not sure yet" for c in chips):
             chips.append({"label": "Not sure yet", "field": field, "value": skip_val})
-        if not any(c.get("label") == "Not sure, suggest" for c in chips):
-            chips.append({"label": "Not sure, suggest", "field": field, "value": skip_val})
 
     return chips
 

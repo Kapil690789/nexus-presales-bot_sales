@@ -1477,11 +1477,17 @@ def format_shape_message(arch: dict, mvp_res: dict) -> str:
 
 
 def build_shape_card(arch: dict, mvp_res: dict) -> dict:
+    clean_flow = []
+    for item in (mvp_res.get("mvp") or [])[:3]:
+        cleaned = re.sub(r"^(Prove this outcome:\s*|Core:\s*)", "", str(item).strip(), flags=re.IGNORECASE).strip()
+        cleaned = cleaned.replace("_", " ")
+        if cleaned:
+            clean_flow.append(cleaned)
     return {
         "type": "shape",
         "title": "Channels, core flow, and architecture",
         "channels_ux": list(arch.get("frontend") or []),
-        "core_flow": list((mvp_res.get("mvp") or [])[:3]),
+        "core_flow": clean_flow,
         "backend_apis": list(arch.get("backend") or []),
     }
 
@@ -1933,8 +1939,18 @@ def _estimate(session, config, brief, contact, summary, qual, timings: dict | No
     if fit_line:
         parts.append(fit_line)
         if "leaner scope" in fit_line and mvp and mvp.get("mvp"):
-            core_items = ", ".join(mvp.get("mvp", [])[:3])
-            deferred_items = ", ".join(mvp.get("later", [])[:2])
+            clean_mvp = [
+                re.sub(r"^(Prove this outcome:\s*|Core:\s*)", "", str(it).strip(), flags=re.IGNORECASE).strip().replace("_", " ")
+                for it in (mvp.get("mvp") or [])[:3]
+                if it
+            ]
+            clean_later = [
+                re.sub(r"^(Prove this outcome:\s*|Core:\s*)", "", str(it).strip(), flags=re.IGNORECASE).strip().replace("_", " ")
+                for it in (mvp.get("later") or [])[:2]
+                if it
+            ]
+            core_items = ", ".join(clean_mvp)
+            deferred_items = ", ".join(clean_later)
             if deferred_items:
                 parts.append(
                     f"💡 **Consultant Recommendation**: To align with your timeline and investment, we recommend staging a **Phased MVP Sprint**:\n"

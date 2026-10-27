@@ -7,7 +7,7 @@ questions:
     - "What core business outcome or user experience should this first launch deliver?"
   platforms:
     - "Which platforms should we target for the first launch — web, iOS, Android, or cross-platform mobile?"
-    - "Where will your target users primarily access this application — in a browser or on mobile devices?"
+    - "Where will your target users primarily access this application — web, iOS, Android, or both?"
   features:
     - "Which core capabilities or features are essential for the launch?"
     - "What core capabilities or workflows must be ready on day one for users?"

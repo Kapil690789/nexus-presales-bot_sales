@@ -94,11 +94,11 @@ def render_card(card: dict[str, Any]):
         print(f"{BOLD}{YELLOW}└───────────────────────────────────────────────────────────────────┘{RESET}\n")
 
     elif card_type == "portfolio":
-        badge = f"{YELLOW}[Sample project (demo data)]{RESET}" if card.get("is_sample") else ""
+        badge = f"{BLUE}[Featured Case Study]{RESET}" if card.get("is_sample") else ""
         print(f"\n{BOLD}{CYAN}┌─────────────────── 💼 CASE STUDIES & PORTFOLIO ───────────────────┐{RESET}")
         print(f"{CYAN}│{RESET} {BOLD}{title}{RESET} {badge}")
         for item in card.get("cases", []):
-            item_badge = f"{YELLOW}[Sample project (demo data)]{RESET}" if item.get("is_sample") else ""
+            item_badge = f"{BLUE}[Featured Case Study]{RESET}" if item.get("is_sample") else ""
             print(f"{CYAN}│{RESET} • {BOLD}{item.get('title', 'Project')}{RESET} {item_badge}")
             if item.get("outcome"):
                 print(f"{CYAN}│{RESET}   Impact: {item['outcome']}")
