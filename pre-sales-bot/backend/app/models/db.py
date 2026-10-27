@@ -98,7 +98,6 @@ def ensure_ready() -> None:
             _ready = True
 
 
-
 def get_db():
     ensure_ready()
     db = SessionLocal()
@@ -116,18 +115,24 @@ def _pgvector_setup() -> None:
         "CREATE EXTENSION IF NOT EXISTS vector",
         "ALTER TABLE rag_chunks ADD COLUMN IF NOT EXISTS embedding vector(384)",
     ]
-    with bind.begin() as conn:
-        for statement in statements:
-            conn.execute(text(statement))
-        try:
-            conn.execute(
-                text(
-                    "CREATE INDEX IF NOT EXISTS rag_chunks_embedding_hnsw "
-                    "ON rag_chunks USING hnsw (embedding vector_cosine_ops)"
+    try:
+        with bind.begin() as conn:
+            for statement in statements:
+                try:
+                    conn.execute(text(statement))
+                except Exception:
+                    pass
+            try:
+                conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS rag_chunks_embedding_hnsw "
+                        "ON rag_chunks USING hnsw (embedding vector_cosine_ops)"
+                    )
                 )
-            )
-        except Exception:
-            pass
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 
 def pgvector_ready() -> bool:
@@ -145,26 +150,38 @@ def pgvector_ready() -> bool:
 
 
 def _ensure_columns(table: str, additions: dict[str, str]) -> None:
-    bind = get_engine()
-    inspector = inspect(bind)
-    if table not in inspector.get_table_names():
-        return
-    existing = {column["name"] for column in inspector.get_columns(table)}
-    dialect = bind.dialect.name
-    with bind.begin() as conn:
-        for name, ddl in additions.items():
-            if name in existing:
-                continue
-            if dialect == "postgresql":
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {name} {ddl}"))
-            else:
-                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+    try:
+        bind = get_engine()
+        inspector = inspect(bind)
+        tables = [t.lower() for t in inspector.get_table_names()]
+        if table.lower() not in tables:
+            return
+        existing = {column["name"].lower() for column in inspector.get_columns(table)}
+        dialect = bind.dialect.name
+        with bind.begin() as conn:
+            for name, ddl in additions.items():
+                if name.lower() in existing:
+                    continue
+                try:
+                    if dialect == "postgresql":
+                        conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{name}" {ddl}'))
+                    else:
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+                except Exception:
+                    log.exception("Failed to add column %s to %s", name, table)
+    except Exception:
+        log.exception("_ensure_columns failed on table %s", table)
 
 
 def init_db() -> None:
     from backend.app.models import entities  # noqa: F401
 
-    Base.metadata.create_all(bind=get_engine())
+    bind = get_engine()
+    try:
+        Base.metadata.create_all(bind=bind)
+    except Exception:
+        log.exception("create_all failed")
+
     _ensure_columns("tenants", {"oauth_code_verifier": "TEXT DEFAULT ''"})
     _ensure_columns(
         "sessions",
@@ -186,7 +203,6 @@ def init_db() -> None:
         },
     )
     _ensure_columns("token_usage", {"estimated": "BOOLEAN DEFAULT FALSE"})
-    bind = get_engine()
     if bind.dialect.name == "sqlite":
         try:
             with bind.begin() as conn:

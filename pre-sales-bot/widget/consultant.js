@@ -963,9 +963,15 @@
         try { localStorage.setItem("ps_sess_" + tenant, sessionId); } catch (e) {}
         deliverReply(resData);
       })
-      .catch(function () {
+      .catch(function (err) {
         endWait();
-        say("assistant", "This workspace is not available.");
+        var msg = "This workspace is not available.";
+        if (err && typeof err.detail === "string") {
+          msg = err.detail;
+        } else if (err && typeof err.error === "string") {
+          msg = err.error;
+        }
+        say("assistant", msg);
       });
   }
 

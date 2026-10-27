@@ -4,8 +4,9 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.api import admin, documents, health, public_config, sessions
@@ -53,6 +54,15 @@ def create_app() -> FastAPI:
                 "Admin password is missing or a default value. The app will still serve. Set a unique ADMIN_PASSWORD."
             )
     application = FastAPI(title="Pre-Sales Consultant", version="1.0.0", lifespan=lifespan)
+
+    @application.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        import traceback
+        log.exception("Unhandled error on %s", request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(exc), "traceback": traceback.format_exc()},
+        )
     if "*" in settings.cors_origin_list:
         if settings.is_production_like:
             raise ValueError(
