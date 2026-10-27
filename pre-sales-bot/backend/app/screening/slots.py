@@ -41,7 +41,7 @@ def display_platforms(platforms: list[str] | None) -> str:
 def goal_short(goal: str | None) -> str | None:
     if not goal:
         return None
-    cleaned = goal.strip().rstrip(".,!?;:")
+    cleaned = goal.strip().rstrip(".,!?;:").replace("_", " ")
     while True:
         match = LEADING_GOAL_PREFIXES.match(cleaned)
         if match:

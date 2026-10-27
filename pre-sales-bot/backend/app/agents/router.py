@@ -1630,7 +1630,8 @@ def recap_line_from_brief(config: TenantConfig, brief: ProjectBrief) -> str:
 
     service_goal = f"{art} {s_clean.lower()}"
     if g_phrase:
-        service_goal += f" - {g_phrase}"
+        clean_gp = g_phrase.replace("_", " ")
+        service_goal += f" - {clean_gp}"
 
     lines = [f"Here's what I understood: {service_goal}."]
 
@@ -1931,6 +1932,15 @@ def _estimate(session, config, brief, contact, summary, qual, timings: dict | No
         parts.append("This range assumes the Core scope; a list this long will likely need more, and the team can size it precisely.")
     if fit_line:
         parts.append(fit_line)
+        if "leaner scope" in fit_line and mvp and mvp.get("mvp"):
+            core_items = ", ".join(mvp.get("mvp", [])[:3])
+            deferred_items = ", ".join(mvp.get("later", [])[:2])
+            if deferred_items:
+                parts.append(
+                    f"💡 **Consultant Recommendation**: To align with your timeline and investment, we recommend staging a **Phased MVP Sprint**:\n"
+                    f"• **Phase 1 Launch**: Prioritize {core_items} to launch lean and fast.\n"
+                    f"• **Phase 2 Expansion**: Introduce {deferred_items} once initial traction is validated."
+                )
 
     message = "\n\n".join(parts)
 

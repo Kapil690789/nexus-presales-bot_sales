@@ -139,6 +139,8 @@ def question_variant_for(
         return prompt_for(brief, field)
     if field == "feature_detail" and brief and named_features(brief):
         return prompt_for(brief, field)
+    if field == "platforms" and brief and getattr(brief, "service", None) == "mobile_app":
+        return "Will this launch on iOS, Android, or cross-platform for both?"
 
     voice = getattr(config, "voice", None)
     if voice and voice.questions and field in voice.questions:
