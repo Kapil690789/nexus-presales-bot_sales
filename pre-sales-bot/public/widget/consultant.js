@@ -105,16 +105,25 @@
     ".ps-disclaimer{color:#71717A;font-size:11px;margin-top:8px}",
     ".ps-booking{display:flex;flex-direction:column;gap:8px}",
     ".ps-booking-link{color:#60A5FA;font-weight:600;font-size:13px}",
-    ".ps-chips{display:flex;flex-wrap:wrap;gap:8px;padding:4px 16px 12px;flex-shrink:0;position:relative;z-index:2;background:#0A0A0A}",
+    ".ps-chips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 14px 10px;flex-shrink:0;position:relative;z-index:2;background:#0A0A0A;max-height:96px;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none}",
+    ".ps-chips::-webkit-scrollbar{display:none}",
     ".ps-chips:empty{display:none}",
-    ".ps-chip{border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);color:#F4F4F5;border-radius:999px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:500;font-family:inherit;transition:all 150ms ease-in-out;animation:ps-chip-in 200ms ease-out both}",
+    ".ps-chip{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.05);color:#EDEDED;border-radius:999px;padding:6px 13px;cursor:pointer;font-size:12px;font-weight:500;line-height:1.2;font-family:inherit;user-select:none;transition:all 160ms cubic-bezier(0.16,1,0.3,1);animation:ps-chip-in 200ms ease-out both}",
     ".ps-chip:nth-child(1){animation-delay:0ms}",
-    ".ps-chip:nth-child(2){animation-delay:40ms}",
-    ".ps-chip:nth-child(3){animation-delay:80ms}",
-    ".ps-chip:nth-child(4){animation-delay:120ms}",
-    ".ps-chip:hover{background:#FFFFFF;color:#000000;border-color:#FFFFFF}",
-    ".ps-chip.ps-chip-primary{background:rgba(59,130,246,0.16);border-color:rgba(59,130,246,0.4);color:#60A5FA;font-weight:600}",
-    ".ps-chip.ps-chip-primary:hover{background:#2563EB;color:#FFFFFF;border-color:#2563EB}",
+    ".ps-chip:nth-child(2){animation-delay:35ms}",
+    ".ps-chip:nth-child(3){animation-delay:70ms}",
+    ".ps-chip:nth-child(4){animation-delay:105ms}",
+    ".ps-chip:nth-child(5){animation-delay:140ms}",
+    ".ps-chip:hover{background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:#FFFFFF;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,0.3)}",
+    ".ps-chip:active{transform:scale(0.96)}",
+    ".ps-chip:focus-visible{outline:2px solid #3B82F6;outline-offset:2px}",
+    ".ps-chip.ps-chip-primary{background:rgba(59,130,246,0.14);border-color:rgba(59,130,246,0.45);color:#60A5FA;font-weight:600}",
+    ".ps-chip.ps-chip-primary:hover{background:#2563EB;color:#FFFFFF;border-color:#2563EB;box-shadow:0 4px 12px rgba(37,99,235,0.35)}",
+    ".ps-chip.ps-chip-cta{background:rgba(16,185,129,0.12);border-color:rgba(16,185,129,0.4);color:#34D399;font-weight:600}",
+    ".ps-chip.ps-chip-cta:hover{background:#059669;color:#FFFFFF;border-color:#059669;box-shadow:0 4px 14px rgba(16,185,129,0.35)}",
+    ".ps-chip.ps-chip-muted{background:transparent;border:1px dashed rgba(255,255,255,0.18);color:#A1A1AA;font-weight:400}",
+    ".ps-chip.ps-chip-muted:hover{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.35);color:#EDEDED}",
+    ".ps-chip.ps-chip-active{background:#3B82F6 !important;color:#FFFFFF !important;border-color:#3B82F6 !important;box-shadow:0 0 12px rgba(59,130,246,0.5) !important}",
     ".ps-thumb{display:flex;gap:10px;margin-top:8px}",
     ".ps-thumb button{border:0;background:transparent;color:#71717A;font:inherit;font-size:11px;font-weight:500;cursor:pointer;padding:0}",
     ".ps-thumb button:hover{color:#FFFFFF}",
@@ -698,16 +707,44 @@
     (chips || []).forEach(function (chip) {
       var button = el("button", "ps-chip", chip.label || "");
       button.type = "button";
+      var lbl = chip.label || "";
+      var fld = chip.field || "";
       // Support special chips: "Email me instead", "Show a leaner cut"
-      if (chip.label === "Email me instead" || chip.label === "Show a leaner cut") {
-        button.setAttribute("data-chip", chip.label);
+      if (lbl === "Email me instead" || lbl === "Show a leaner cut") {
+        button.setAttribute("data-chip", lbl);
       }
-      if (chip.field === "features_done" || (chip.label && chip.label.indexOf("→") !== -1)) {
+
+      if (
+        fld === "booking_window" ||
+        fld === "talk_human" ||
+        lbl.indexOf("Book a") !== -1 ||
+        lbl.indexOf("Talk to a human") !== -1 ||
+        lbl.indexOf("Speak with") !== -1 ||
+        lbl.indexOf("Schedule") !== -1
+      ) {
+        button.classList.add("ps-chip-cta");
+      } else if (
+        fld === "features_done" ||
+        lbl.indexOf("→") !== -1 ||
+        lbl.indexOf("Sharpen") !== -1 ||
+        lbl.indexOf("Show a leaner") !== -1
+      ) {
         button.classList.add("ps-chip-primary");
+      } else if (
+        lbl.indexOf("Not sure") !== -1 ||
+        lbl.indexOf("Skip") !== -1
+      ) {
+        button.classList.add("ps-chip-muted");
       }
+
       button.onclick = function () {
         if (!sessionId || busy) return;
-        setChips([]);
+        button.classList.add("ps-chip-active");
+        Array.prototype.forEach.call(chipsBox.children, function (c) {
+          if (c !== button) c.style.opacity = "0.3";
+          c.style.pointerEvents = "none";
+        });
+
         if (chip.field === "__retry__" && lastFailedPayload) {
           if (!beginWait()) return;
           post("/api/v1/sessions/" + sessionId + "/messages", lastFailedPayload)

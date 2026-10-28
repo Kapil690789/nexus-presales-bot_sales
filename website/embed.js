@@ -4,7 +4,7 @@
       return;
     }
     var isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    var fallbackUrl = isLocal ? "http://localhost:8010" : "https://pre-sales-bot-ten.vercel.app";
+    var fallbackUrl = isLocal ? "http://localhost:8010" : "https://nexus-presales-bot-sales.vercel.app";
     var base = String(window.CHAT_BOT_URL || fallbackUrl).replace(/\/$/, "");
     var tenant = String(window.CHAT_BOT_TENANT || "demo").trim();
     var script = document.createElement("script");
