@@ -1939,16 +1939,17 @@ def _estimate(session, config, brief, contact, summary, qual, timings: dict | No
     if fit_line:
         parts.append(fit_line)
         if "leaner scope" in fit_line and mvp and mvp.get("mvp"):
+            BOILERPLATE_MVP = ("primary user journey", "operational workflow", "problem framing", "component foundations", "named specialist")
             clean_mvp = [
                 re.sub(r"^(Prove this outcome:\s*|Core:\s*)", "", str(it).strip(), flags=re.IGNORECASE).strip().replace("_", " ")
-                for it in (mvp.get("mvp") or [])[:3]
-                if it
-            ]
+                for it in (mvp.get("mvp") or [])
+                if it and not any(term in str(it).lower() for term in BOILERPLATE_MVP)
+            ][:3]
             clean_later = [
                 re.sub(r"^(Prove this outcome:\s*|Core:\s*)", "", str(it).strip(), flags=re.IGNORECASE).strip().replace("_", " ")
-                for it in (mvp.get("later") or [])[:2]
-                if it
-            ]
+                for it in (mvp.get("later") or [])
+                if it and not any(term in str(it).lower() for term in BOILERPLATE_MVP)
+            ][:2]
             core_items = ", ".join(clean_mvp)
             deferred_items = ", ".join(clean_later)
             if deferred_items:
