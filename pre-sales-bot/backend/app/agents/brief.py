@@ -158,7 +158,10 @@ class ProjectBrief(BaseModel):
             return
         if value in (None, "") or field not in self.model_fields:
             return
-        setattr(self, field, value if not isinstance(value, list) else (value[0] if value else None))
+        val_to_set = value if not isinstance(value, list) else (value[0] if value else None)
+        if field == "goal" and isinstance(val_to_set, str):
+            val_to_set = val_to_set.replace("_", " ").strip()
+        setattr(self, field, val_to_set)
         if field == "service":
             self.service_source = "chip"
             if self.service == "mobile_app" and self.platforms == ["web"]:

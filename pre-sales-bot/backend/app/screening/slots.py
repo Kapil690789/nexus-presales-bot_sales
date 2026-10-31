@@ -157,7 +157,11 @@ def _feature_names(brief: ProjectBrief | None) -> str:
 
 def prompt_for(brief: ProjectBrief | None, field: str | None, repeat: bool = False) -> str:
     if field == "features" and brief and named_features(brief) and not brief.features_confirmed:
-        return f"Added {_feature_names(brief)} — any other features for the launch, or ready to continue?"
+        existing = named_features(brief)
+        if len(existing) == 1:
+            return f"Added {_feature_names(brief)} — any other features for the launch, or ready to continue?"
+        # 2+ features: use a conclusive variant, not the same loop prompt
+        return f"Added {_feature_names(brief)} — want to add more, or shall we move forward?"
     if field == "feature_detail":
         names = named_features(brief) if brief else []
         if len(names) == 1:

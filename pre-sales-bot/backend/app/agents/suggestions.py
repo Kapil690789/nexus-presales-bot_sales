@@ -42,6 +42,8 @@ _SYSTEM = (
     "You suggest tappable reply chips for an enterprise pre-sales software consultant. "
     'Return JSON {"chips": [{"label": "short label", "value": "stored answer"}]}. '
     "Return 2 to 4 chips. Each label is at most 6 words, highly relevant and natural. "
+    "Suggest concrete, tangible product archetypes or core user workflows (e.g. 'Customer self-service portal', 'On-demand booking & dispatch', 'Two-sided marketplace', 'Biometric mobile wallet') rather than vague corporate buzzwords. "
+    "Values must always be natural plain English (never snake_case or slugs). "
     "Do not invent prices, timelines, or client names. "
     f"{UNTRUSTED_RULE}"
 )
@@ -139,6 +141,8 @@ def _llm_chips(
             value = item.get("value")
             if value in (None, ""):
                 value = label
+            if isinstance(value, str):
+                value = value.replace("_", " ").strip()
             cleaned.append({"label": label, "field": field, "value": value})
         else:
             question = label if label.endswith("?") else f"{label}?"

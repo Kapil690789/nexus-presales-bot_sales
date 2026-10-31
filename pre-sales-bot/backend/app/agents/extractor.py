@@ -430,7 +430,7 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
             "create an app", "i need an app", "need an app", "my app", "an idea",
         }
         if cand_clean not in invalid_goals and len(cand_clean.split()) >= 2:
-            brief.goal = cand_goal
+            brief.goal = cand_goal.replace("_", " ").strip()
             applied_any = True
 
     # 5. Features

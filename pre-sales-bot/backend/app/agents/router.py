@@ -1874,9 +1874,13 @@ def _after_brief(
             prompt_msg = deterministic_msg
     chips = chips_for_field(field, brief, repeat=repeat) or ensure_chips(brief, prompt_msg)
     cards = []
+    is_actively_adding_features = bool(
+        changed_fields and "features" in changed_fields and not brief.features_confirmed
+    )
     if (
         brief.platforms
         and (brief.features or brief.features_confirmed)
+        and not is_actively_adding_features
         and not getattr(brief, "shape_shown", False)
     ):
         brief.shape_shown = True

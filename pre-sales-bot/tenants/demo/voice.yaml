@@ -38,20 +38,20 @@ questions:
 
 acks:
   goal:
-    - "{goal_short} — that gives me a clear picture."
-    - "Focusing on {goal_short} gives us a clear launch priority."
+    - "{goal_short} — that gives us a clear launch priority."
+    - "Focusing on {goal_short} establishes a defined user workflow."
   features:
     - "{features_list} gives us a solid foundation for the first release."
     - "Focusing on {features_list} establishes a clear core scope."
   platforms:
-    - "{platforms}, noted."
     - "Targeting {platforms} sets our technical architecture."
+    - "Designing for {platforms} establishes our frontend stack."
   timeline:
     - "Targeting {timeline_label} gives us a defined delivery window."
     - "Working toward {timeline_label} sets the development pace."
   service:
-    - "{service_label}, understood."
-    - "Focusing on {service_label}: noted."
+    - "Focusing on {service_label} gives us a clear starting point."
+    - "A dedicated {service_label} gives us a defined technical scope."
 
 scope_coach: "That's a rich list. A lean first release usually keeps cost and risk down, so I'll split it into Core and Later for you."
 

@@ -170,9 +170,9 @@ def validate_discovery_reply(
     if len(cleaned) > voice.max_chars:
         return deterministic_fallback
 
-    # Split into sentences
+    # Split into sentences (allow up to 3 sentences for consultative dialogue)
     sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", cleaned) if s.strip()]
-    if len(sentences) > 2:
+    if len(sentences) > 3:
         return deterministic_fallback
 
     # Check emojis
@@ -286,11 +286,12 @@ def synthesize_discovery_prompt(
         f"The next discovery parameter to uncover: '{field}'. "
         f"Standard consultative question: '{question}'. "
         f"Advisory instructions:\n"
-        f"- Provide a crisp, highly specific acknowledgement validating what changed from an engineering/product perspective, followed immediately by the question.\n"
-        f"- Never output internal tokens or debugging strings (e.g., 'Channels and UX:', 'Backend and APIs:', or slot keys).\n"
-        f"- Speak naturally and consultatively as an elite solutions architect advising a founder or executive.\n"
+        f"- Provide a thoughtful, engineering-grounded acknowledgement validating the client's choice, followed naturally by the consultative question.\n"
+        f"- Frame questions with business context and operational clarity rather than rapid-fire interrogation.\n"
+        f"- Never output internal tokens, debugging strings, or raw slugs (e.g., 'Channels and UX:', 'Backend and APIs:', or snake_case keys).\n"
+        f"- Speak naturally and consultatively as an elite Principal Solutions Architect advising a founder or executive.\n"
         f"- Voice rules:\n"
-        f"  * At most 2 sentences total.\n"
+        f"  * 2 to 3 concise sentences total.\n"
         f"  * Maximum length: {voice.max_chars} characters.\n"
         f"  * Maximum {voice.emoji_max} emoji.\n"
         f"  * Banned phrases: [{banned_str}].\n"
