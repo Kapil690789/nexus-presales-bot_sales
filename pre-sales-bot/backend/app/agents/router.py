@@ -89,14 +89,14 @@ _SLOT_ANSWER_RE = re.compile(
 
 _HUMAN_CUES = re.compile(
     r"\b("
-    r"talk\s+to\s+a?\s*(?:human|person|someone|team)|"
-    r"speak\s+(?:to|with)\s+a?\s*(?:human|person|agent|representative|someone)|"
-    r"connect\s+(?:me\s+)?(?:with|to)\s+a?\s*(?:human|person|real\s+person|someone)|"
-    r"chat\s+with\s+a?\s*(?:human|person|someone)|"
+    r"talk\s+to\s+(?:a\s+|an\s+|the\s+)?(?:real\s+)?(?:human|person|engineer|developer|specialist|someone|team)|"
+    r"speak\s+(?:to|with)\s+(?:a\s+|an\s+|the\s+)?(?:real\s+)?(?:human|person|engineer|developer|specialist|agent|representative|someone|team)|"
+    r"connect\s+(?:me\s+)?(?:with|to)\s+(?:a\s+|an\s+|the\s+)?(?:real\s+)?(?:human|person|engineer|developer|someone|team)|"
+    r"chat\s+with\s+(?:a\s+|an\s+|the\s+)?(?:real\s+)?(?:human|person|engineer|developer|someone)|"
     r"(?:don'?t|not)\s+want\s+to\s+chat\s+with\s+a?\s*bot|"
     r"stop\s+talking\s+to\s+a?\s*bot|"
-    r"real\s+person|"
-    r"human\s+agent"
+    r"real\s+(?:person|human|engineer|developer)|"
+    r"human\s+(?:agent|person|engineer|developer|consultant)"
     r")\b",
     re.IGNORECASE,
 )
@@ -1630,6 +1630,10 @@ def recap_line_from_brief(config: TenantConfig, brief: ProjectBrief) -> str:
             "develop app idea", "build app", "create an app", "create an app idea",
             "new app", "mobile app", "web app", "new project", "an application",
             "an app project", "software project",
+            "idk", "idk whatever", "whatever", "whatever you think", "whatever you think is best",
+            "you tell me", "surprise me", "not sure", "not sure yet", "no idea", "up to you",
+            "anything", "standard stuff", "normal stuff", "standard", "normal", "whatever is cheapest",
+            "cheapest", "best approach", "whatever works", "whatever is best", "you decide",
         }:
             g = ""
         g_phrase = g
@@ -1769,6 +1773,9 @@ def _after_brief(
                     qualification=qual,
                     timings=timings,
                 )
+            else:
+                brief.service = "web_app"
+                brief.service_source = "explicit"
         else:
             brief.service = "web_app"
             brief.service_source = "explicit"
@@ -1789,6 +1796,9 @@ def _after_brief(
                     qualification=qual,
                     timings=timings,
                 )
+            else:
+                brief.service = "mobile_app"
+                brief.service_source = "explicit"
         else:
             brief.service = "mobile_app"
             brief.service_source = "explicit"

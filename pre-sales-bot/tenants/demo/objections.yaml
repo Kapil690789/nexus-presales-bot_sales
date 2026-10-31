@@ -13,6 +13,14 @@ items:
       The timeline assumes a dedicated senior team and thorough QA. If your launch date is fixed,
       we can fast-track delivery by scoping a rapid Sprint 1 MVP with battle-tested components
       rather than promising an untested full release.
+  equity_or_deferred:
+    topic: commercial
+    triggers: [equity, revenue share, rev share, pay later, after funding, after we raise, deferred payment, work for equity]
+    reply: >
+      Nexus operates exclusively on a cash-for-service model and does not accept equity,
+      revenue share, or deferred compensation contingent on future fundraising.
+      To work within an early-stage budget, we recommend staging a lean Phase 1 MVP
+      focused strictly on your core revenue-generating workflow.
   need_fixed_price:
     topic: pricing
     triggers: [fixed price, fixed bid, lump sum, not time and materials]

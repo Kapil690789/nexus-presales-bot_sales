@@ -16,6 +16,13 @@ _STARTER_PHRASES = frozenset({
     "im just exploring costs", "explore costs", "talk to a human", "i have a web idea",
 })
 
+_DISMISSIVE_OR_FILLER_PHRASES = frozenset({
+    "idk", "idk whatever", "whatever", "whatever you think", "whatever you think is best",
+    "you tell me", "surprise me", "not sure", "not sure yet", "no idea", "up to you",
+    "anything", "standard stuff", "normal stuff", "standard", "normal", "whatever is cheapest",
+    "cheapest", "best approach", "whatever works", "whatever is best", "you decide",
+})
+
 
 _HUMAN_CUES = re.compile(
     r"\b("
@@ -34,7 +41,9 @@ _HUMAN_CUES = re.compile(
 
 def is_product_idea(s: str) -> bool:
     cleaned_s = s.strip().lower()
-    if cleaned_s in _STARTER_PHRASES or _HUMAN_CUES.search(cleaned_s):
+    if cleaned_s in _STARTER_PHRASES or cleaned_s in _DISMISSIVE_OR_FILLER_PHRASES or _HUMAN_CUES.search(cleaned_s):
+        return False
+    if any(cleaned_s.startswith(p) for p in ("idk", "whatever you think", "whatever is", "surprise me", "you tell me", "not sure")):
         return False
     tokens = set(re.findall(r"\b[a-z0-9$]+\b", cleaned_s))
     meta_tokens = {
@@ -428,6 +437,10 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
             "i have an idea", "have an idea", "develop an idea", "new app", "a new app",
             "custom software", "software idea", "develop software", "build a platform",
             "create an app", "i need an app", "need an app", "my app", "an idea",
+            "idk", "idk whatever", "whatever", "whatever you think", "whatever you think is best",
+            "you tell me", "surprise me", "not sure", "not sure yet", "no idea", "up to you",
+            "anything", "standard stuff", "normal stuff", "standard", "normal", "whatever is cheapest",
+            "cheapest", "best approach", "whatever works", "whatever is best", "you decide",
         }
         if cand_clean not in invalid_goals and len(cand_clean.split()) >= 2:
             brief.goal = cand_goal.replace("_", " ").strip()
