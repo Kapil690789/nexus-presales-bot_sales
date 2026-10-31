@@ -73,7 +73,7 @@ _EXTRACTOR_SYSTEM = (
     '  "timeline": null | "asap" | "1_3_months" | "3_6_months" | "flexible",\n'
     '  "budget_band": null | "exploring" | "under_15k" | "15_40k" | "40_80k" | "80k_plus",\n'
     '  "budget_text": null | "the visitor\'s exact budget words (max 40 chars)",\n'
-    '  "acknowledgement": null | "A short 1-sentence consultative acknowledgement validating what was specified from an engineering perspective without repeating any currency, budget numbers, or flattering words",\n'
+    '  "acknowledgement": null | "A warm, natural 1-sentence acknowledgement from a friendly tech advisor perspective explaining practical user or product benefits without repeating budget numbers or flattering words",\n'
     '  "decision_role": null | "founder_or_exec" | "product_or_ops_lead" | "manager" | "intern_or_student",\n'
     '  "company_size": null | "startup" | "smb" | "mid_market" | "enterprise",\n'
     '  "ai_features": [] | ["Feature 1", "Feature 2"],\n'
@@ -89,7 +89,7 @@ _EXTRACTOR_SYSTEM = (
     "5. If the requested work is specifically for homework, crypto, shopify, or web3, set service to 'out_of_scope'.\n"
     "6. If the user mentions AI, LLM, or chatbot capabilities alongside a mobile or web app, include them in ai_features and keep service as mobile_app or web_app.\n"
     "7. When a budget figure or range is given, set budget_text to visitor's exact words (e.g. '$40k to $80k', 'around 25 to 35k', 'under 15k'). Set budget_band to the band containing the range midpoint (under_15k for midpoint < 15k, 15_40k for 15k-40k, 40_80k for 40k-80k, 80k_plus for >= 80k).\n"
-    "8. In acknowledgement: provide a short, natural, professional 1-sentence consultative acknowledgement. Keep it human and concise without robotic consulting jargon, academic boilerplate, or repeating budget figures. Never use flattering phrases ('Love it', 'Great idea', 'Smart approach', 'Awesome', 'v1').\n"
+    "8. In acknowledgement: provide a warm, natural 1-sentence consultative acknowledgement as a friendly tech advisor. Focus on practical benefits for the client's users or product. STRICTLY FORBIDDEN: Never start with 'I have noted the requirement for...', 'I have noted...', 'Focusing on [X] establishes...', or robotic corporate filler. Never use flattering phrases ('Love it', 'Great idea', 'Smart approach', 'Awesome', 'v1') or repeat budget figures.\n"
     "9. When user says 3 months, 3 mahine, or up to 3 months, set timeline to '1_3_months'.\n"
     "10. If the user message is a brief starter phrase (e.g. 'I have an app idea', 'app idea', 'just exploring costs'), do NOT extract goal or service. Leave goal and service as null so the assistant can ask what the idea actually is.\n"
     "11. If the user message is answering a specific pending field (e.g. 'Consumers' for users, 'Founder' for role, 'ASAP' for timeline), ONLY extract that specific field and leave all other fields as null or empty.\n"
@@ -442,7 +442,12 @@ def apply_extracted_slots(brief: ProjectBrief, extracted: dict[str, Any], pendin
             "anything", "standard stuff", "normal stuff", "standard", "normal", "whatever is cheapest",
             "cheapest", "best approach", "whatever works", "whatever is best", "you decide",
         }
-        if cand_clean not in invalid_goals and len(cand_clean.split()) >= 2:
+        if (
+            cand_clean not in invalid_goals
+            and is_product_idea(cand_goal)
+            and not any(p in cand_clean for p in ("idk", "whatever", "standard stuff", "normal stuff", "surprise me", "you tell me", "not sure", "no idea"))
+            and len(cand_clean.split()) >= 2
+        ):
             brief.goal = cand_goal.replace("_", " ").strip()
             applied_any = True
 

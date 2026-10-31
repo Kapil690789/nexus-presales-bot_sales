@@ -1885,11 +1885,21 @@ def _after_brief(
         session_id=str(session.id or ""),
         attempt=attempts,
     )
+    _ROBOTIC_ACK_PATTERNS = (
+        "i have noted",
+        "noted the requirement",
+        "noted your requirement",
+        "noted that requirement",
+        "establishes a defined user workflow",
+        "sets our technical architecture",
+        "establishes our frontend stack",
+    )
     if repeat or is_chip_click or not user_text:
         prompt_msg = prompt_for(brief, field, repeat=repeat) if repeat else deterministic_msg
     else:
         ext_ack = (extracted_ack or "").strip()
-        if ext_ack and len(ext_ack) <= voice.max_chars and not any(p.lower() in ext_ack.lower() for p in voice.banned_phrases):
+        is_robotic = any(p in ext_ack.lower() for p in _ROBOTIC_ACK_PATTERNS)
+        if ext_ack and not is_robotic and len(ext_ack) <= voice.max_chars and not any(p.lower() in ext_ack.lower() for p in voice.banned_phrases):
             q_var = question_variant_for(config, brief, field, session_id=str(session.id or ""), attempt=attempts)
             combined = f"{ext_ack} {q_var}".strip()
             prompt_msg = validate_discovery_reply(combined, voice, deterministic_msg)
@@ -2138,6 +2148,26 @@ def _apply_free_text(brief: ProjectBrief, field: str, text: str, out_of_scope: l
         return True
     if field == "admin":
         brief.admin = cleaned.lower() in ("yes", "true", "yep", "sure", "1", "yeah")
+        return True
+    if field == "goal":
+        from backend.app.agents.extractor import is_product_idea
+        c_clean = cleaned.lower().strip()
+        invalid_goals = {
+            "idk", "idk whatever", "whatever", "whatever you think", "whatever you think is best",
+            "you tell me", "surprise me", "not sure", "not sure yet", "no idea", "up to you",
+            "anything", "standard stuff", "normal stuff", "standard", "normal", "whatever is cheapest",
+            "cheapest", "best approach", "whatever works", "whatever is best", "you decide",
+        }
+        is_filler = (
+            c_clean in invalid_goals
+            or not is_product_idea(cleaned)
+            or any(p in c_clean for p in ("idk", "whatever", "standard stuff", "normal stuff", "surprise me", "you tell me", "not sure", "no idea"))
+        )
+        if is_filler:
+            brief.goal = "Custom software project"
+            return True
+        from backend.app.screening.slots import goal_short as _clean_goal
+        brief.goal = _clean_goal(cleaned) or cleaned[:120]
         return True
     if field in brief.model_fields:
         setattr(brief, field, cleaned)
