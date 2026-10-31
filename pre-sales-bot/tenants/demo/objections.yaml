@@ -1,14 +1,14 @@
 items:
   too_expensive:
     topic: pricing
-    triggers: [expensive, too much, cheaper, reduce the price, budget is tight]
+    triggers: [expensive, too much, cheaper, reduce the price, budget is tight, too high, way too high, discount, out of budget, out of my budget, can't afford, cannot afford, lower the price, lower price, cut the scope, can you do it for]
     reply: >
       The number I shared is a low-side indicative range for the MVP we outlined,
       not a take-it-or-leave-it quote. We can usually protect the budget by cutting
       phase-two features or scoping a Lean Core MVP version focused on day-one value.
   too_slow:
     topic: delivery
-    triggers: [too long, faster, need it next month, timeline is too slow]
+    triggers: [too long, faster, need it next month, timeline is too slow, too slow, hurry, rush, deliver sooner, deliver faster]
     reply: >
       The timeline assumes a dedicated senior team and thorough QA. If your launch date is fixed,
       we can fast-track delivery by scoping a rapid Sprint 1 MVP with battle-tested components

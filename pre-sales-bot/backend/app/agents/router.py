@@ -1716,19 +1716,32 @@ def _after_brief(
         role_label = getattr(brief, "decision_role", None)
         size_label = getattr(brief, "company_size", None)
         ack_parts = []
-        if changed_fields and "decision_role" in changed_fields and role_label:
-            ack_parts.append(f"Noted — having the {role_label.replace('_', ' ')} perspective helps keep delivery aligned.")
-        elif changed_fields and "company_size" in changed_fields and size_label:
-            ack_parts.append(f"Noted — designing for {size_label.replace('_', ' ')} scale helps calibrate our squad and architecture.")
-        else:
-            ack_parts.append("Noted, I have updated your project brief.")
-        reply_msg = f"{' '.join(ack_parts)} What would you like to explore next?"
         next_chips = [
             {"label": "Book a call", "field": "booking_window", "value": "this_week"},
             {"label": "See the MVP", "field": "view_mvp", "value": "mvp"},
             {"label": "See sample projects", "field": "show_portfolio", "value": "yes"},
             {"label": "Talk to a human", "field": "talk_human", "value": "human"},
         ]
+        if changed_fields and any(f in changed_fields for f in ("budget_band", "budget_text")):
+            from backend.app.screening.slots import budget_label
+            b_val = getattr(brief, "budget_text", None) or budget_label(brief.budget_band)
+            ack_parts.append(
+                f"Noted — sizing to {b_val} requires focusing strictly on the critical path. "
+                f"We can protect this investment by staging a Lean Core MVP and deferring secondary features to Phase 2."
+            )
+            next_chips = [
+                {"label": "💡 Show a leaner cut", "field": "view_mvp", "value": "leaner_cut"},
+                {"label": "🗓️ Split into 2 phases", "field": "view_mvp", "value": "core_cut"},
+                {"label": "Book a call", "field": "booking_window", "value": "this_week"},
+                {"label": "Talk to a human", "field": "talk_human", "value": "human"},
+            ]
+        elif changed_fields and "decision_role" in changed_fields and role_label:
+            ack_parts.append(f"Noted — having the {role_label.replace('_', ' ')} perspective helps keep delivery aligned.")
+        elif changed_fields and "company_size" in changed_fields and size_label:
+            ack_parts.append(f"Noted — designing for {size_label.replace('_', ' ')} scale helps calibrate our squad and architecture.")
+        else:
+            ack_parts.append("Noted, I have updated your project brief.")
+        reply_msg = f"{' '.join(ack_parts)} What would you like to explore next?"
         return _finish(
             session, brief, contact, summary,
             message=reply_msg,
