@@ -206,8 +206,8 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
             ]
         elif svc == "web_app":
             catalog = [
-                {"label": "User authentication", "value": "User authentication"},
-                {"label": "Payment checkout", "value": "Payments"},
+                {"label": "User accounts & login", "value": "User authentication"},
+                {"label": "Online payments & billing", "value": "Payments"},
                 {"label": "Admin dashboard", "value": "Admin dashboard"},
                 {"label": "Analytics & reports", "value": "Analytics"},
                 {"label": "Team collaboration", "value": "Team collaboration"},

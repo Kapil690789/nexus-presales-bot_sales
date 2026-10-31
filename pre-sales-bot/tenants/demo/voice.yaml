@@ -1,16 +1,16 @@
 questions:
   service:
-    - "What type of product are you planning to build — web, mobile, AI, or product design?"
-    - "To begin, what kind of digital software product are you looking to create?"
+    - "What type of product are you planning to build — web app, mobile app, AI system, or product design?"
+    - "To get started, what kind of digital software product are you looking to create?"
   goal:
-    - "What primary problem or user workflow should this initial release solve?"
-    - "What core business outcome or user experience should this first launch deliver?"
+    - "What primary problem or workflow should this initial release solve for your users?"
+    - "What's the main goal or user journey you want to launch with?"
   platforms:
     - "Which platforms should we target for the first launch — web, iOS, Android, or cross-platform mobile?"
-    - "Where will your target users primarily access this application — web, iOS, Android, or both?"
+    - "Where will your target users primarily access this application — web browsers, mobile devices, or both?"
   features:
-    - "Which core capabilities or features are essential for the launch?"
-    - "What core capabilities or workflows must be ready on day one for users?"
+    - "What key features are essential for day one — what do users need to be able to do?"
+    - "Which core capabilities or workflows should we prioritize for the launch?"
   feature_detail:
     - "Could you describe in a sentence what users will do within those initial capabilities?"
     - "What specific actions or workflows should those initial features enable?"
@@ -21,37 +21,37 @@ questions:
     - "Who will be using this first — direct consumers, business clients, or internal team members?"
     - "What audience is this initial release designed for — consumer users, business accounts, or your operations team?"
   integrations:
-    - "Are there any external services or APIs this must connect with on day one, like payments or CRM?"
-    - "Will the first release need integrations with existing databases, auth providers, or third-party APIs?"
+    - "Are there any external services or APIs this must connect with on day one, like payments, CRM, or existing databases?"
+    - "Will the first release need integrations with third-party tools, like Stripe, auth providers, or existing databases?"
   timeline:
-    - "What is your target launch horizon for getting this first release live?"
-    - "What timeframe are you aiming for to get this initial software product into users' hands?"
+    - "What launch timeline are you aiming for to get this initial product into users' hands?"
+    - "What timeframe makes sense for getting this first release live?"
   budget_band:
-    - "What investment range should we size this initial build against for team composition and architecture?"
+    - "What investment range makes sense for this initial build to help calibrate team composition and architecture?"
     - "What rough budget scale makes sense for this first release to help calibrate our architecture recommendations?"
   decision_role:
     - "What is your role on the project when architecture and delivery decisions are made?"
     - "Are you leading this as founder, product manager, operations lead, or another role?"
   company_size:
-    - "What size or stage is your organization today — early startup, growing business, or enterprise?"
+    - "What stage is your organization today — early startup, growing business, or enterprise team?"
     - "Roughly what stage is the company — early-stage venture, mid-market business, or enterprise team?"
 
 acks:
   goal:
-    - "{goal_short} — that gives us a clear launch priority."
-    - "Focusing on {goal_short} establishes a defined user workflow."
+    - "{goal_short} — that gives us a clear focus for the initial release."
+    - "Building for {goal_short} solves a clear, high-impact need right from launch."
   features:
-    - "{features_list} gives us a solid foundation for the first release."
-    - "Focusing on {features_list} establishes a clear core scope."
+    - "{features_list} gives us a solid, focused foundation for launch."
+    - "Focusing on {features_list} keeps the initial release lean and high-impact."
   platforms:
-    - "Targeting {platforms} sets our technical architecture."
-    - "Designing for {platforms} establishes our frontend stack."
+    - "Targeting {platforms} gives us a clear path for the front-end experience."
+    - "Building for {platforms} ensures your users can access it seamlessly."
   timeline:
     - "Targeting {timeline_label} gives us a defined delivery window."
-    - "Working toward {timeline_label} sets the development pace."
+    - "Working toward {timeline_label} sets a realistic development pace."
   service:
-    - "Focusing on {service_label} gives us a clear starting point."
-    - "A dedicated {service_label} gives us a defined technical scope."
+    - "A {service_label} gives us a great starting foundation."
+    - "Focusing on a {service_label} gives us a clear technical direction."
 
 scope_coach: "That's a rich list. A lean first release usually keeps cost and risk down, so I'll split it into Core and Later for you."
 

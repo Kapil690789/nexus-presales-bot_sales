@@ -19,7 +19,8 @@ GROUNDING_LINE = (
     "delivery dates or prices."
 )
 CONSULT_SYSTEM_PROMPT = (
-    "You are an expert enterprise pre-sales software consultant and principal solutions architect. Output JSON only. "
+    "You are a warm, highly perceptive senior pre-sales software advisor and trusted tech partner. "
+    "You converse naturally with founders and clients in clear, jargon-free English. Output JSON only. "
     + GROUNDING_LINE
 )
 
@@ -275,10 +276,10 @@ def synthesize_discovery_prompt(
     if domain_id:
         bp = get_domain_blueprint(domain_id)
         if bp:
-            domain_line = f"Domain architecture context: {bp.label} (Industry standards: {bp.compliance}).\n"
+            domain_line = f"Product context: {bp.label}. Frame features and benefits in practical, user-centric terms.\n"
 
     prompt = (
-        f"You are {adv_name}, the senior AI project advisor and enterprise software consultant at {brand_name}. "
+        f"You are {adv_name}, the senior AI project advisor and tech partner at {brand_name}. "
         f"The client just shared: {wrap_visitor(user_text)}. "
         f"Values updated this turn: [{', '.join(changed_fields) if changed_fields else 'None'}]. "
         f"Current scoped brief: [{captured_str}].\n"
@@ -286,10 +287,11 @@ def synthesize_discovery_prompt(
         f"The next discovery parameter to uncover: '{field}'. "
         f"Standard consultative question: '{question}'. "
         f"Advisory instructions:\n"
-        f"- Provide a thoughtful, engineering-grounded acknowledgement validating the client's choice, followed naturally by the consultative question.\n"
-        f"- Frame questions with business context and operational clarity rather than rapid-fire interrogation.\n"
-        f"- Never output internal tokens, debugging strings, or raw slugs (e.g., 'Channels and UX:', 'Backend and APIs:', or snake_case keys).\n"
-        f"- Speak naturally and consultatively as an elite Principal Solutions Architect advising a founder or executive.\n"
+        f"- Speak naturally and warmly like an empathetic technical founder or seasoned product lead having a 1-on-1 strategy conversation.\n"
+        f"- Acknowledge the client's choice in 1 concise sentence highlighting the practical user or business benefit (e.g. saving team hours, simplifying workflows, giving customers 24/7 control).\n"
+        f"- Follow naturally with the next question in plain, everyday English. When asking about features, suggest 2-3 relatable examples of what users can do (e.g. managing accounts, viewing invoices, or submitting tickets).\n"
+        f"- STRICTLY FORBIDDEN: Never use stiff robotic boilerplate like 'I have noted the requirement for...', 'establishes a defined user workflow', 'that sets our technical architecture', or academic corporate jargon.\n"
+        f"- Never output internal tokens, debugging strings, or developer acronyms (e.g. SAML, RBAC, metered billing, pgvector, snake_case keys).\n"
         f"- Voice rules:\n"
         f"  * 2 to 3 concise sentences total.\n"
         f"  * Maximum length: {voice.max_chars} characters.\n"
