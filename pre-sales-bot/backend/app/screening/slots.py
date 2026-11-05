@@ -242,10 +242,10 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
 
         if brief and named_features(brief):
             chips.append({"label": "Continue to next step →", "field": "features_done", "value": "yes"})
-            for item in available[:3]:
+            for item in available[:4]:
                 chips.append({"label": f"+ {item['label']}", "field": "features", "value": [item["value"]]})
         else:
-            for item in available[:4]:
+            for item in available[:5]:
                 chips.append({"label": item["label"], "field": "features", "value": [item["value"]]})
             chips.append({"label": "Not sure yet", "field": "features", "value": []})
     elif field == "feature_detail":
@@ -296,6 +296,7 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
                 {"label": "👤 Everyday Consumers (B2C)", "field": "users", "value": "consumers"},
                 {"label": "🏢 Business Clients (B2B)", "field": "users", "value": "business"},
                 {"label": "👥 Internal Operations Team", "field": "users", "value": "internal"},
+                {"label": "🔄 Both Consumers & Businesses", "field": "users", "value": "business"},
             ]
     elif field == "platforms":
         if brief and brief.service in ("web_app", "ai_product"):
@@ -337,6 +338,13 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
                 {"label": "💳 Stripe Connect / Payouts", "field": "integrations", "value": ["payments"]},
                 {"label": "📦 Shipping & Tracking API", "field": "integrations", "value": ["crm"]},
             ]
+        elif dom == "portal":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "💳 Stripe Billing & Customer Portal", "field": "integrations", "value": ["payments"]},
+                {"label": "🔑 Google / Microsoft Single Sign-On", "field": "integrations", "value": ["none"]},
+                {"label": "🎫 Support Helpdesk (Zendesk/Intercom)", "field": "integrations", "value": ["crm"]},
+            ]
         elif brief and brief.service == "ai_product":
             chips = [
                 {"label": "🚀 Standalone MVP", "field": "integrations", "value": ["none"]},
@@ -346,8 +354,10 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
         else:
             chips = [
                 {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
-                {"label": "💳 Payments (Stripe/Checkout)", "field": "integrations", "value": ["payments"]},
+                {"label": "💳 Payments (Stripe / Checkout)", "field": "integrations", "value": ["payments"]},
+                {"label": "🔑 Google / Apple / SSO Auth", "field": "integrations", "value": ["none"]},
                 {"label": "📊 CRM / External APIs", "field": "integrations", "value": ["crm"]},
+                {"label": "📧 Email & SMS (SendGrid / Twilio)", "field": "integrations", "value": ["crm"]},
             ]
     elif field == "timeline":
         chips = [

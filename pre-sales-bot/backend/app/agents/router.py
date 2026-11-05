@@ -2068,7 +2068,13 @@ def _next_chips(brief: ProjectBrief, has_booking: bool = False) -> list[dict]:
             PORTFOLIO_CHIP,
         ]
     if brief_ready(brief):
-        return [BOOK_CHIP, PORTFOLIO_CHIP]
+        return [
+            {"label": "Book a discovery call", "field": "booking_window", "value": "this_week"},
+            {"label": "Show a leaner cut", "field": "view_mvp", "value": "leaner_cut"},
+            {"label": "Review tech stack", "field": "ask_stack", "value": "tell me about the tech stack"},
+            PORTFOLIO_CHIP,
+            {"label": "How do sprints work?", "field": "ask_process", "value": "how does your delivery process work?"},
+        ]
     field = next_discovery_field(brief)
     return chips_for_field(field or "service", brief)
 
