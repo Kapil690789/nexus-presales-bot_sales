@@ -291,6 +291,72 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
                 {"label": "🏢 Business Accounts (B2B)", "field": "users", "value": "business"},
                 {"label": "👥 Internal Operations Team", "field": "users", "value": "internal"},
             ]
+        elif dom == "portal":
+            chips = [
+                {"label": "👤 Clients & Account Holders", "field": "users", "value": "consumers"},
+                {"label": "🎧 Support & Success Reps", "field": "users", "value": "internal"},
+                {"label": "🏢 Workspace Administrators", "field": "users", "value": "business"},
+            ]
+        elif dom == "proptech":
+            chips = [
+                {"label": "🏡 Tenants & Homebuyers (B2C)", "field": "users", "value": "consumers"},
+                {"label": "🏢 Landlords & Property Managers (B2B)", "field": "users", "value": "business"},
+                {"label": "🤝 Real Estate Agents & Brokers", "field": "users", "value": "business"},
+            ]
+        elif dom == "edtech":
+            chips = [
+                {"label": "🎓 Students & Learners (B2C)", "field": "users", "value": "consumers"},
+                {"label": "👨‍🏫 Instructors & Tutors (B2B)", "field": "users", "value": "business"},
+                {"label": "🏫 School & Academy Admins", "field": "users", "value": "internal"},
+            ]
+        elif dom == "taxtech":
+            chips = [
+                {"label": "📋 Taxpayers & Business Filers", "field": "users", "value": "consumers"},
+                {"label": "📊 CPAs & Tax Advisors (B2B)", "field": "users", "value": "business"},
+                {"label": "🏛️ Accounting Firm Partners", "field": "users", "value": "internal"},
+            ]
+        elif dom == "hrtech":
+            chips = [
+                {"label": "👤 Employees & Job Candidates", "field": "users", "value": "consumers"},
+                {"label": "👥 HR & People Ops Managers", "field": "users", "value": "business"},
+                {"label": "💼 Leadership & Executives", "field": "users", "value": "internal"},
+            ]
+        elif dom == "insurtech":
+            chips = [
+                {"label": "🛡️ Policyholders & Claimants", "field": "users", "value": "consumers"},
+                {"label": "🤝 Insurance Agents & Brokers", "field": "users", "value": "business"},
+                {"label": "📑 Underwriters & Claims Adjusters", "field": "users", "value": "internal"},
+            ]
+        elif dom == "auto":
+            chips = [
+                {"label": "🚗 Car Buyers & Drivers", "field": "users", "value": "consumers"},
+                {"label": "🏢 Dealership Sales & Finance Team", "field": "users", "value": "business"},
+                {"label": "🔧 Service Technicians & Ops", "field": "users", "value": "internal"},
+            ]
+        elif dom == "hospitality":
+            chips = [
+                {"label": "🧳 Guests & Travelers (B2C)", "field": "users", "value": "consumers"},
+                {"label": "🏨 Front Desk & Concierge Staff", "field": "users", "value": "internal"},
+                {"label": "🛎️ Hotel Managers & Property Hosts", "field": "users", "value": "business"},
+            ]
+        elif dom == "legaltech":
+            chips = [
+                {"label": "⚖️ Clients & Corporate Litigants", "field": "users", "value": "consumers"},
+                {"label": "👨‍⚖️ Attorneys & Legal Counsel (B2B)", "field": "users", "value": "business"},
+                {"label": "📑 Paralegals & Law Firm Staff", "field": "users", "value": "internal"},
+            ]
+        elif dom == "iot":
+            chips = [
+                {"label": "📱 End-Device Users & Owners", "field": "users", "value": "consumers"},
+                {"label": "🔧 Field Service Technicians", "field": "users", "value": "business"},
+                {"label": "📊 Hardware Fleet Ops Engineers", "field": "users", "value": "internal"},
+            ]
+        elif dom == "ai_product":
+            chips = [
+                {"label": "💡 End Consumers & Prosumers", "field": "users", "value": "consumers"},
+                {"label": "🏢 Enterprise Knowledge Workers", "field": "users", "value": "business"},
+                {"label": "⚙️ AI Ops & Prompt Engineers", "field": "users", "value": "internal"},
+            ]
         else:
             chips = [
                 {"label": "👤 Everyday Consumers (B2C)", "field": "users", "value": "consumers"},
@@ -345,11 +411,82 @@ def chips_for_field(field: str, brief: ProjectBrief | None = None, repeat: bool 
                 {"label": "🔑 Google / Microsoft Single Sign-On", "field": "integrations", "value": ["none"]},
                 {"label": "🎫 Support Helpdesk (Zendesk/Intercom)", "field": "integrations", "value": ["crm"]},
             ]
+        elif dom == "proptech":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "🏠 MLS & IDX Property Listings Sync", "field": "integrations", "value": ["crm"]},
+                {"label": "✍️ DocuSign / Digital Lease Signatures", "field": "integrations", "value": ["crm"]},
+                {"label": "💳 Rent Collection & Online Payments", "field": "integrations", "value": ["payments"]},
+            ]
+        elif dom == "edtech":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "🎥 Mux / Zoom Video Streaming", "field": "integrations", "value": ["crm"]},
+                {"label": "💳 Course Subscriptions & Payments", "field": "integrations", "value": ["payments"]},
+                {"label": "📚 Canvas / Blackboard LMS Sync", "field": "integrations", "value": ["crm"]},
+            ]
+        elif dom == "taxtech":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "📑 IRS e-File / MeF Gateway", "field": "integrations", "value": ["crm"]},
+                {"label": "🏦 QuickBooks / Xero Accounting Sync", "field": "integrations", "value": ["crm"]},
+                {"label": "💳 Invoicing & Retainer Billing", "field": "integrations", "value": ["payments"]},
+            ]
+        elif dom == "hrtech":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "💼 Payroll (Gusto / Rippling / ADP)", "field": "integrations", "value": ["crm"]},
+                {"label": "📄 ATS / Greenhouse / LinkedIn Sync", "field": "integrations", "value": ["crm"]},
+                {"label": "🔑 Google / Okta SAML SSO", "field": "integrations", "value": ["none"]},
+            ]
+        elif dom == "insurtech":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "⚡ Claims & Policy Admin Systems", "field": "integrations", "value": ["crm"]},
+                {"label": "💳 Premium Billing & Automatic Payments", "field": "integrations", "value": ["payments"]},
+                {"label": "📸 Telematics / Damage Uploads", "field": "integrations", "value": ["crm"]},
+            ]
+        elif dom == "auto":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "🚙 Dealership Management System (DMS)", "field": "integrations", "value": ["crm"]},
+                {"label": "💳 Auto Financing & Loan Origination", "field": "integrations", "value": ["payments"]},
+                {"label": "📅 Service Scheduling & SMS Alerts", "field": "integrations", "value": ["crm"]},
+            ]
+        elif dom == "hospitality":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "🏨 PMS Sync (Cloudbeds / Opera)", "field": "integrations", "value": ["crm"]},
+                {"label": "💳 Stripe / Keyless Mobile Check-in", "field": "integrations", "value": ["payments"]},
+                {"label": "📅 Channel Manager (Airbnb / Booking)", "field": "integrations", "value": ["crm"]},
+            ]
+        elif dom == "legaltech":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "📂 Clio / MyCase Practice Management", "field": "integrations", "value": ["crm"]},
+                {"label": "✍️ DocuSign / Binding e-Signatures", "field": "integrations", "value": ["crm"]},
+                {"label": "💳 LawPay / Retainer Accounting", "field": "integrations", "value": ["payments"]},
+            ]
+        elif dom == "iot":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "📡 MQTT Broker (EMQX / AWS IoT Core)", "field": "integrations", "value": ["crm"]},
+                {"label": "📈 TimescaleDB Sensor Telemetry", "field": "integrations", "value": ["database"]},
+                {"label": "📱 Bluetooth Low Energy (BLE) Pairing", "field": "integrations", "value": ["none"]},
+            ]
+        elif dom == "saas":
+            chips = [
+                {"label": "🚀 None on day one (Keep it lean)", "field": "integrations", "value": ["none"]},
+                {"label": "💳 Stripe Subscription Billing", "field": "integrations", "value": ["payments"]},
+                {"label": "🔑 Google / Microsoft Single Sign-On", "field": "integrations", "value": ["none"]},
+                {"label": "📊 Webhooks & REST API", "field": "integrations", "value": ["crm"]},
+            ]
         elif brief and brief.service == "ai_product":
             chips = [
-                {"label": "🚀 Standalone MVP", "field": "integrations", "value": ["none"]},
-                {"label": "🔗 Custom REST / Webhooks", "field": "integrations", "value": ["crm"]},
-                {"label": "📂 Cloud DB / Vector Store", "field": "integrations", "value": ["payments"]},
+                {"label": "🚀 Standalone MVP (Fastest launch)", "field": "integrations", "value": ["none"]},
+                {"label": "📂 Vector DB / Knowledge Base", "field": "integrations", "value": ["database"]},
+                {"label": "🔗 Webhooks & Custom Business APIs", "field": "integrations", "value": ["crm"]},
+                {"label": "💳 Stripe Token / Usage Billing", "field": "integrations", "value": ["payments"]},
             ]
         else:
             chips = [

@@ -253,9 +253,8 @@ def run_turn(
     chip = chip or {}
     field = str(chip.get("field") or "").strip()
     value = chip.get("value")
-    if not text and value and field == "ask":
-        text = str(value).strip()
-    if field == "ask":
+    if field == "ask" or field.startswith("ask_"):
+        text = str(value or text or chip.get("label") or "").strip()
         field = ""
         value = None
 

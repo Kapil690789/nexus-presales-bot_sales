@@ -113,3 +113,41 @@ def test_saas_feature_chips_are_client_friendly():
     joined = " ".join(labels)
     assert "SAML" not in joined
     assert "RBAC" not in joined
+
+
+def test_domain_adaptive_users_and_integrations_chips():
+    from backend.app.screening.slots import chips_for_field
+
+    # Proptech
+    brief_prop = ProjectBrief(goal="Real estate property listing portal", service="web_app")
+    users_prop = [c["label"] for c in chips_for_field("users", brief_prop)]
+    assert any("Tenants & Homebuyers" in u for u in users_prop)
+    assert any("Landlords & Property Managers" in u for u in users_prop)
+    integ_prop = [c["label"] for c in chips_for_field("integrations", brief_prop)]
+    assert any("MLS & IDX" in i for i in integ_prop)
+    assert any("DocuSign" in i for i in integ_prop)
+
+    # Edtech
+    brief_ed = ProjectBrief(goal="Online learning platform with video courses", service="web_app")
+    users_ed = [c["label"] for c in chips_for_field("users", brief_ed)]
+    assert any("Students & Learners" in u for u in users_ed)
+    assert any("Instructors & Tutors" in u for u in users_ed)
+    integ_ed = [c["label"] for c in chips_for_field("integrations", brief_ed)]
+    assert any("Mux / Zoom" in i for i in integ_ed)
+
+    # Taxtech
+    brief_tax = ProjectBrief(goal="Tax filing portal with CPA reviews", service="web_app")
+    users_tax = [c["label"] for c in chips_for_field("users", brief_tax)]
+    assert any("Taxpayers & Business Filers" in u for u in users_tax)
+    assert any("CPAs & Tax Advisors" in u for u in users_tax)
+    integ_tax = [c["label"] for c in chips_for_field("integrations", brief_tax)]
+    assert any("IRS e-File" in i for i in integ_tax)
+    assert any("QuickBooks" in i for i in integ_tax)
+
+    # Portal
+    brief_portal = ProjectBrief(goal="Customer self-service portal", service="web_app")
+    users_portal = [c["label"] for c in chips_for_field("users", brief_portal)]
+    assert any("Clients & Account Holders" in u for u in users_portal)
+    integ_portal = [c["label"] for c in chips_for_field("integrations", brief_portal)]
+    assert any("Stripe Billing" in i for i in integ_portal)
+
