@@ -1,13 +1,13 @@
 name: Nexus
 slug: demo
 logo_text: Nexus
-primary: "#0A0A0A"
-accent: "#3B82F6"
-background: "#0A0A0A"
-surface: "#121212"
-text: "#EDEDED"
-muted: "#A1A1AA"
-radius_px: 16
+primary: "#090B10"
+accent: "#6366F1"
+background: "#090B10"
+surface: "#10141F"
+text: "#F1F5F9"
+muted: "#94A3B8"
+radius_px: 18
 launcher_text: Talk to an advisor
 launcher_subtitle: Scope, estimate, and next steps
 widget_title: Nexus Advisor
