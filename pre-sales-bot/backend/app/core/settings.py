@@ -56,7 +56,13 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = ""
     admin_password_hash: str = ""
-    cors_origins: str = "http://localhost:8010,http://127.0.0.1:8010"
+    cors_origins: str = (
+        "http://localhost:8010,http://127.0.0.1:8010,"
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "https://nexus-presales-botsales-website.vercel.app,"
+        "https://nexus-presales-botsales-website-pd2.vercel.app,"
+        "https://nexus-presales-bot-sales.vercel.app"
+    )
     llm_provider: str = "gemini"
     llm_api_key: str = ""
     llm_model: str = "gemini-3.8-flash"
